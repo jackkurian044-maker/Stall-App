@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { MapPin, Loader2, Pencil } from "lucide-react";
-import { COLORS } from "./constants";
+import { COLORS, DEFAULT_LOC } from "./constants";
 import MapPicker from "./MapPicker";
 
 // Free, keyless geocoding via OpenStreetMap's Nominatim service.
@@ -28,6 +28,7 @@ export default function LocationSearch({ address, lat, lng, onChange }) {
   const [manualMode, setManualMode] = useState(false);
   const [error, setError] = useState("");
   const [highlighted, setHighlighted] = useState(-1);
+  const [searched, setSearched] = useState(false);
   const debounceRef = useRef(null);
   const boxRef = useRef(null);
   const hasLocation = lat !== "" && lng !== "" && lat != null && lng != null && Number.isFinite(Number(lat)) && Number.isFinite(Number(lng));
@@ -49,6 +50,7 @@ export default function LocationSearch({ address, lat, lng, onChange }) {
     setQuery(val);
     setError("");
     setHighlighted(-1);
+    setSearched(false);
     // Editing the text after a location was already set means it's no
     // longer confirmed — clear coordinates so submitting can't silently
     // pair the old coordinates with new, unconfirmed address text.
@@ -67,6 +69,7 @@ export default function LocationSearch({ address, lat, lng, onChange }) {
         setSuggestions(results);
         setOpen(true);
         setHighlighted(-1);
+        setSearched(true);
       } catch {
         setError("Couldn't reach the address lookup service — try again, or enter coordinates manually.");
       } finally {
@@ -147,7 +150,7 @@ export default function LocationSearch({ address, lat, lng, onChange }) {
           onChange={(e) => onChange({ address: e.target.value, lat, lng })}
           placeholder="Street, area, city"
         />
-        <div style={{ display: "flex", gap: 8, marginBottom: hasLocation ? 8 : 0 }}>
+        <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
           <input
             className="font-mono"
             style={inputStyle}
@@ -163,14 +166,16 @@ export default function LocationSearch({ address, lat, lng, onChange }) {
             placeholder="Longitude"
           />
         </div>
-        {hasLocation && (
-          <>
-            <MapPicker lat={Number(lat)} lng={Number(lng)} onMove={handlePinMove} />
-            <div style={{ fontSize: 10, color: "#999", marginTop: 4 }}>
-              Drag the pin to fine-tune the exact spot.
-            </div>
-          </>
-        )}
+        <MapPicker
+          lat={hasLocation ? Number(lat) : DEFAULT_LOC.lat}
+          lng={hasLocation ? Number(lng) : DEFAULT_LOC.lng}
+          onMove={handlePinMove}
+        />
+        <div style={{ fontSize: 10, color: "#999", marginTop: 4 }}>
+          {hasLocation
+            ? "Drag the pin to fine-tune the exact spot."
+            : "Or just drag the pin below onto the right spot — no typing needed."}
+        </div>
       </div>
     );
   }
@@ -212,7 +217,14 @@ export default function LocationSearch({ address, lat, lng, onChange }) {
             Drag the pin if it's not exactly on the storefront.
           </div>
         </>
-      ) : query.trim().length >= 3 && !loading ? (
+      ) : loading ? null : searched && suggestions.length === 0 ? (
+        <div style={{ fontSize: 11, color: COLORS.brick, marginTop: 4, lineHeight: 1.4 }}>
+          No matches for that. Try a shorter version — just street, area, and
+          city (e.g. "15th Main Road, Kodihalli, Bengaluru") tends to work
+          better than a full address with floor/unit numbers — or switch to
+          "enter manually" and place the pin on the map yourself.
+        </div>
+      ) : query.trim().length >= 3 ? (
         <div style={{ fontSize: 11, color: COLORS.brick, marginTop: 4 }}>
           Pick a suggestion below to confirm the exact location.
         </div>
