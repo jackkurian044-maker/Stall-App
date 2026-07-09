@@ -1,6 +1,7 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { MapPin, Loader2, Pencil } from "lucide-react";
 import { COLORS } from "./constants";
+import MapPicker from "./MapPicker";
 
 // Free, keyless geocoding via OpenStreetMap's Nominatim service.
 // Usage policy: keep to ~1 request/second and identify the app.
@@ -115,6 +116,13 @@ export default function LocationSearch({ address, lat, lng, onChange }) {
     }
   };
 
+  const handlePinMove = useCallback(
+    ({ lat: newLat, lng: newLng }) => {
+      onChange({ address, lat: newLat, lng: newLng });
+    },
+    [address, onChange]
+  );
+
   const inputStyle = {
     width: "100%", padding: "9px 10px", borderRadius: 7,
     border: `1.5px solid ${COLORS.ink}`, fontSize: 13, background: "#fff", boxSizing: "border-box",
@@ -139,7 +147,7 @@ export default function LocationSearch({ address, lat, lng, onChange }) {
           onChange={(e) => onChange({ address: e.target.value, lat, lng })}
           placeholder="Street, area, city"
         />
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, marginBottom: hasLocation ? 8 : 0 }}>
           <input
             className="font-mono"
             style={inputStyle}
@@ -155,6 +163,14 @@ export default function LocationSearch({ address, lat, lng, onChange }) {
             placeholder="Longitude"
           />
         </div>
+        {hasLocation && (
+          <>
+            <MapPicker lat={Number(lat)} lng={Number(lng)} onMove={handlePinMove} />
+            <div style={{ fontSize: 10, color: "#999", marginTop: 4 }}>
+              Drag the pin to fine-tune the exact spot.
+            </div>
+          </>
+        )}
       </div>
     );
   }
@@ -187,9 +203,15 @@ export default function LocationSearch({ address, lat, lng, onChange }) {
       </div>
 
       {hasLocation ? (
-        <div className="font-mono" style={{ fontSize: 11, color: COLORS.teal, marginTop: 4 }}>
-          ✓ location set ({Number(lat).toFixed(5)}, {Number(lng).toFixed(5)})
-        </div>
+        <>
+          <div className="font-mono" style={{ fontSize: 11, color: COLORS.teal, marginTop: 4, marginBottom: 8 }}>
+            ✓ location set ({Number(lat).toFixed(5)}, {Number(lng).toFixed(5)})
+          </div>
+          <MapPicker lat={Number(lat)} lng={Number(lng)} onMove={handlePinMove} />
+          <div style={{ fontSize: 10, color: "#999", marginTop: 4 }}>
+            Drag the pin if it's not exactly on the storefront.
+          </div>
+        </>
       ) : query.trim().length >= 3 && !loading ? (
         <div style={{ fontSize: 11, color: COLORS.brick, marginTop: 4 }}>
           Pick a suggestion below to confirm the exact location.
