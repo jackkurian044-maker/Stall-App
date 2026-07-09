@@ -26,8 +26,10 @@ export default function LocationSearch({ address, lat, lng, onChange }) {
   const [open, setOpen] = useState(false);
   const [manualMode, setManualMode] = useState(false);
   const [error, setError] = useState("");
+  const [highlighted, setHighlighted] = useState(-1);
   const debounceRef = useRef(null);
   const boxRef = useRef(null);
+  const hasLocation = lat !== "" && lng !== "" && lat != null && lng != null && Number.isFinite(Number(lat)) && Number.isFinite(Number(lng));
 
   useEffect(() => {
     setQuery(address || "");
@@ -45,6 +47,13 @@ export default function LocationSearch({ address, lat, lng, onChange }) {
   const handleQueryChange = (val) => {
     setQuery(val);
     setError("");
+    setHighlighted(-1);
+    // Editing the text after a location was already set means it's no
+    // longer confirmed — clear coordinates so submitting can't silently
+    // pair the old coordinates with new, unconfirmed address text.
+    if (hasLocation) {
+      onChange({ address: val, lat: "", lng: "" });
+    }
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (val.trim().length < 3) {
       setSuggestions([]);
@@ -56,6 +65,7 @@ export default function LocationSearch({ address, lat, lng, onChange }) {
         const results = await searchAddress(val.trim());
         setSuggestions(results);
         setOpen(true);
+        setHighlighted(-1);
       } catch {
         setError("Couldn't reach the address lookup service — try again, or enter coordinates manually.");
       } finally {
@@ -68,11 +78,41 @@ export default function LocationSearch({ address, lat, lng, onChange }) {
     setQuery(result.display_name);
     setOpen(false);
     setSuggestions([]);
+    setHighlighted(-1);
+    setError("");
     onChange({
       address: result.display_name,
       lat: parseFloat(result.lat),
       lng: parseFloat(result.lon),
     });
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") {
+      // Always stop this from submitting the surrounding form — the
+      // person needs to pick a suggestion first (or use manual entry).
+      e.preventDefault();
+      if (open && suggestions.length > 0) {
+        pick(suggestions[highlighted >= 0 ? highlighted : 0]);
+      }
+      return;
+    }
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      if (suggestions.length > 0) {
+        setOpen(true);
+        setHighlighted((h) => Math.min(h + 1, suggestions.length - 1));
+      }
+      return;
+    }
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setHighlighted((h) => Math.max(h - 1, 0));
+      return;
+    }
+    if (e.key === "Escape") {
+      setOpen(false);
+    }
   };
 
   const inputStyle = {
@@ -138,6 +178,7 @@ export default function LocationSearch({ address, lat, lng, onChange }) {
           value={query}
           onChange={(e) => handleQueryChange(e.target.value)}
           onFocus={() => suggestions.length > 0 && setOpen(true)}
+          onKeyDown={handleKeyDown}
           placeholder="Start typing the business address…"
         />
         {loading && (
@@ -145,11 +186,15 @@ export default function LocationSearch({ address, lat, lng, onChange }) {
         )}
       </div>
 
-      {lat != null && lng != null && lat !== "" && lng !== "" && (
+      {hasLocation ? (
         <div className="font-mono" style={{ fontSize: 11, color: COLORS.teal, marginTop: 4 }}>
           ✓ location set ({Number(lat).toFixed(5)}, {Number(lng).toFixed(5)})
         </div>
-      )}
+      ) : query.trim().length >= 3 && !loading ? (
+        <div style={{ fontSize: 11, color: COLORS.brick, marginTop: 4 }}>
+          Pick a suggestion below to confirm the exact location.
+        </div>
+      ) : null}
       {error && <div style={{ fontSize: 11, color: COLORS.brick, marginTop: 4 }}>{error}</div>}
 
       {open && suggestions.length > 0 && (
@@ -166,9 +211,11 @@ export default function LocationSearch({ address, lat, lng, onChange }) {
               onClick={() => pick(s)}
               style={{
                 padding: "9px 12px", fontSize: 12.5, cursor: "pointer",
+                background: highlighted === i ? `${COLORS.marigold}33` : "transparent",
                 borderBottom: i === suggestions.length - 1 ? "none" : `1px solid ${COLORS.ink}15`,
               }}
               onMouseDown={(e) => e.preventDefault()}
+              onMouseEnter={() => setHighlighted(i)}
             >
               {s.display_name}
             </div>

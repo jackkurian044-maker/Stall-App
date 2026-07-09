@@ -44,7 +44,7 @@ export default function AdminDashboard() {
     const lat = parseFloat(form.lat);
     const lng = parseFloat(form.lng);
     if (!form.name.trim()) return setError("Name is required.");
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return setError("Latitude and longitude must be valid numbers.");
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return setError("Please select an address from the suggestions dropdown (or switch to \"enter manually\" and type coordinates).");
 
     setSaving(true);
     const code = uid(6);
