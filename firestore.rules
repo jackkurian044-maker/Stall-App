@@ -1,0 +1,44 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAdmin() {
+      return request.auth != null &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    // Vendor listings: anyone can read (public search).
+    // Any signed-in user can create a listing (it becomes theirs).
+    // A listing can be edited/deleted by its owner, by an admin,
+    // or claimed by a signed-in user who supplies the correct claimCode
+    // on a currently-unclaimed (ownerId == null) listing.
+    match /vendors/{vendorId} {
+      allow read: if true;
+
+      allow create: if request.auth != null &&
+        request.resource.data.ownerId == request.auth.uid;
+
+      allow update: if request.auth != null && (
+        resource.data.ownerId == request.auth.uid ||
+        isAdmin() ||
+        (
+          resource.data.ownerId == null &&
+          request.resource.data.ownerId == request.auth.uid &&
+          request.resource.data.claimCode == resource.data.claimCode
+        )
+      );
+
+      allow delete: if request.auth != null &&
+        (resource.data.ownerId == request.auth.uid || isAdmin());
+    }
+
+    // Admin membership list. Documents here are added manually via the
+    // Firebase Console (doc ID = the admin's Firebase Auth UID).
+    // No client can write to this collection.
+    match /admins/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
+    }
+  }
+}
