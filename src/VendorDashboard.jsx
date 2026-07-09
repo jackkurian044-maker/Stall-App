@@ -3,9 +3,10 @@ import {
   collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc,
   getDocs, serverTimestamp,
 } from "firebase/firestore";
-import { Plus, Trash2, Locate, KeyRound } from "lucide-react";
+import { Plus, Trash2, KeyRound } from "lucide-react";
 import { db } from "./firebase";
 import { CATEGORIES, COLORS } from "./constants";
+import LocationSearch from "./LocationSearch";
 
 const emptyForm = {
   name: "", category: CATEGORIES[0], description: "", products: "",
@@ -48,13 +49,6 @@ export default function VendorDashboard({ user }) {
       name: l.name, category: l.category, description: l.description || "",
       products: l.products || "", address: l.address || "", phone: l.phone || "",
       lat: String(l.lat), lng: String(l.lng),
-    });
-  };
-
-  const useCurrentLoc = () => {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition((pos) => {
-      setForm((f) => ({ ...f, lat: pos.coords.latitude.toFixed(6), lng: pos.coords.longitude.toFixed(6) }));
     });
   };
 
@@ -134,15 +128,13 @@ export default function VendorDashboard({ user }) {
             ))}
             {field("Description", <textarea style={{ ...inputStyle, resize: "vertical", minHeight: 56 }} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="What makes this worth the walk?" />)}
             {field("Products (comma separated)", <input style={inputStyle} value={form.products} onChange={(e) => setForm({ ...form, products: e.target.value })} placeholder="mango pickle, lime pickle" />)}
-            {field("Address", <input style={inputStyle} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Street, area, city" />)}
             {field("Phone (optional)", <input style={inputStyle} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />)}
-            <div style={{ display: "flex", gap: 8 }}>
-              {field("Latitude", <input className="font-mono" style={inputStyle} value={form.lat} onChange={(e) => setForm({ ...form, lat: e.target.value })} placeholder="12.9716" />)}
-              {field("Longitude", <input className="font-mono" style={inputStyle} value={form.lng} onChange={(e) => setForm({ ...form, lng: e.target.value })} placeholder="77.5946" />)}
-            </div>
-            <button type="button" onClick={useCurrentLoc} className="stall-btn" style={{ width: "100%", marginBottom: 12, background: "transparent", border: `1.5px solid ${COLORS.teal}`, color: COLORS.teal, borderRadius: 7, padding: "7px", fontSize: 12, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-              <Locate size={13} /> Use my current location
-            </button>
+            <LocationSearch
+              address={form.address}
+              lat={form.lat}
+              lng={form.lng}
+              onChange={({ address, lat, lng }) => setForm((f) => ({ ...f, address, lat, lng }))}
+            />
 
             {error && <div style={{ color: COLORS.brick, fontSize: 12, marginBottom: 10 }}>{error}</div>}
 

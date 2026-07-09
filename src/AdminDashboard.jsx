@@ -4,6 +4,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { db } from "./firebase";
 import { CATEGORIES, CATEGORY_COLORS, COLORS } from "./constants";
 import { uid } from "./geo";
+import LocationSearch from "./LocationSearch";
 
 const emptyForm = {
   name: "", category: CATEGORIES[0], description: "", products: "",
@@ -82,12 +83,13 @@ export default function AdminDashboard() {
           ))}
           {field("Description", <textarea style={{ ...inputStyle, resize: "vertical", minHeight: 56 }} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />)}
           {field("Products (comma separated)", <input style={inputStyle} value={form.products} onChange={(e) => setForm({ ...form, products: e.target.value })} />)}
-          {field("Address", <input style={inputStyle} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />)}
           {field("Phone (optional)", <input style={inputStyle} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />)}
-          <div style={{ display: "flex", gap: 8 }}>
-            {field("Latitude", <input className="font-mono" style={inputStyle} value={form.lat} onChange={(e) => setForm({ ...form, lat: e.target.value })} placeholder="12.9716" />)}
-            {field("Longitude", <input className="font-mono" style={inputStyle} value={form.lng} onChange={(e) => setForm({ ...form, lng: e.target.value })} placeholder="77.5946" />)}
-          </div>
+          <LocationSearch
+            address={form.address}
+            lat={form.lat}
+            lng={form.lng}
+            onChange={({ address, lat, lng }) => setForm((f) => ({ ...f, address, lat, lng }))}
+          />
 
           {error && <div style={{ color: COLORS.brick, fontSize: 12, marginBottom: 10 }}>{error}</div>}
 
