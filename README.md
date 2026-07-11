@@ -22,7 +22,38 @@ signing in); an admin can add, edit, or remove any listing.
 3. In the left sidebar: **Build → Firestore Database → Create database** → start in **production mode** → pick a region.
 4. Go to **Project settings** (gear icon) → scroll to **Your apps** → click the **</> (web)** icon → register an app (no Hosting needed) → copy the `firebaseConfig` values shown.
 
-## 2. Configure environment variables
+## 2. Set up Google Places (business-name address search)
+
+This powers the "search business name or address" box when adding a
+vendor, so it can find results like Google Maps does (not just street
+addresses).
+
+1. Go to [console.cloud.google.com](https://console.cloud.google.com). Your
+   Firebase project is already a Google Cloud project with the same name/ID
+   (e.g. `stall-app-1aab7`) — select it from the project dropdown at the top
+   rather than creating a new one.
+2. **Billing** must be enabled once per Cloud project: left menu → **Billing**
+   → link or create a billing account (requires a card, but Google gives
+   $200/month in free credit — a small local directory shouldn't exceed it
+   in normal use).
+3. Left menu → **APIs & Services → Library** → search for and enable:
+   - **Places API**
+   - **Maps JavaScript API**
+4. Left menu → **APIs & Services → Credentials → Create Credentials → API key**.
+   Copy the key, then click into it to restrict it (recommended, not required):
+   - **Application restrictions** → **HTTP referrers** → add:
+     - `http://localhost:5173/*` (for local dev)
+     - `https://<your-username>.github.io/*`
+   - **API restrictions** → restrict key to **Places API** and **Maps JavaScript API**
+5. Save. This key goes into `VITE_GOOGLE_PLACES_API_KEY` (env var name below),
+   alongside the six `VITE_FIREBASE_*` values.
+
+If this key is ever missing or misconfigured, the address box shows
+"Address search isn't configured" and falls back to the always-available
+"enter manually" option with the free draggable-pin map — so a bad key
+never fully blocks adding vendors.
+
+## 3. Configure environment variables
 
 Copy `.env.example` to `.env.local` and paste in the values from step 1:
 
@@ -39,7 +70,7 @@ VITE_FIREBASE_MESSAGING_SENDER_ID=...
 VITE_FIREBASE_APP_ID=...
 ```
 
-## 3. Deploy the Firestore security rules
+## 4. Deploy the Firestore security rules
 
 In the Firebase Console: **Firestore Database → Rules** tab → replace the
 contents with everything in `firestore.rules` in this repo → **Publish**.
@@ -50,7 +81,7 @@ These rules mean:
 - A listing can only be edited/deleted by its owner, an admin, or (for the
   claim flow) a signed-in user supplying the matching claim code.
 
-## 4. Run it locally
+## 5. Run it locally
 
 ```
 npm install
@@ -60,7 +91,7 @@ npm run dev
 Visit the printed `localhost` URL. Sign up for an account, then try
 creating a listing under **My Listings**.
 
-## 5. Make yourself an admin
+## 6. Make yourself an admin
 
 1. Sign up for an account in the running app (or via Firebase Console → Authentication → Add user).
 2. In Firebase Console → Authentication → Users, copy that user's **UID**.
@@ -70,7 +101,7 @@ creating a listing under **My Listings**.
 There's no in-app way to add admins on purpose: it's a manual step in the
 Firebase Console, so random signups can never grant themselves admin access.
 
-## 6. Push to GitHub
+## 7. Push to GitHub
 
 ```
 git init
@@ -87,12 +118,12 @@ not secret in the way an API secret key is — they're safe to expose in a
 built frontend bundle — but keeping them out of git means you can change
 projects without editing history.)
 
-## 7. Deploy on GitHub Pages
+## 8. Deploy on GitHub Pages
 
 GitHub Pages only serves static files — it can't read your local `.env.local`
 at build time — so this repo includes a GitHub Actions workflow
-(`.github/workflows/deploy.yml`) that builds the app with your Firebase
-config injected from **repository secrets**, then publishes it automatically
+(`.github/workflows/deploy.yml`) that builds the app with your config
+injected from **repository secrets**, then publishes it automatically
 on every push to `main`.
 
 **One-time setup:**
@@ -100,7 +131,7 @@ on every push to `main`.
 1. In your GitHub repo: **Settings → Pages** → under "Build and deployment",
    set **Source** to **GitHub Actions**.
 2. In your GitHub repo: **Settings → Secrets and variables → Actions →
-   New repository secret**. Add each of these six, using the same values
+   New repository secret**. Add each of these seven, using the same values
    from your `.env.local`:
    - `VITE_FIREBASE_API_KEY`
    - `VITE_FIREBASE_AUTH_DOMAIN`
@@ -108,6 +139,7 @@ on every push to `main`.
    - `VITE_FIREBASE_STORAGE_BUCKET`
    - `VITE_FIREBASE_MESSAGING_SENDER_ID`
    - `VITE_FIREBASE_APP_ID`
+   - `VITE_GOOGLE_PLACES_API_KEY`
 3. Push to `main` (or re-run the workflow from the **Actions** tab). The
    workflow builds the site and deploys it — watch progress under
    **Actions**.
@@ -118,7 +150,7 @@ on every push to `main`.
 Every future push to `main` redeploys automatically — no manual steps
 needed after this.
 
-## 8. Firebase Auth: allow your live domain
+## 9. Firebase Auth: allow your live domain
 
 Firebase blocks sign-in from domains it doesn't recognize.
 In Firebase Console → **Authentication → Settings → Authorized domains**,
@@ -138,6 +170,9 @@ src/
   FindView.jsx            public search + radar chart
   RadarChart.jsx          proximity radar (recharts)
   VendorTicket.jsx        result card
+  LocationSearch.jsx      business/address search (Google Places Autocomplete)
+  googleMaps.js           lazy-loads the Google Maps JS API once
+  MapPicker.jsx           draggable pin preview map (Leaflet + free OSM tiles)
   AuthPage.jsx            sign in / sign up / password reset
   VendorDashboard.jsx     vendor's own create/edit/claim flow
   AdminDashboard.jsx      admin create/edit/delete-any, claim code generation
@@ -151,6 +186,20 @@ folder can't be flattened without breaking the automatic deploy.
 
 ## Notes & next steps you might want
 
+- **Address entry**: vendors and admins search by business name or address
+  using Google Places Autocomplete — the same data Google Maps itself uses,
+  so small local businesses that are listed on Google (but not necessarily
+  mapped in OpenStreetMap) can be found by name. Picking a result auto-fills
+  coordinates *and* shows a small map with a draggable pin — drag it to
+  nudge the pin exactly onto the storefront if needed. There's also an
+  "enter manually" fallback (with the same draggable map, defaulting to a
+  starting point you can drag from) for anything Google Places can't find,
+  or if the API key is missing/misconfigured.
+  The draggable pin map itself still uses free OpenStreetMap tiles (no
+  billing) — only the *search* step depends on the Google Places API key.
+  If you want to remove the Google dependency entirely later, `LocationSearch.jsx`
+  is the only file that would need to change back to a free geocoder like
+  Nominatim (a config, not a rebuild).
 - Vendors currently can create multiple listings under one account — if you
   want to cap it at one, add a check in `VendorDashboard.jsx` before allowing
   a new listing.
