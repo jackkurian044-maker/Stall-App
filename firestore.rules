@@ -16,8 +16,10 @@ service cloud.firestore {
     match /vendors/{vendorId} {
       allow read: if true;
 
-      allow create: if request.auth != null &&
-        request.resource.data.ownerId == request.auth.uid;
+      allow create: if request.auth != null && (
+        request.resource.data.ownerId == request.auth.uid ||
+        (isAdmin() && request.resource.data.ownerId == null)
+      );
 
       allow update: if request.auth != null && (
         resource.data.ownerId == request.auth.uid ||

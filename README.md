@@ -176,6 +176,7 @@ src/
   AuthPage.jsx            sign in / sign up / password reset
   VendorDashboard.jsx     vendor's own create/edit/claim flow
   AdminDashboard.jsx      admin create/edit/delete-any, claim code generation
+  DiscoverNearby.jsx      admin-only: search real nearby businesses via Google, pick which to add
   index.css               global styles
 ```
 
@@ -209,6 +210,19 @@ folder can't be flattened without breaking the automatic deploy.
   `LocationSearch.jsx`) so a nearby branch surfaces first and same-named
   branches elsewhere are easy to avoid by mistake. If you expand beyond
   India later, that restriction is a one-line change to relax or remove.
+- **Discover nearby vendors** (admin-only "Discover Nearby" tab): set a
+  center point (your location, or manual coordinates), search a category
+  or keyword (e.g. "medical store", "bakery", "salon") and a radius, and
+  browse real nearby businesses pulled directly from Google — the same
+  data source as Google Maps search. Each result shows its name, address,
+  distance, and rating, with a checkbox and an editable category guess
+  (auto-mapped from Google's data, but not always right — review it).
+  Nothing is added until you select results and click "Add N selected" —
+  only then does it fetch each one's full address/website, write it to
+  Firestore, and generate its claim code, shown afterward as a copyable
+  list to hand to each business. Shows up to ~20 nearest matches per
+  search (a limit of the underlying API) — narrow the keyword or radius
+  for a more specific set if needed.
 - **Google ratings**: when a listing is added via the address/business
   search, its Google rating and review count are captured and shown on the
   public listing card (a star icon next to the category badge). This is a
