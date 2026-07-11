@@ -3,14 +3,18 @@ import {
   collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc,
   getDocs, serverTimestamp,
 } from "firebase/firestore";
-import { Plus, Trash2, KeyRound } from "lucide-react";
+import { Plus, Trash2, KeyRound, RefreshCw, Star } from "lucide-react";
 import { db } from "./firebase";
 import { CATEGORIES, COLORS } from "./constants";
 import LocationSearch from "./LocationSearch";
+import { loadGoogleMaps } from "./googleMaps";
+
+const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_PLACES_API_KEY;
 
 const emptyForm = {
   name: "", category: CATEGORIES[0], description: "", products: "",
   address: "", phone: "", lat: "", lng: "", website: null, mapsUrl: null, placeId: null,
+  rating: null, ratingsCount: null,
 };
 
 export default function VendorDashboard({ user }) {
@@ -22,6 +26,27 @@ export default function VendorDashboard({ user }) {
   const [saving, setSaving] = useState(false);
   const [claimCode, setClaimCode] = useState("");
   const [claimMsg, setClaimMsg] = useState("");
+  const [refreshingId, setRefreshingId] = useState(null);
+
+  const refreshRating = async (l) => {
+    if (!l.placeId || !GOOGLE_API_KEY) return;
+    setRefreshingId(l.id);
+    try {
+      await loadGoogleMaps(GOOGLE_API_KEY);
+      const service = new window.google.maps.places.PlacesService(document.createElement("div"));
+      service.getDetails({ placeId: l.placeId, fields: ["rating", "user_ratings_total"] }, async (place, status) => {
+        if (status === window.google.maps.places.PlacesServiceStatus.OK && place) {
+          await updateDoc(doc(db, "vendors", l.id), {
+            rating: typeof place.rating === "number" ? place.rating : null,
+            ratingsCount: typeof place.user_ratings_total === "number" ? place.user_ratings_total : null,
+          });
+        }
+        setRefreshingId(null);
+      });
+    } catch {
+      setRefreshingId(null);
+    }
+  };
 
   useEffect(() => {
     const q = query(collection(db, "vendors"), where("ownerId", "==", user.uid));
@@ -50,6 +75,7 @@ export default function VendorDashboard({ user }) {
       products: l.products || "", address: l.address || "", phone: l.phone || "",
       lat: String(l.lat), lng: String(l.lng),
       website: l.website || null, mapsUrl: l.mapsUrl || null, placeId: l.placeId || null,
+      rating: l.rating ?? null, ratingsCount: l.ratingsCount ?? null,
     });
   };
 
@@ -67,6 +93,7 @@ export default function VendorDashboard({ user }) {
         name: form.name.trim(), category: form.category, description: form.description.trim(),
         products: form.products.trim(), address: form.address.trim(), phone: form.phone.trim(),
         lat, lng, website: form.website || null, mapsUrl: form.mapsUrl || null, placeId: form.placeId || null,
+        rating: form.rating ?? null, ratingsCount: form.ratingsCount ?? null,
       };
       if (editingId) {
         await updateDoc(doc(db, "vendors", editingId), payload);
@@ -137,6 +164,8 @@ export default function VendorDashboard({ user }) {
               website={form.website}
               mapsUrl={form.mapsUrl}
               placeId={form.placeId}
+              rating={form.rating}
+              ratingsCount={form.ratingsCount}
               onChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
             />
 
@@ -194,8 +223,25 @@ export default function VendorDashboard({ user }) {
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: 14 }}>{l.name}</div>
                   <div style={{ fontSize: 11.5, color: "#777" }}>{l.category} · {l.address}</div>
+                  {l.rating != null && (
+                    <div style={{ fontSize: 11.5, color: "#666", marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
+                      <Star size={11} fill={COLORS.marigold} color={COLORS.marigold} />
+                      {l.rating.toFixed(1)}{l.ratingsCount != null ? ` (${l.ratingsCount})` : ""}
+                    </div>
+                  )}
                 </div>
-                <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                <div style={{ display: "flex", gap: 6, flexShrink: 0, alignItems: "flex-start" }}>
+                  {l.placeId && (
+                    <button
+                      onClick={() => refreshRating(l)}
+                      disabled={refreshingId === l.id}
+                      className="stall-btn"
+                      title="Refresh Google rating"
+                      style={{ background: "transparent", border: `1.5px solid ${COLORS.teal}`, color: COLORS.teal, borderRadius: 7, padding: "6px 8px", fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}
+                    >
+                      <RefreshCw size={13} className={refreshingId === l.id ? "spin" : ""} />
+                    </button>
+                  )}
                   <button onClick={() => startEdit(l)} className="stall-btn" style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 7, padding: "6px 10px", fontSize: 12, fontWeight: 600 }}>
                     Edit
                   </button>

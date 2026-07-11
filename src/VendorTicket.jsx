@@ -1,5 +1,5 @@
 import React from "react";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Star } from "lucide-react";
 import { CATEGORY_COLORS, COLORS } from "./constants";
 import { vendorLink } from "./geo";
 
@@ -50,6 +50,15 @@ export default function VendorTicket({ vendor, highlighted, onClick }) {
           >
             {vendor.category}
           </span>
+          {vendor.rating != null && (
+            <span style={{ fontSize: 12, color: "#555", display: "flex", alignItems: "center", gap: 3 }}>
+              <Star size={12} fill={COLORS.marigold} color={COLORS.marigold} />
+              <span className="font-mono">{vendor.rating.toFixed(1)}</span>
+              {vendor.ratingsCount != null && (
+                <span style={{ color: "#999" }}>({vendor.ratingsCount})</span>
+              )}
+            </span>
+          )}
         </div>
         {vendor.description && (
           <div style={{ fontSize: 12.5, color: "#444", marginBottom: 6 }}>{vendor.description}</div>

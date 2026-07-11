@@ -1,14 +1,18 @@
 import React, { useEffect, useState } from "react";
-import { collection, onSnapshot, addDoc, deleteDoc, doc, serverTimestamp } from "firebase/firestore";
-import { Plus, Trash2 } from "lucide-react";
+import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from "firebase/firestore";
+import { Plus, Trash2, RefreshCw, Star } from "lucide-react";
 import { db } from "./firebase";
 import { CATEGORIES, CATEGORY_COLORS, COLORS } from "./constants";
 import { uid } from "./geo";
 import LocationSearch from "./LocationSearch";
+import { loadGoogleMaps } from "./googleMaps";
+
+const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_PLACES_API_KEY;
 
 const emptyForm = {
   name: "", category: CATEGORIES[0], description: "", products: "",
   address: "", phone: "", lat: "", lng: "", website: null, mapsUrl: null, placeId: null,
+  rating: null, ratingsCount: null,
 };
 
 export default function AdminDashboard() {
@@ -18,6 +22,27 @@ export default function AdminDashboard() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [lastCode, setLastCode] = useState(null);
+  const [refreshingId, setRefreshingId] = useState(null);
+
+  const refreshRating = async (v) => {
+    if (!v.placeId || !GOOGLE_API_KEY) return;
+    setRefreshingId(v.id);
+    try {
+      await loadGoogleMaps(GOOGLE_API_KEY);
+      const service = new window.google.maps.places.PlacesService(document.createElement("div"));
+      service.getDetails({ placeId: v.placeId, fields: ["rating", "user_ratings_total"] }, async (place, status) => {
+        if (status === window.google.maps.places.PlacesServiceStatus.OK && place) {
+          await updateDoc(doc(db, "vendors", v.id), {
+            rating: typeof place.rating === "number" ? place.rating : null,
+            ratingsCount: typeof place.user_ratings_total === "number" ? place.user_ratings_total : null,
+          });
+        }
+        setRefreshingId(null);
+      });
+    } catch {
+      setRefreshingId(null);
+    }
+  };
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "vendors"), (snap) => {
@@ -53,6 +78,7 @@ export default function AdminDashboard() {
         name: form.name.trim(), category: form.category, description: form.description.trim(),
         products: form.products.trim(), address: form.address.trim(), phone: form.phone.trim(),
         lat, lng, website: form.website || null, mapsUrl: form.mapsUrl || null, placeId: form.placeId || null,
+        rating: form.rating ?? null, ratingsCount: form.ratingsCount ?? null,
         ownerId: null, claimCode: code, createdAt: serverTimestamp(),
       });
       setLastCode({ name: form.name.trim(), code });
@@ -92,6 +118,8 @@ export default function AdminDashboard() {
             website={form.website}
             mapsUrl={form.mapsUrl}
             placeId={form.placeId}
+            rating={form.rating}
+            ratingsCount={form.ratingsCount}
             onChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
           />
 
@@ -136,15 +164,33 @@ export default function AdminDashboard() {
                     <span style={{ fontSize: 10, fontWeight: 700, color: v.ownerId ? COLORS.teal : COLORS.brick }}>
                       {v.ownerId ? "CLAIMED" : "UNCLAIMED"}
                     </span>
+                    {v.rating != null && (
+                      <span style={{ fontSize: 11, color: "#666", display: "flex", alignItems: "center", gap: 3 }}>
+                        <Star size={11} fill={COLORS.marigold} color={COLORS.marigold} />
+                        {v.rating.toFixed(1)}{v.ratingsCount != null ? ` (${v.ratingsCount})` : ""}
+                      </span>
+                    )}
                   </div>
                   <div style={{ fontSize: 11.5, color: "#777" }}>
                     {v.address} · <span className="font-mono">{v.lat?.toFixed?.(4)}, {v.lng?.toFixed?.(4)}</span>
                     {!v.ownerId && v.claimCode && <> · code <span className="font-mono">{v.claimCode}</span></>}
                   </div>
                 </div>
-                <button onClick={() => remove(v.id)} title="Remove vendor" style={{ background: "none", border: "none", cursor: "pointer", color: COLORS.brick, padding: 6, flexShrink: 0 }}>
-                  <Trash2 size={16} />
-                </button>
+                <div style={{ display: "flex", gap: 4, flexShrink: 0, alignItems: "center" }}>
+                  {v.placeId && (
+                    <button
+                      onClick={() => refreshRating(v)}
+                      disabled={refreshingId === v.id}
+                      title="Refresh Google rating"
+                      style={{ background: "none", border: "none", cursor: "pointer", color: COLORS.teal, padding: 6 }}
+                    >
+                      <RefreshCw size={15} className={refreshingId === v.id ? "spin" : ""} />
+                    </button>
+                  )}
+                  <button onClick={() => remove(v.id)} title="Remove vendor" style={{ background: "none", border: "none", cursor: "pointer", color: COLORS.brick, padding: 6 }}>
+                    <Trash2 size={16} />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
