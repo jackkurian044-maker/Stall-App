@@ -200,6 +200,20 @@ folder can't be flattened without breaking the automatic deploy.
   If you want to remove the Google dependency entirely later, `LocationSearch.jsx`
   is the only file that would need to change back to a free geocoder like
   Nominatim (a config, not a rebuild).
+- **Google ratings**: when a listing is added via the address/business
+  search, its Google rating and review count are captured and shown on the
+  public listing card (a star icon next to the category badge). This is a
+  **snapshot at the time the listing was added or edited** — it does not
+  silently stay in sync with Google's live rating. Both the vendor and
+  admin dashboards have a small refresh icon (only shown on listings that
+  have a linked Google Place) to manually pull the latest rating whenever
+  needed.
+- **Clicking a listing** on the Find page opens the business's own website
+  if Google has one on file for it, otherwise its Google Business/Maps
+  profile page, otherwise (for older listings saved before this existed,
+  or ones Google has no extra data for) a plain Google Maps search for the
+  business name and address — so every listing is always clickable to
+  *something* useful, even the oldest ones.
 - Vendors currently can create multiple listings under one account — if you
   want to cap it at one, add a check in `VendorDashboard.jsx` before allowing
   a new listing.
