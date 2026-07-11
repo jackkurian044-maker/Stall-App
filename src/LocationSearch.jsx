@@ -1,123 +1,70 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import { MapPin, Loader2, Pencil } from "lucide-react";
+import { MapPin, Pencil } from "lucide-react";
 import { COLORS, DEFAULT_LOC } from "./constants";
 import MapPicker from "./MapPicker";
+import { loadGoogleMaps } from "./googleMaps";
 
-// Free, keyless geocoding via OpenStreetMap's Nominatim service.
-// Usage policy: keep to ~1 request/second and identify the app.
-// https://operations.osmfoundation.org/policies/nominatim/
-async function searchAddress(q) {
-  const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=0&limit=5&q=${encodeURIComponent(q)}`;
-  const res = await fetch(url, {
-    headers: { "Accept-Language": "en" },
-  });
-  if (!res.ok) throw new Error("geocoding request failed");
-  return res.json();
-}
+const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_PLACES_API_KEY;
 
 /**
- * Address search box with autocomplete suggestions.
- * Calls onSelect({ address, lat, lng }) when the person picks a result.
- * Falls back to manual lat/lng entry if a business can't be found.
+ * Address / business search box.
+ * Uses Google Places Autocomplete so people can search by business name
+ * (e.g. "Cut N Cute Studio, Kodihalli") and not just street address.
+ * Calls onChange({ address, lat, lng }) once a place is selected, and
+ * shows a free OpenStreetMap-based draggable pin map to fine-tune the
+ * exact spot afterward.
  */
 export default function LocationSearch({ address, lat, lng, onChange }) {
-  const [query, setQuery] = useState(address || "");
-  const [suggestions, setSuggestions] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [open, setOpen] = useState(false);
   const [manualMode, setManualMode] = useState(false);
-  const [error, setError] = useState("");
-  const [highlighted, setHighlighted] = useState(-1);
-  const [searched, setSearched] = useState(false);
-  const debounceRef = useRef(null);
-  const boxRef = useRef(null);
-  const hasLocation = lat !== "" && lng !== "" && lat != null && lng != null && Number.isFinite(Number(lat)) && Number.isFinite(Number(lng));
+  const [query, setQuery] = useState(address || "");
+  const [ready, setReady] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const inputRef = useRef(null);
+
+  const hasLocation =
+    lat !== "" && lng !== "" && lat != null && lng != null &&
+    Number.isFinite(Number(lat)) && Number.isFinite(Number(lng));
 
   useEffect(() => {
     setQuery(address || "");
   }, [address]);
 
   useEffect(() => {
-    if (!open) return;
-    const handleClick = (e) => {
-      if (boxRef.current && !boxRef.current.contains(e.target)) setOpen(false);
+    if (manualMode) return;
+    if (!GOOGLE_API_KEY) {
+      setLoadError(true);
+      return;
+    }
+    let cancelled = false;
+
+    loadGoogleMaps(GOOGLE_API_KEY)
+      .then(() => {
+        if (cancelled || !inputRef.current) return;
+        const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
+          fields: ["formatted_address", "geometry", "name"],
+        });
+        autocomplete.addListener("place_changed", () => {
+          const place = autocomplete.getPlace();
+          if (!place.geometry || !place.geometry.location) return;
+          const label = place.name && place.formatted_address
+            ? `${place.name}, ${place.formatted_address}`
+            : place.formatted_address || place.name || inputRef.current.value;
+          setQuery(label);
+          onChange({
+            address: label,
+            lat: place.geometry.location.lat(),
+            lng: place.geometry.location.lng(),
+          });
+        });
+        setReady(true);
+      })
+      .catch(() => setLoadError(true));
+
+    return () => {
+      cancelled = true;
     };
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [open]);
-
-  const handleQueryChange = (val) => {
-    setQuery(val);
-    setError("");
-    setHighlighted(-1);
-    setSearched(false);
-    // Editing the text after a location was already set means it's no
-    // longer confirmed — clear coordinates so submitting can't silently
-    // pair the old coordinates with new, unconfirmed address text.
-    if (hasLocation) {
-      onChange({ address: val, lat: "", lng: "" });
-    }
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (val.trim().length < 3) {
-      setSuggestions([]);
-      return;
-    }
-    debounceRef.current = setTimeout(async () => {
-      setLoading(true);
-      try {
-        const results = await searchAddress(val.trim());
-        setSuggestions(results);
-        setOpen(true);
-        setHighlighted(-1);
-        setSearched(true);
-      } catch {
-        setError("Couldn't reach the address lookup service — try again, or enter coordinates manually.");
-      } finally {
-        setLoading(false);
-      }
-    }, 500);
-  };
-
-  const pick = (result) => {
-    setQuery(result.display_name);
-    setOpen(false);
-    setSuggestions([]);
-    setHighlighted(-1);
-    setError("");
-    onChange({
-      address: result.display_name,
-      lat: parseFloat(result.lat),
-      lng: parseFloat(result.lon),
-    });
-  };
-
-  const handleKeyDown = (e) => {
-    if (e.key === "Enter") {
-      // Always stop this from submitting the surrounding form — the
-      // person needs to pick a suggestion first (or use manual entry).
-      e.preventDefault();
-      if (open && suggestions.length > 0) {
-        pick(suggestions[highlighted >= 0 ? highlighted : 0]);
-      }
-      return;
-    }
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      if (suggestions.length > 0) {
-        setOpen(true);
-        setHighlighted((h) => Math.min(h + 1, suggestions.length - 1));
-      }
-      return;
-    }
-    if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setHighlighted((h) => Math.max(h - 1, 0));
-      return;
-    }
-    if (e.key === "Escape") {
-      setOpen(false);
-    }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [manualMode]);
 
   const handlePinMove = useCallback(
     ({ lat: newLat, lng: newLng }) => {
@@ -125,6 +72,20 @@ export default function LocationSearch({ address, lat, lng, onChange }) {
     },
     [address, onChange]
   );
+
+  const handleTypedChange = (val) => {
+    setQuery(val);
+    // Typing after a location was already confirmed invalidates it —
+    // clear coordinates so an edited, unconfirmed address can't silently
+    // keep the old pin's coordinates.
+    if (hasLocation) {
+      onChange({ address: val, lat: "", lng: "" });
+    }
+  };
+
+  const preventFormSubmitOnEnter = (e) => {
+    if (e.key === "Enter") e.preventDefault();
+  };
 
   const inputStyle = {
     width: "100%", padding: "9px 10px", borderRadius: 7,
@@ -141,7 +102,7 @@ export default function LocationSearch({ address, lat, lng, onChange }) {
             onClick={() => setManualMode(false)}
             style={{ background: "none", border: "none", color: COLORS.teal, fontSize: 11, cursor: "pointer", textDecoration: "underline" }}
           >
-            search by address instead
+            search by name/address instead
           </button>
         </div>
         <input
@@ -181,9 +142,9 @@ export default function LocationSearch({ address, lat, lng, onChange }) {
   }
 
   return (
-    <div style={{ marginBottom: 12, position: "relative" }} ref={boxRef}>
+    <div style={{ marginBottom: 12 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
-        <label style={{ fontSize: 11, textTransform: "uppercase", fontWeight: 700 }}>Address</label>
+        <label style={{ fontSize: 11, textTransform: "uppercase", fontWeight: 700 }}>Business name or address</label>
         <button
           type="button"
           onClick={() => setManualMode(true)}
@@ -195,16 +156,14 @@ export default function LocationSearch({ address, lat, lng, onChange }) {
       <div style={{ position: "relative" }}>
         <MapPin size={15} style={{ position: "absolute", left: 10, top: 11, color: "#777" }} />
         <input
+          ref={inputRef}
           style={{ ...inputStyle, paddingLeft: 32 }}
           value={query}
-          onChange={(e) => handleQueryChange(e.target.value)}
-          onFocus={() => suggestions.length > 0 && setOpen(true)}
-          onKeyDown={handleKeyDown}
-          placeholder="Start typing the business address…"
+          onChange={(e) => handleTypedChange(e.target.value)}
+          onKeyDown={preventFormSubmitOnEnter}
+          placeholder={loadError ? "Address search unavailable" : ready ? "Search business name or address…" : "Loading address search…"}
+          disabled={loadError}
         />
-        {loading && (
-          <Loader2 size={15} className="spin" style={{ position: "absolute", right: 10, top: 11, color: "#777" }} />
-        )}
       </div>
 
       {hasLocation ? (
@@ -217,54 +176,19 @@ export default function LocationSearch({ address, lat, lng, onChange }) {
             Drag the pin if it's not exactly on the storefront.
           </div>
         </>
-      ) : loading ? null : searched && suggestions.length === 0 ? (
-        <div style={{ fontSize: 11, color: COLORS.brick, marginTop: 4, lineHeight: 1.4 }}>
-          No matches for that. Try a shorter version — just street, area, and
-          city (e.g. "15th Main Road, Kodihalli, Bengaluru") tends to work
-          better than a full address with floor/unit numbers — or switch to
-          "enter manually" and place the pin on the map yourself.
-        </div>
-      ) : query.trim().length >= 3 ? (
+      ) : loadError ? (
         <div style={{ fontSize: 11, color: COLORS.brick, marginTop: 4 }}>
-          Pick a suggestion below to confirm the exact location.
+          Address search isn't configured (missing API key) — switch to "enter manually" for now.
+        </div>
+      ) : query.trim().length >= 2 ? (
+        <div style={{ fontSize: 11, color: COLORS.brick, marginTop: 4 }}>
+          Pick a suggestion from the dropdown to confirm the exact location.
         </div>
       ) : null}
-      {error && <div style={{ fontSize: 11, color: COLORS.brick, marginTop: 4 }}>{error}</div>}
-
-      {open && suggestions.length > 0 && (
-        <div
-          style={{
-            position: "absolute", top: "100%", left: 0, right: 0, zIndex: 20,
-            background: "#fff", border: `2px solid ${COLORS.ink}`, borderRadius: 8,
-            marginTop: 4, maxHeight: 220, overflowY: "auto",
-          }}
-        >
-          {suggestions.map((s, i) => (
-            <div
-              key={s.place_id || i}
-              onClick={() => pick(s)}
-              style={{
-                padding: "9px 12px", fontSize: 12.5, cursor: "pointer",
-                background: highlighted === i ? `${COLORS.marigold}33` : "transparent",
-                borderBottom: i === suggestions.length - 1 ? "none" : `1px solid ${COLORS.ink}15`,
-              }}
-              onMouseDown={(e) => e.preventDefault()}
-              onMouseEnter={() => setHighlighted(i)}
-            >
-              {s.display_name}
-            </div>
-          ))}
-        </div>
-      )}
 
       <div style={{ fontSize: 10, color: "#999", marginTop: 4 }}>
-        Address search by OpenStreetMap contributors
+        Business search powered by Google · pin map by OpenStreetMap contributors
       </div>
-
-      <style>{`
-        .spin { animation: stall-spin 1s linear infinite; }
-        @keyframes stall-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-      `}</style>
     </div>
   );
 }
