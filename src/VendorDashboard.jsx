@@ -10,7 +10,7 @@ import LocationSearch from "./LocationSearch";
 
 const emptyForm = {
   name: "", category: CATEGORIES[0], description: "", products: "",
-  address: "", phone: "", lat: "", lng: "",
+  address: "", phone: "", lat: "", lng: "", website: null, mapsUrl: null, placeId: null,
 };
 
 export default function VendorDashboard({ user }) {
@@ -49,6 +49,7 @@ export default function VendorDashboard({ user }) {
       name: l.name, category: l.category, description: l.description || "",
       products: l.products || "", address: l.address || "", phone: l.phone || "",
       lat: String(l.lat), lng: String(l.lng),
+      website: l.website || null, mapsUrl: l.mapsUrl || null, placeId: l.placeId || null,
     });
   };
 
@@ -65,7 +66,7 @@ export default function VendorDashboard({ user }) {
       const payload = {
         name: form.name.trim(), category: form.category, description: form.description.trim(),
         products: form.products.trim(), address: form.address.trim(), phone: form.phone.trim(),
-        lat, lng,
+        lat, lng, website: form.website || null, mapsUrl: form.mapsUrl || null, placeId: form.placeId || null,
       };
       if (editingId) {
         await updateDoc(doc(db, "vendors", editingId), payload);
@@ -133,7 +134,10 @@ export default function VendorDashboard({ user }) {
               address={form.address}
               lat={form.lat}
               lng={form.lng}
-              onChange={({ address, lat, lng }) => setForm((f) => ({ ...f, address, lat, lng }))}
+              website={form.website}
+              mapsUrl={form.mapsUrl}
+              placeId={form.placeId}
+              onChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
             />
 
             {error && <div style={{ color: COLORS.brick, fontSize: 12, marginBottom: 10 }}>{error}</div>}

@@ -8,7 +8,7 @@ import LocationSearch from "./LocationSearch";
 
 const emptyForm = {
   name: "", category: CATEGORIES[0], description: "", products: "",
-  address: "", phone: "", lat: "", lng: "",
+  address: "", phone: "", lat: "", lng: "", website: null, mapsUrl: null, placeId: null,
 };
 
 export default function AdminDashboard() {
@@ -52,7 +52,8 @@ export default function AdminDashboard() {
       await addDoc(collection(db, "vendors"), {
         name: form.name.trim(), category: form.category, description: form.description.trim(),
         products: form.products.trim(), address: form.address.trim(), phone: form.phone.trim(),
-        lat, lng, ownerId: null, claimCode: code, createdAt: serverTimestamp(),
+        lat, lng, website: form.website || null, mapsUrl: form.mapsUrl || null, placeId: form.placeId || null,
+        ownerId: null, claimCode: code, createdAt: serverTimestamp(),
       });
       setLastCode({ name: form.name.trim(), code });
       setForm(emptyForm);
@@ -88,7 +89,10 @@ export default function AdminDashboard() {
             address={form.address}
             lat={form.lat}
             lng={form.lng}
-            onChange={({ address, lat, lng }) => setForm((f) => ({ ...f, address, lat, lng }))}
+            website={form.website}
+            mapsUrl={form.mapsUrl}
+            placeId={form.placeId}
+            onChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
           />
 
           {error && <div style={{ color: COLORS.brick, fontSize: 12, marginBottom: 10 }}>{error}</div>}

@@ -1,6 +1,7 @@
 import React from "react";
-import { ChevronRight } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { CATEGORY_COLORS, COLORS } from "./constants";
+import { vendorLink } from "./geo";
 
 export default function VendorTicket({ vendor, highlighted, onClick }) {
   const products = (vendor.products || "")
@@ -8,10 +9,16 @@ export default function VendorTicket({ vendor, highlighted, onClick }) {
     .map((p) => p.trim())
     .filter(Boolean);
 
+  const handleClick = () => {
+    onClick?.();
+    window.open(vendorLink(vendor), "_blank", "noopener,noreferrer");
+  };
+
   return (
     <div
       className="stall-card"
-      onClick={onClick}
+      onClick={handleClick}
+      title="Open website / Google Business profile"
       style={{
         background: "#fff",
         border: `2px solid ${COLORS.ink}`,
@@ -90,7 +97,7 @@ export default function VendorTicket({ vendor, highlighted, onClick }) {
         >
           {vendor.distance.toFixed(1)} km
         </div>
-        <ChevronRight size={16} color="#999" style={{ marginTop: 10 }} />
+        <ExternalLink size={15} color="#999" style={{ marginTop: 10 }} />
       </div>
     </div>
   );

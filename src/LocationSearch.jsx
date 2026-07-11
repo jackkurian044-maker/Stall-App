@@ -10,11 +10,12 @@ const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_PLACES_API_KEY;
  * Address / business search box.
  * Uses Google Places Autocomplete so people can search by business name
  * (e.g. "Cut N Cute Studio, Kodihalli") and not just street address.
- * Calls onChange({ address, lat, lng }) once a place is selected, and
- * shows a free OpenStreetMap-based draggable pin map to fine-tune the
- * exact spot afterward.
+ * Calls onChange({ address, lat, lng, website, mapsUrl, placeId }) once a
+ * place is selected, and shows a free OpenStreetMap-based draggable pin
+ * map to fine-tune the exact spot afterward. `website`/`mapsUrl` let
+ * listings link out to the business's own site or Google Business profile.
  */
-export default function LocationSearch({ address, lat, lng, onChange }) {
+export default function LocationSearch({ address, lat, lng, website, mapsUrl, placeId, onChange }) {
   const [manualMode, setManualMode] = useState(false);
   const [query, setQuery] = useState(address || "");
   const [ready, setReady] = useState(false);
@@ -41,7 +42,7 @@ export default function LocationSearch({ address, lat, lng, onChange }) {
       .then(() => {
         if (cancelled || !inputRef.current) return;
         const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
-          fields: ["formatted_address", "geometry", "name"],
+          fields: ["formatted_address", "geometry", "name", "website", "url", "place_id"],
         });
         autocomplete.addListener("place_changed", () => {
           const place = autocomplete.getPlace();
@@ -54,6 +55,9 @@ export default function LocationSearch({ address, lat, lng, onChange }) {
             address: label,
             lat: place.geometry.location.lat(),
             lng: place.geometry.location.lng(),
+            website: place.website || null,
+            mapsUrl: place.url || null,
+            placeId: place.place_id || null,
           });
         });
         setReady(true);
@@ -68,18 +72,19 @@ export default function LocationSearch({ address, lat, lng, onChange }) {
 
   const handlePinMove = useCallback(
     ({ lat: newLat, lng: newLng }) => {
-      onChange({ address, lat: newLat, lng: newLng });
+      onChange({ address, lat: newLat, lng: newLng, website, mapsUrl, placeId });
     },
-    [address, onChange]
+    [address, website, mapsUrl, placeId, onChange]
   );
 
   const handleTypedChange = (val) => {
     setQuery(val);
     // Typing after a location was already confirmed invalidates it —
-    // clear coordinates so an edited, unconfirmed address can't silently
-    // keep the old pin's coordinates.
+    // clear coordinates (and any linked website/profile, since they
+    // belonged to the previous confirmed place) so an edited,
+    // unconfirmed address can't silently keep stale data.
     if (hasLocation) {
-      onChange({ address: val, lat: "", lng: "" });
+      onChange({ address: val, lat: "", lng: "", website: null, mapsUrl: null, placeId: null });
     }
   };
 
@@ -108,7 +113,7 @@ export default function LocationSearch({ address, lat, lng, onChange }) {
         <input
           style={{ ...inputStyle, marginBottom: 8 }}
           value={address || ""}
-          onChange={(e) => onChange({ address: e.target.value, lat, lng })}
+          onChange={(e) => onChange({ address: e.target.value, lat, lng, website, mapsUrl, placeId })}
           placeholder="Street, area, city"
         />
         <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
@@ -116,14 +121,14 @@ export default function LocationSearch({ address, lat, lng, onChange }) {
             className="font-mono"
             style={inputStyle}
             value={lat ?? ""}
-            onChange={(e) => onChange({ address, lat: e.target.value === "" ? "" : parseFloat(e.target.value), lng })}
+            onChange={(e) => onChange({ address, lat: e.target.value === "" ? "" : parseFloat(e.target.value), lng, website, mapsUrl, placeId })}
             placeholder="Latitude"
           />
           <input
             className="font-mono"
             style={inputStyle}
             value={lng ?? ""}
-            onChange={(e) => onChange({ address, lat, lng: e.target.value === "" ? "" : parseFloat(e.target.value) })}
+            onChange={(e) => onChange({ address, lat, lng: e.target.value === "" ? "" : parseFloat(e.target.value), website, mapsUrl, placeId })}
             placeholder="Longitude"
           />
         </div>

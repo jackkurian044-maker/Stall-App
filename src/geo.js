@@ -27,3 +27,14 @@ export function uid(len = 6) {
   for (let i = 0; i < len; i++) out += chars[Math.floor(Math.random() * chars.length)];
   return out;
 }
+
+// Best available external link for a vendor: their own website first,
+// then their Google Business/Maps profile, then (for older listings
+// saved before this existed) a plain Google Maps search as a fallback
+// that always works.
+export function vendorLink(v) {
+  if (v.website) return v.website;
+  if (v.mapsUrl) return v.mapsUrl;
+  const q = encodeURIComponent(`${v.name || ""} ${v.address || ""}`.trim());
+  return `https://www.google.com/maps/search/?api=1&query=${q}`;
+}
