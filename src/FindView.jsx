@@ -69,7 +69,12 @@ export default function FindView() {
           (v.description || "").toLowerCase().includes(q)
         );
       })
-      .sort((a, b) => a.distance - b.distance);
+      .sort((a, b) => {
+        const ar = typeof a.rating === "number" ? a.rating : -1;
+        const br = typeof b.rating === "number" ? b.rating : -1;
+        if (br !== ar) return br - ar; // higher rating first; unrated (-1) sinks to the bottom
+        return a.distance - b.distance; // tie-break (including among unrated): closer first
+      });
   }, [vendors, userLoc, radiusKm, categoryFilter, query]);
 
   const radarData = useMemo(() => {
