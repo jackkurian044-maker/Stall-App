@@ -14,18 +14,21 @@ export default function VendorTicket({ vendor, highlighted, onClick }) {
     window.open(vendorLink(vendor), "_blank", "noopener,noreferrer");
   };
 
+  const accent = CATEGORY_COLORS[vendor.category] || COLORS.ink;
+
   return (
     <div
       className="stall-card"
       onClick={handleClick}
       title="Open website / Google Business profile"
       style={{
+        "--stall-shadow": accent,
         background: "#fff",
         border: `2px solid ${COLORS.ink}`,
         borderRadius: 12,
         padding: "14px 16px",
         cursor: "pointer",
-        boxShadow: highlighted ? `4px 4px 0 ${COLORS.brick}` : "none",
+        boxShadow: highlighted ? `4px 4px 0 ${accent}` : "none",
         display: "flex",
         justifyContent: "space-between",
         gap: 14,

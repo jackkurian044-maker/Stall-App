@@ -14,13 +14,18 @@ export default function Header({ mode, setMode, user, isAdmin, onSignOut }) {
   return (
     <div
       style={{
-        borderBottom: `3px solid ${COLORS.ink}`,
-        padding: "20px 24px",
+        borderBottom: `2px solid ${COLORS.ink}`,
+        boxShadow: "0 3px 0 #18262010",
+        background: "#EDEEE6",
+        padding: "18px 24px",
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
         flexWrap: "wrap",
         gap: 12,
+        position: "sticky",
+        top: 0,
+        zIndex: 20,
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -70,6 +75,7 @@ export default function Header({ mode, setMode, user, isAdmin, onSignOut }) {
             <button
               key={t.id}
               onClick={() => setMode(t.id)}
+              className={mode === t.id ? "" : "stall-tab"}
               style={{
                 padding: "9px 16px",
                 fontSize: 13,
@@ -77,6 +83,8 @@ export default function Header({ mode, setMode, user, isAdmin, onSignOut }) {
                 letterSpacing: "0.02em",
                 textTransform: "uppercase",
                 border: "none",
+                cursor: "pointer",
+                transition: "background .12s ease, color .12s ease",
                 background: mode === t.id ? COLORS.ink : "transparent",
                 color: mode === t.id ? COLORS.paper : COLORS.ink,
               }}

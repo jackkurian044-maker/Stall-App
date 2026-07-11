@@ -89,7 +89,7 @@ export default function FindView() {
   return (
     <div className="stall-grid">
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        <div style={{ background: "#fff", border: `2px solid ${COLORS.ink}`, borderRadius: 12, padding: 16 }}>
+        <div className="stall-panel" style={{ padding: 16 }}>
           {!userLoc ? (
             <div>
               <div style={{ fontSize: 14, marginBottom: 10 }}>Set your location to see what's nearby.</div>
@@ -200,7 +200,7 @@ export default function FindView() {
 
 function EmptyState({ text }) {
   return (
-    <div style={{ border: `2px dashed ${COLORS.ink}55`, borderRadius: 12, padding: "40px 20px", textAlign: "center" }}>
+    <div style={{ border: `2px dashed ${COLORS.ink}55`, borderRadius: 12, padding: "40px 20px", textAlign: "center", background: "#ffffff88" }}>
       <MapPin size={28} color={COLORS.teal} style={{ marginBottom: 10 }} />
       <div style={{ fontSize: 14, color: "#444", maxWidth: 320, margin: "0 auto" }}>{text}</div>
     </div>

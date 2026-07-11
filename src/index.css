@@ -9,6 +9,14 @@ html, body, #root {
   font-family: 'Inter', sans-serif;
 }
 
+body {
+  /* faint dot-grid, like pegboard at a market stall — barely-there texture,
+     not decoration for its own sake */
+  background-image: radial-gradient(#18262014 1px, transparent 1px);
+  background-size: 18px 18px;
+  background-attachment: fixed;
+}
+
 .font-display { font-family: 'Fraunces', serif; }
 .font-mono { font-family: 'IBM Plex Mono', monospace; }
 
@@ -24,8 +32,69 @@ input:focus, select:focus, textarea:focus, button:focus-visible {
 .stall-btn { transition: transform .12s ease, box-shadow .12s ease; cursor: pointer; }
 .stall-btn:active { transform: translateY(1px); }
 
+.stall-tab:hover { background: #18262014 !important; }
+
 .stall-card { transition: box-shadow .15s ease, transform .15s ease; }
-.stall-card:hover { box-shadow: 4px 4px 0 #182620; transform: translate(-2px, -2px); }
+.stall-card:hover { box-shadow: 4px 4px 0 var(--stall-shadow, #182620); transform: translate(-2px, -2px); }
+
+/* Shared white bordered panel — used by every form/section card so the
+   border weight, radius and shadow stay identical across the app. */
+.stall-panel {
+  background: #fff;
+  border: 2px solid #182620;
+  border-radius: 12px;
+  box-shadow: 3px 3px 0 #18262012;
+}
+
+/* ---- Radar scope: the app's signature element ----
+   A literal scanning radar screen instead of a plain scatter plot —
+   dark dish, three concentric range rings, a slow rotating sweep. */
+.radar-scope {
+  position: relative;
+  width: 100%;
+  max-width: 300px;
+  aspect-ratio: 1;
+  margin: 0 auto;
+  border-radius: 50%;
+  overflow: hidden;
+  background:
+    repeating-radial-gradient(
+      circle at center,
+      transparent 0,
+      transparent calc(33.33% - 1px),
+      #E2A73D2e calc(33.33% - 1px),
+      #E2A73D2e 33.33%,
+      transparent calc(33.33% + 1px)
+    ),
+    radial-gradient(circle at 50% 50%, #1c2e26 0%, #182620 75%, #101b16 100%);
+  border: 2px solid #182620;
+  box-shadow: inset 0 0 24px #00000055, 3px 3px 0 #18262012;
+}
+
+.radar-scope::before,
+.radar-scope::after {
+  content: "";
+  position: absolute;
+  background: #E2A73D26;
+  pointer-events: none;
+}
+.radar-scope::before { left: 0; right: 0; top: 50%; height: 1px; }
+.radar-scope::after { top: 0; bottom: 0; left: 50%; width: 1px; }
+
+.radar-sweep {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent 0deg, #E2A73D4d 18deg, transparent 46deg);
+  animation: radar-rotate 4.5s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes radar-rotate { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .radar-sweep { animation: none; }
+}
 
 .spin { animation: stall-spin 1s linear infinite; }
 @keyframes stall-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
