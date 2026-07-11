@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc,
   getDocs, serverTimestamp,
@@ -27,6 +27,7 @@ export default function VendorDashboard({ user }) {
   const [claimCode, setClaimCode] = useState("");
   const [claimMsg, setClaimMsg] = useState("");
   const [refreshingId, setRefreshingId] = useState(null);
+  const autoRefreshedRef = useRef(new Set());
 
   const refreshRating = async (l) => {
     if (!l.placeId || !GOOGLE_API_KEY) return;
@@ -57,6 +58,20 @@ export default function VendorDashboard({ user }) {
     }, () => setLoading(false));
     return unsub;
   }, [user.uid]);
+
+  // Auto-refresh each listing's Google-sourced rating/phone once per
+  // session as soon as it's seen, instead of requiring a manual click.
+  // Guarded by autoRefreshedRef so the updateDoc this triggers (which
+  // re-fires this same snapshot) doesn't loop back and refresh again.
+  useEffect(() => {
+    if (!GOOGLE_API_KEY) return;
+    const due = listings.filter((l) => l.placeId && !autoRefreshedRef.current.has(l.id));
+    due.forEach((l, i) => {
+      autoRefreshedRef.current.add(l.id);
+      setTimeout(() => refreshRating(l), i * 400);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listings]);
 
   const inputStyle = {
     width: "100%", padding: "9px 10px", borderRadius: 7,
@@ -233,16 +248,10 @@ export default function VendorDashboard({ user }) {
                   )}
                 </div>
                 <div style={{ display: "flex", gap: 6, flexShrink: 0, alignItems: "flex-start" }}>
-                  {l.placeId && (
-                    <button
-                      onClick={() => refreshRating(l)}
-                      disabled={refreshingId === l.id}
-                      className="stall-btn"
-                      title="Refresh phone & rating from Google"
-                      style={{ background: "transparent", border: `1.5px solid ${COLORS.teal}`, color: COLORS.teal, borderRadius: 7, padding: "6px 8px", fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}
-                    >
-                      <RefreshCw size={13} className={refreshingId === l.id ? "spin" : ""} />
-                    </button>
+                  {l.placeId && refreshingId === l.id && (
+                    <span title="Syncing phone & rating from Google" style={{ color: COLORS.teal, padding: 6, display: "flex" }}>
+                      <RefreshCw size={13} className="spin" />
+                    </span>
                   )}
                   <button onClick={() => startEdit(l)} className="stall-btn" style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 7, padding: "6px 10px", fontSize: 12, fontWeight: 600 }}>
                     Edit
