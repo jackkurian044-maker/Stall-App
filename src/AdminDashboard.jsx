@@ -19,6 +19,7 @@ export default function AdminDashboard() {
   const [vendors, setVendors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState(emptyForm);
+  const [editingId, setEditingId] = useState(null);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [lastCode, setLastCode] = useState(null);
@@ -63,6 +64,25 @@ export default function AdminDashboard() {
     </div>
   );
 
+  const startEdit = (v) => {
+    setEditingId(v.id);
+    setLastCode(null);
+    setError("");
+    setForm({
+      name: v.name, category: v.category, description: v.description || "",
+      products: v.products || "", address: v.address || "", phone: v.phone || "",
+      lat: String(v.lat), lng: String(v.lng),
+      website: v.website || null, mapsUrl: v.mapsUrl || null, placeId: v.placeId || null,
+      rating: v.rating ?? null, ratingsCount: v.ratingsCount ?? null,
+    });
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setForm(emptyForm);
+    setError("");
+  };
+
   const submit = async (e) => {
     e.preventDefault();
     setError("");
@@ -72,19 +92,27 @@ export default function AdminDashboard() {
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) return setError("Please select an address from the suggestions dropdown (or switch to \"enter manually\" and type coordinates).");
 
     setSaving(true);
-    const code = uid(6);
     try {
-      await addDoc(collection(db, "vendors"), {
+      const payload = {
         name: form.name.trim(), category: form.category, description: form.description.trim(),
         products: form.products.trim(), address: form.address.trim(), phone: form.phone.trim(),
         lat, lng, website: form.website || null, mapsUrl: form.mapsUrl || null, placeId: form.placeId || null,
         rating: form.rating ?? null, ratingsCount: form.ratingsCount ?? null,
-        ownerId: null, claimCode: code, createdAt: serverTimestamp(),
-      });
-      setLastCode({ name: form.name.trim(), code });
-      setForm(emptyForm);
+      };
+      if (editingId) {
+        await updateDoc(doc(db, "vendors", editingId), payload);
+        setEditingId(null);
+        setForm(emptyForm);
+      } else {
+        const code = uid(6);
+        await addDoc(collection(db, "vendors"), {
+          ...payload, ownerId: null, claimCode: code, createdAt: serverTimestamp(),
+        });
+        setLastCode({ name: form.name.trim(), code });
+        setForm(emptyForm);
+      }
     } catch (err) {
-      setError("Couldn't save — make sure your admin doc exists in Firestore.");
+      setError(editingId ? "Couldn't save changes — please try again." : "Couldn't save — make sure your admin doc exists in Firestore.");
     } finally {
       setSaving(false);
     }
@@ -92,14 +120,19 @@ export default function AdminDashboard() {
 
   const remove = async (id) => {
     await deleteDoc(doc(db, "vendors", id));
+    if (editingId === id) cancelEdit();
   };
 
   return (
     <div className="stall-grid">
-      <div style={{ background: "#fff", border: `2px solid ${COLORS.ink}`, borderRadius: 12, padding: 18, alignSelf: "start" }}>
-        <div className="font-display" style={{ fontSize: 19, fontWeight: 700, marginBottom: 4 }}>Add a vendor on their behalf</div>
+      <div className="stall-panel" style={{ padding: 18, alignSelf: "start" }}>
+        <div className="font-display" style={{ fontSize: 19, fontWeight: 700, marginBottom: 4 }}>
+          {editingId ? "Edit listing" : "Add a vendor on their behalf"}
+        </div>
         <div style={{ fontSize: 12, color: "#666", marginBottom: 14 }}>
-          You'll get a claim code afterward — share it with the vendor so they can take over editing.
+          {editingId
+            ? "Changes are live immediately for anyone searching nearby."
+            : "You'll get a claim code afterward — share it with the vendor so they can take over editing."}
         </div>
         <form onSubmit={submit}>
           {field("Name", <input style={inputStyle} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />)}
@@ -125,9 +158,16 @@ export default function AdminDashboard() {
 
           {error && <div style={{ color: COLORS.brick, fontSize: 12, marginBottom: 10 }}>{error}</div>}
 
-          <button type="submit" disabled={saving} className="stall-btn" style={{ width: "100%", background: COLORS.ink, color: "#fff", border: "none", borderRadius: 7, padding: "10px", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-            <Plus size={15} /> {saving ? "Adding…" : "Add vendor"}
-          </button>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button type="submit" disabled={saving} className="stall-btn" style={{ flex: 1, background: COLORS.ink, color: "#fff", border: "none", borderRadius: 7, padding: "10px", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+              <Plus size={15} /> {saving ? "Saving…" : editingId ? "Save changes" : "Add vendor"}
+            </button>
+            {editingId && (
+              <button type="button" onClick={cancelEdit} className="stall-btn" style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 7, padding: "10px 14px", fontSize: 13 }}>
+                Cancel
+              </button>
+            )}
+          </div>
         </form>
 
         {lastCode && (
@@ -154,7 +194,7 @@ export default function AdminDashboard() {
         ) : (
           <div style={{ border: `2px solid ${COLORS.ink}`, borderRadius: 12, overflow: "hidden" }}>
             {vendors.map((v, i) => (
-              <div key={v.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderTop: i === 0 ? "none" : `1px solid ${COLORS.ink}22`, background: "#fff" }}>
+              <div key={v.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderTop: i === 0 ? "none" : `1px solid ${COLORS.ink}22`, background: editingId === v.id ? `${COLORS.marigold}18` : "#fff" }}>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                     <span style={{ fontWeight: 700, fontSize: 14 }}>{v.name}</span>
@@ -187,6 +227,13 @@ export default function AdminDashboard() {
                       <RefreshCw size={15} className={refreshingId === v.id ? "spin" : ""} />
                     </button>
                   )}
+                  <button
+                    onClick={() => startEdit(v)}
+                    className="stall-btn"
+                    style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 7, padding: "5px 10px", fontSize: 12, fontWeight: 600 }}
+                  >
+                    Edit
+                  </button>
                   <button onClick={() => remove(v.id)} title="Remove vendor" style={{ background: "none", border: "none", cursor: "pointer", color: COLORS.brick, padding: 6 }}>
                     <Trash2 size={16} />
                   </button>
