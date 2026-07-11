@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from "firebase/firestore";
 import { Plus, Trash2, RefreshCw, Star } from "lucide-react";
 import { db } from "./firebase";
@@ -24,7 +24,6 @@ export default function AdminDashboard() {
   const [saving, setSaving] = useState(false);
   const [lastCode, setLastCode] = useState(null);
   const [refreshingId, setRefreshingId] = useState(null);
-  const autoRefreshedRef = useRef(new Set());
 
   const refreshRating = async (v) => {
     if (!v.placeId || !GOOGLE_API_KEY) return;
@@ -54,21 +53,6 @@ export default function AdminDashboard() {
     }, () => setLoading(false));
     return unsub;
   }, []);
-
-  // Auto-refresh each listing's Google-sourced rating/phone once per
-  // session as soon as it's seen, instead of requiring a manual click.
-  // Guarded by autoRefreshedRef so the updateDoc this triggers (which
-  // re-fires this same snapshot) doesn't loop back and refresh again,
-  // and staggered so a big listings page doesn't fire every request at once.
-  useEffect(() => {
-    if (!GOOGLE_API_KEY) return;
-    const due = vendors.filter((v) => v.placeId && !autoRefreshedRef.current.has(v.id));
-    due.forEach((v, i) => {
-      autoRefreshedRef.current.add(v.id);
-      setTimeout(() => refreshRating(v), i * 400);
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [vendors]);
 
   const inputStyle = {
     width: "100%", padding: "9px 10px", borderRadius: 7,
@@ -235,10 +219,15 @@ export default function AdminDashboard() {
                   {v.phone && <div style={{ fontSize: 11.5, color: "#777" }}>{v.phone}</div>}
                 </div>
                 <div style={{ display: "flex", gap: 4, flexShrink: 0, alignItems: "center" }}>
-                  {v.placeId && refreshingId === v.id && (
-                    <span title="Syncing phone & rating from Google" style={{ color: COLORS.teal, padding: 6, display: "flex" }}>
-                      <RefreshCw size={15} className="spin" />
-                    </span>
+                  {v.placeId && (
+                    <button
+                      onClick={() => refreshRating(v)}
+                      disabled={refreshingId === v.id}
+                      title="Refresh phone & rating from Google"
+                      style={{ background: "none", border: "none", cursor: "pointer", color: COLORS.teal, padding: 6 }}
+                    >
+                      <RefreshCw size={15} className={refreshingId === v.id ? "spin" : ""} />
+                    </button>
                   )}
                   <button
                     onClick={() => startEdit(v)}
