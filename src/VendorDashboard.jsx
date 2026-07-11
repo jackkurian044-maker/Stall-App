@@ -34,11 +34,12 @@ export default function VendorDashboard({ user }) {
     try {
       await loadGoogleMaps(GOOGLE_API_KEY);
       const service = new window.google.maps.places.PlacesService(document.createElement("div"));
-      service.getDetails({ placeId: l.placeId, fields: ["rating", "user_ratings_total"] }, async (place, status) => {
+      service.getDetails({ placeId: l.placeId, fields: ["rating", "user_ratings_total", "formatted_phone_number"] }, async (place, status) => {
         if (status === window.google.maps.places.PlacesServiceStatus.OK && place) {
           await updateDoc(doc(db, "vendors", l.id), {
             rating: typeof place.rating === "number" ? place.rating : null,
             ratingsCount: typeof place.user_ratings_total === "number" ? place.user_ratings_total : null,
+            ...(place.formatted_phone_number ? { phone: place.formatted_phone_number } : {}),
           });
         }
         setRefreshingId(null);
@@ -223,6 +224,7 @@ export default function VendorDashboard({ user }) {
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: 14 }}>{l.name}</div>
                   <div style={{ fontSize: 11.5, color: "#777" }}>{l.category} · {l.address}</div>
+                  {l.phone && <div style={{ fontSize: 11.5, color: "#777" }}>{l.phone}</div>}
                   {l.rating != null && (
                     <div style={{ fontSize: 11.5, color: "#666", marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
                       <Star size={11} fill={COLORS.marigold} color={COLORS.marigold} />
@@ -236,7 +238,7 @@ export default function VendorDashboard({ user }) {
                       onClick={() => refreshRating(l)}
                       disabled={refreshingId === l.id}
                       className="stall-btn"
-                      title="Refresh Google rating"
+                      title="Refresh phone & rating from Google"
                       style={{ background: "transparent", border: `1.5px solid ${COLORS.teal}`, color: COLORS.teal, borderRadius: 7, padding: "6px 8px", fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}
                     >
                       <RefreshCw size={13} className={refreshingId === l.id ? "spin" : ""} />

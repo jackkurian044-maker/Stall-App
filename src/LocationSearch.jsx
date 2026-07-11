@@ -53,7 +53,7 @@ export default function LocationSearch({ address, lat, lng, website, mapsUrl, pl
           { lat: DEFAULT_LOC.lat + 0.5, lng: DEFAULT_LOC.lng + 0.5 }
         );
         const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
-          fields: ["formatted_address", "geometry", "name", "website", "url", "place_id", "rating", "user_ratings_total"],
+          fields: ["formatted_address", "geometry", "name", "website", "url", "place_id", "rating", "user_ratings_total", "formatted_phone_number"],
           bounds,
           componentRestrictions: { country: "in" },
         });
@@ -73,6 +73,7 @@ export default function LocationSearch({ address, lat, lng, website, mapsUrl, pl
             placeId: place.place_id || null,
             rating: typeof place.rating === "number" ? place.rating : null,
             ratingsCount: typeof place.user_ratings_total === "number" ? place.user_ratings_total : null,
+            ...(place.formatted_phone_number ? { phone: place.formatted_phone_number } : {}),
           });
         });
         setReady(true);

@@ -31,11 +31,12 @@ export default function AdminDashboard() {
     try {
       await loadGoogleMaps(GOOGLE_API_KEY);
       const service = new window.google.maps.places.PlacesService(document.createElement("div"));
-      service.getDetails({ placeId: v.placeId, fields: ["rating", "user_ratings_total"] }, async (place, status) => {
+      service.getDetails({ placeId: v.placeId, fields: ["rating", "user_ratings_total", "formatted_phone_number"] }, async (place, status) => {
         if (status === window.google.maps.places.PlacesServiceStatus.OK && place) {
           await updateDoc(doc(db, "vendors", v.id), {
             rating: typeof place.rating === "number" ? place.rating : null,
             ratingsCount: typeof place.user_ratings_total === "number" ? place.user_ratings_total : null,
+            ...(place.formatted_phone_number ? { phone: place.formatted_phone_number } : {}),
           });
         }
         setRefreshingId(null);
@@ -215,13 +216,14 @@ export default function AdminDashboard() {
                     {v.address} · <span className="font-mono">{v.lat?.toFixed?.(4)}, {v.lng?.toFixed?.(4)}</span>
                     {!v.ownerId && v.claimCode && <> · code <span className="font-mono">{v.claimCode}</span></>}
                   </div>
+                  {v.phone && <div style={{ fontSize: 11.5, color: "#777" }}>{v.phone}</div>}
                 </div>
                 <div style={{ display: "flex", gap: 4, flexShrink: 0, alignItems: "center" }}>
                   {v.placeId && (
                     <button
                       onClick={() => refreshRating(v)}
                       disabled={refreshingId === v.id}
-                      title="Refresh Google rating"
+                      title="Refresh phone & rating from Google"
                       style={{ background: "none", border: "none", cursor: "pointer", color: COLORS.teal, padding: 6 }}
                     >
                       <RefreshCw size={15} className={refreshingId === v.id ? "spin" : ""} />
