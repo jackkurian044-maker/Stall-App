@@ -8,6 +8,7 @@ import FindView from "./FindView";
 import AuthPage from "./AuthPage";
 import VendorDashboard from "./VendorDashboard";
 import AdminDashboard from "./AdminDashboard";
+import DiscoverNearby from "./DiscoverNearby";
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -34,8 +35,9 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!user && (mode === "mine" || mode === "admin")) setMode("find");
-  }, [user, mode]);
+    if (!user && (mode === "mine" || mode === "admin" || mode === "bulk")) setMode("find");
+    if (user && !isAdmin && (mode === "admin" || mode === "bulk")) setMode("find");
+  }, [user, isAdmin, mode]);
 
   const handleSignOut = async () => {
     await signOut(auth);
@@ -56,6 +58,8 @@ export default function App() {
         <VendorDashboard user={user} />
       ) : mode === "admin" && isAdmin ? (
         <AdminDashboard />
+      ) : mode === "bulk" && isAdmin ? (
+        <DiscoverNearby />
       ) : (
         <FindView />
       )}

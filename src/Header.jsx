@@ -7,6 +7,7 @@ export default function Header({ mode, setMode, user, isAdmin, onSignOut }) {
     { id: "find", label: "Find" },
     ...(user ? [{ id: "mine", label: "My Listings" }] : []),
     ...(isAdmin ? [{ id: "admin", label: "Admin" }] : []),
+    ...(isAdmin ? [{ id: "bulk", label: "Discover Nearby" }] : []),
     ...(user ? [] : [{ id: "auth", label: "Sign in" }]),
   ];
 
