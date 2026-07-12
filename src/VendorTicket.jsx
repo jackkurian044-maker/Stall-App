@@ -32,34 +32,34 @@ export default function VendorTicket({ vendor, highlighted, onClick, onOpenRevie
         "--stall-shadow": accent,
         background: "#fff",
         border: `2px solid ${COLORS.ink}`,
-        borderRadius: 12,
-        padding: "14px 16px",
+        borderRadius: 14,
+        padding: "20px 22px",
         cursor: "pointer",
         boxShadow: highlighted ? `4px 4px 0 ${accent}` : "none",
         display: "flex",
         justifyContent: "space-between",
-        gap: 14,
+        gap: 18,
       }}
     >
       {thumbnail && (
         <img
           src={thumbnail}
           alt=""
-          style={{ width: 64, height: 64, borderRadius: 8, objectFit: "cover", flexShrink: 0, border: `1.5px solid ${COLORS.ink}22` }}
+          style={{ width: 88, height: 88, borderRadius: 10, objectFit: "cover", flexShrink: 0, border: `1.5px solid ${COLORS.ink}22` }}
         />
       )}
       <div style={{ minWidth: 0, flex: 1 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3, flexWrap: "wrap" }}>
-          <span className="font-display" style={{ fontSize: 17, fontWeight: 700 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 5, flexWrap: "wrap" }}>
+          <span className="font-display" style={{ fontSize: 20, fontWeight: 700 }}>
             {vendor.name}
           </span>
           <span
             style={{
-              fontSize: 10,
+              fontSize: 11,
               textTransform: "uppercase",
               letterSpacing: "0.05em",
               fontWeight: 700,
-              padding: "2px 7px",
+              padding: "3px 8px",
               borderRadius: 999,
               color: "#fff",
               background: CATEGORY_COLORS[vendor.category] || COLORS.ink,
@@ -68,8 +68,8 @@ export default function VendorTicket({ vendor, highlighted, onClick, onOpenRevie
             {vendor.category}
           </span>
           {vendor.rating != null && (
-            <span style={{ fontSize: 12, color: "#555", display: "flex", alignItems: "center", gap: 3 }}>
-              <Star size={12} fill={COLORS.marigold} color={COLORS.marigold} />
+            <span style={{ fontSize: 13, color: "#555", display: "flex", alignItems: "center", gap: 3 }}>
+              <Star size={13} fill={COLORS.marigold} color={COLORS.marigold} />
               <span className="font-mono">{vendor.rating.toFixed(1)}</span>
               {vendor.ratingsCount != null && (
                 <span style={{ color: "#999" }}>({vendor.ratingsCount})</span>
@@ -78,18 +78,18 @@ export default function VendorTicket({ vendor, highlighted, onClick, onOpenRevie
           )}
         </div>
         {vendor.description && (
-          <div style={{ fontSize: 12.5, color: "#444", marginBottom: 6 }}>{vendor.description}</div>
+          <div style={{ fontSize: 13.5, color: "#444", marginBottom: 8 }}>{vendor.description}</div>
         )}
         {products.length > 0 && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 6 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 8 }}>
             {products.slice(0, 6).map((p, i) => (
               <span
                 key={i}
                 style={{
-                  fontSize: 11,
+                  fontSize: 12,
                   background: `${COLORS.teal}1a`,
                   color: COLORS.teal,
-                  padding: "2px 8px",
+                  padding: "3px 9px",
                   borderRadius: 6,
                 }}
               >
@@ -98,18 +98,18 @@ export default function VendorTicket({ vendor, highlighted, onClick, onOpenRevie
             ))}
           </div>
         )}
-        <div style={{ fontSize: 11.5, color: "#777" }}>{vendor.address}</div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6, flexWrap: "wrap" }}>
+        <div style={{ fontSize: 12.5, color: "#777" }}>{vendor.address}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 8, flexWrap: "wrap" }}>
           {firstHoursLine && (
-            <span style={{ fontSize: 11, color: "#777", display: "flex", alignItems: "center", gap: 4 }}>
-              <Clock size={11} /> {firstHoursLine}
+            <span style={{ fontSize: 12, color: "#777", display: "flex", alignItems: "center", gap: 4 }}>
+              <Clock size={12} /> {firstHoursLine}
             </span>
           )}
           <button
             onClick={handleReviewsClick}
-            style={{ background: "none", border: "none", cursor: "pointer", color: COLORS.teal, fontSize: 11, fontWeight: 600, display: "flex", alignItems: "center", gap: 4, padding: 0 }}
+            style={{ background: "none", border: "none", cursor: "pointer", color: COLORS.teal, fontSize: 12, fontWeight: 600, display: "flex", alignItems: "center", gap: 4, padding: 0 }}
           >
-            <MessageSquare size={11} /> Reviews
+            <MessageSquare size={12} /> Reviews
           </button>
         </div>
       </div>
@@ -129,14 +129,14 @@ export default function VendorTicket({ vendor, highlighted, onClick, onOpenRevie
             background: COLORS.ink,
             color: "#fff",
             borderRadius: 8,
-            padding: "6px 10px",
-            fontSize: 13,
+            padding: "7px 12px",
+            fontSize: 14,
             fontWeight: 600,
           }}
         >
           {vendor.distance.toFixed(1)} km
         </div>
-        <ExternalLink size={15} color="#999" style={{ marginTop: 10 }} />
+        <ExternalLink size={17} color="#999" style={{ marginTop: 10 }} />
       </div>
     </div>
   );

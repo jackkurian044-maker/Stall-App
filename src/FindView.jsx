@@ -1,12 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { collection, onSnapshot } from "firebase/firestore";
-import { MapPin, Search, Locate } from "lucide-react";
+import { MapPin, Search, Locate, ChevronLeft, ChevronRight } from "lucide-react";
 import { db } from "./firebase";
 import { CATEGORIES, COLORS, DEFAULT_LOC } from "./constants";
 import { haversineKm, bearingRad } from "./geo";
 import VendorTicket from "./VendorTicket";
 import RadarChart from "./RadarChart";
 import ReviewsModal from "./ReviewsModal";
+
+const PAGE_SIZE = 10;
 
 export default function FindView({ user, isAdmin, onRequestSignIn }) {
   const [vendors, setVendors] = useState([]);
@@ -20,6 +22,7 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
   const [manualLat, setManualLat] = useState("");
   const [manualLng, setManualLng] = useState("");
   const [reviewsVendor, setReviewsVendor] = useState(null);
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     const unsub = onSnapshot(
@@ -87,6 +90,17 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
       return { x: d * Math.sin(brg), y: d * Math.cos(brg), name: v.name, category: v.category, distance: d, id: v.id };
     });
   }, [results, userLoc]);
+
+  // Reset to page 1 whenever the underlying result set changes, so
+  // changing radius/category/keyword never leaves you stranded on a
+  // page number that no longer has any results.
+  useEffect(() => {
+    setPage(1);
+  }, [radiusKm, categoryFilter, query, userLoc]);
+
+  const totalPages = Math.max(1, Math.ceil(results.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pagedResults = results.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   return (
     <div className="stall-grid">
@@ -189,17 +203,71 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
             text={vendors.length === 0 ? "No vendors listed yet." : "Nothing in range — try widening your search radius."}
           />
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {results.map((v) => (
-              <VendorTicket
-                key={v.id}
-                vendor={v}
-                highlighted={selected === v.id}
-                onClick={() => setSelected(v.id)}
-                onOpenReviews={() => setReviewsVendor(v)}
-              />
-            ))}
-          </div>
+          <>
+            <div style={{ fontSize: 12, color: "#777", marginBottom: 10 }}>
+              {results.length} result{results.length === 1 ? "" : "s"}
+              {totalPages > 1 ? ` · page ${currentPage} of ${totalPages}` : ""}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {pagedResults.map((v) => (
+                <VendorTicket
+                  key={v.id}
+                  vendor={v}
+                  highlighted={selected === v.id}
+                  onClick={() => setSelected(v.id)}
+                  onOpenReviews={() => setReviewsVendor(v)}
+                />
+              ))}
+            </div>
+
+            {totalPages > 1 && (
+              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 6, marginTop: 20, flexWrap: "wrap" }}>
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="stall-btn"
+                  style={{
+                    background: "#fff", border: `1.5px solid ${COLORS.ink}`, borderRadius: 7, padding: "7px 10px",
+                    display: "flex", alignItems: "center", opacity: currentPage === 1 ? 0.4 : 1,
+                    cursor: currentPage === 1 ? "default" : "pointer",
+                  }}
+                >
+                  <ChevronLeft size={15} />
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setPage(p)}
+                    className="stall-btn"
+                    style={{
+                      background: p === currentPage ? COLORS.ink : "#fff",
+                      color: p === currentPage ? "#fff" : COLORS.ink,
+                      border: `1.5px solid ${COLORS.ink}`,
+                      borderRadius: 7,
+                      padding: "7px 12px",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      minWidth: 36,
+                    }}
+                  >
+                    {p}
+                  </button>
+                ))}
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="stall-btn"
+                  style={{
+                    background: "#fff", border: `1.5px solid ${COLORS.ink}`, borderRadius: 7, padding: "7px 10px",
+                    display: "flex", alignItems: "center", opacity: currentPage === totalPages ? 0.4 : 1,
+                    cursor: currentPage === totalPages ? "default" : "pointer",
+                  }}
+                >
+                  <ChevronRight size={15} />
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
 
