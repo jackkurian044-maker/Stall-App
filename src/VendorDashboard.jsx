@@ -14,7 +14,7 @@ import { uid } from "./geo";
 const emptyForm = {
   name: "", category: CATEGORIES[0], description: "", products: "",
   address: "", phone: "", lat: "", lng: "", website: null, mapsUrl: null, placeId: null,
-  rating: null, ratingsCount: null, hours: "", photos: [],
+  rating: null, ratingsCount: null, hours: "", photos: [], preferredLink: null,
 };
 
 export default function VendorDashboard({ user }) {
@@ -63,7 +63,7 @@ export default function VendorDashboard({ user }) {
       lat: String(l.lat), lng: String(l.lng),
       website: l.website || null, mapsUrl: l.mapsUrl || null, placeId: l.placeId || null,
       rating: l.rating ?? null, ratingsCount: l.ratingsCount ?? null,
-      hours: l.hours || "", photos: l.photos || [],
+      hours: l.hours || "", photos: l.photos || [], preferredLink: l.preferredLink || null,
     });
   };
 
@@ -82,7 +82,7 @@ export default function VendorDashboard({ user }) {
         products: form.products.trim(), address: form.address.trim(), phone: form.phone.trim(),
         lat, lng, website: form.website || null, mapsUrl: form.mapsUrl || null, placeId: form.placeId || null,
         rating: form.rating ?? null, ratingsCount: form.ratingsCount ?? null,
-        hours: form.hours.trim(), photos: form.photos || [],
+        hours: form.hours.trim(), photos: form.photos || [], preferredLink: form.preferredLink || null,
       };
       if (editingId) {
         await updateDoc(doc(db, "vendors", editingId), payload);
@@ -147,14 +147,27 @@ export default function VendorDashboard({ user }) {
             {field("Description", <textarea style={{ ...inputStyle, resize: "vertical", minHeight: 56 }} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="What makes this worth the walk?" />)}
             {field("Products (comma separated)", <input style={inputStyle} value={form.products} onChange={(e) => setForm({ ...form, products: e.target.value })} placeholder="mango pickle, lime pickle" />)}
             {field("Phone (optional)", <input style={inputStyle} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />)}
-            {field("Website (optional — auto-filled from Google, edit or clear if wrong)", (
-              <div style={{ display: "flex", gap: 6 }}>
-                <input style={inputStyle} value={form.website || ""} onChange={(e) => setForm({ ...form, website: e.target.value })} placeholder="https://…" />
-                {form.website && (
-                  <button type="button" onClick={() => setForm({ ...form, website: null })} className="stall-btn" title="Clear — falls back to Google Business profile" style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}55`, borderRadius: 7, padding: "0 10px", fontSize: 12, whiteSpace: "nowrap" }}>
-                    Clear
+            {form.website && form.mapsUrl && field("When someone taps this listing, open…", (
+              <div style={{ display: "flex", gap: 8 }}>
+                {[
+                  { id: "website", label: "Website" },
+                  { id: "mapsUrl", label: "Google Business profile" },
+                ].map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setForm({ ...form, preferredLink: opt.id })}
+                    className="stall-btn"
+                    style={{
+                      flex: 1, borderRadius: 7, padding: "8px 10px", fontSize: 12.5, fontWeight: 600,
+                      border: `1.5px solid ${COLORS.ink}`,
+                      background: (form.preferredLink || "website") === opt.id ? COLORS.ink : "#fff",
+                      color: (form.preferredLink || "website") === opt.id ? "#fff" : COLORS.ink,
+                    }}
+                  >
+                    {opt.label}
                   </button>
-                )}
+                ))}
               </div>
             ))}
             <LocationSearch
