@@ -96,11 +96,24 @@ export default function VendorTicket({ vendor, highlighted, onClick, onOpenRevie
             {vendor.category}
           </span>
           {vendor.rating != null && (
-            <span style={{ fontSize: 13, color: "#555", display: "flex", alignItems: "center", gap: 3 }}>
-              <Star size={13} fill={COLORS.marigold} color={COLORS.marigold} />
+            <span
+              style={{
+                fontSize: 14,
+                fontWeight: 700,
+                color: COLORS.ink,
+                display: "flex",
+                alignItems: "center",
+                gap: 5,
+                background: `${COLORS.marigold}30`,
+                border: `1.5px solid ${COLORS.marigold}`,
+                padding: "3px 10px",
+                borderRadius: 999,
+              }}
+            >
+              <Star size={15} fill={COLORS.marigold} color={COLORS.marigold} strokeWidth={2.5} />
               <span className="font-mono">{vendor.rating.toFixed(1)}</span>
               {vendor.ratingsCount != null && (
-                <span style={{ color: "#999" }}>({vendor.ratingsCount})</span>
+                <span style={{ color: "#6b6255", fontWeight: 600 }}>({vendor.ratingsCount})</span>
               )}
             </span>
           )}
