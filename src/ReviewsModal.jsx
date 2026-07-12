@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import {
   collection, doc, onSnapshot, orderBy, query, setDoc, deleteDoc, serverTimestamp,
 } from "firebase/firestore";
-import { X, Star, Trash2 } from "lucide-react";
+import { X, Star, Trash2, ExternalLink } from "lucide-react";
 import { db } from "./firebase";
 import { COLORS } from "./constants";
 
@@ -52,6 +52,7 @@ export default function ReviewsModal({ vendor, user, isAdmin, onClose, onRequest
   const [myComment, setMyComment] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [justSubmitted, setJustSubmitted] = useState(false);
 
   useEffect(() => {
     const q = query(collection(db, "vendors", vendor.id, "reviews"), orderBy("createdAt", "desc"));
@@ -90,6 +91,7 @@ export default function ReviewsModal({ vendor, user, isAdmin, onClose, onRequest
         createdAt: myExisting?.createdAt || serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
+      setJustSubmitted(true);
     } catch {
       setError("Couldn't save your review — try again.");
     } finally {
@@ -177,7 +179,7 @@ export default function ReviewsModal({ vendor, user, isAdmin, onClose, onRequest
               style={{ width: "100%", marginTop: 10, padding: "8px 10px", borderRadius: 7, border: `1.5px solid ${COLORS.ink}`, fontSize: 13, resize: "vertical", boxSizing: "border-box" }}
             />
             {error && <div style={{ fontSize: 11.5, color: COLORS.brick, marginTop: 6 }}>{error}</div>}
-            <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+            <div style={{ display: "flex", gap: 8, marginTop: 10, alignItems: "center", flexWrap: "wrap" }}>
               <button type="submit" disabled={saving} className="stall-btn" style={{ background: COLORS.ink, color: "#fff", border: "none", borderRadius: 7, padding: "8px 14px", fontSize: 12.5, fontWeight: 700 }}>
                 {saving ? "Saving…" : myExisting ? "Update review" : "Post review"}
               </button>
@@ -186,7 +188,34 @@ export default function ReviewsModal({ vendor, user, isAdmin, onClose, onRequest
                   Delete my review
                 </button>
               )}
+              {!justSubmitted && myExisting && vendor.placeId && (
+                <a
+                  href={`https://search.google.com/local/writereview?placeid=${vendor.placeId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ fontSize: 11.5, color: COLORS.teal, display: "flex", alignItems: "center", gap: 4, textDecoration: "none", marginLeft: "auto" }}
+                >
+                  Also post on Google <ExternalLink size={11} />
+                </a>
+              )}
             </div>
+
+            {justSubmitted && vendor.placeId && (
+              <div style={{ marginTop: 12, background: `${COLORS.marigold}22`, border: `1.5px solid ${COLORS.marigold}`, borderRadius: 8, padding: 12, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                <span style={{ fontSize: 12.5 }}>
+                  ✓ Posted on STALL. Want it on Google too?
+                </span>
+                <a
+                  href={`https://search.google.com/local/writereview?placeid=${vendor.placeId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="stall-btn"
+                  style={{ background: COLORS.ink, color: "#fff", borderRadius: 7, padding: "7px 12px", fontSize: 12, fontWeight: 700, textDecoration: "none", display: "flex", alignItems: "center", gap: 5, whiteSpace: "nowrap" }}
+                >
+                  Also post on Google <ExternalLink size={12} />
+                </a>
+              </div>
+            )}
           </form>
         ) : (
           <div style={{ background: COLORS.paper, borderRadius: 10, padding: 14, marginBottom: 18, fontSize: 12.5, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
