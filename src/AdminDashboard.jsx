@@ -133,6 +133,16 @@ export default function AdminDashboard() {
           {field("Description", <textarea style={{ ...inputStyle, resize: "vertical", minHeight: 56 }} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />)}
           {field("Products (comma separated)", <input style={inputStyle} value={form.products} onChange={(e) => setForm({ ...form, products: e.target.value })} />)}
           {field("Phone (optional)", <input style={inputStyle} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />)}
+          {field("Website (optional — auto-filled from Google, edit or clear if wrong)", (
+            <div style={{ display: "flex", gap: 6 }}>
+              <input style={inputStyle} value={form.website || ""} onChange={(e) => setForm({ ...form, website: e.target.value })} placeholder="https://…" />
+              {form.website && (
+                <button type="button" onClick={() => setForm({ ...form, website: null })} className="stall-btn" title="Clear — falls back to Google Business profile" style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}55`, borderRadius: 7, padding: "0 10px", fontSize: 12, whiteSpace: "nowrap" }}>
+                  Clear
+                </button>
+              )}
+            </div>
+          ))}
           <LocationSearch
             address={form.address}
             lat={form.lat}
