@@ -7,14 +7,16 @@ import { Plus, Trash2, KeyRound, RefreshCw, Star } from "lucide-react";
 import { db } from "./firebase";
 import { CATEGORIES, COLORS } from "./constants";
 import LocationSearch from "./LocationSearch";
+import ImageUpload from "./ImageUpload";
 import { loadGoogleMaps } from "./googleMaps";
+import { uid } from "./geo";
 
 const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_PLACES_API_KEY;
 
 const emptyForm = {
   name: "", category: CATEGORIES[0], description: "", products: "",
   address: "", phone: "", lat: "", lng: "", website: null, mapsUrl: null, placeId: null,
-  rating: null, ratingsCount: null,
+  rating: null, ratingsCount: null, hours: "", photos: [],
 };
 
 export default function VendorDashboard({ user }) {
@@ -27,6 +29,7 @@ export default function VendorDashboard({ user }) {
   const [claimCode, setClaimCode] = useState("");
   const [claimMsg, setClaimMsg] = useState("");
   const [refreshingId, setRefreshingId] = useState(null);
+  const [tempId] = useState(() => uid(10));
 
   const refreshRating = async (l) => {
     if (!l.placeId || !GOOGLE_API_KEY) return;
@@ -77,6 +80,7 @@ export default function VendorDashboard({ user }) {
       lat: String(l.lat), lng: String(l.lng),
       website: l.website || null, mapsUrl: l.mapsUrl || null, placeId: l.placeId || null,
       rating: l.rating ?? null, ratingsCount: l.ratingsCount ?? null,
+      hours: l.hours || "", photos: l.photos || [],
     });
   };
 
@@ -95,6 +99,7 @@ export default function VendorDashboard({ user }) {
         products: form.products.trim(), address: form.address.trim(), phone: form.phone.trim(),
         lat, lng, website: form.website || null, mapsUrl: form.mapsUrl || null, placeId: form.placeId || null,
         rating: form.rating ?? null, ratingsCount: form.ratingsCount ?? null,
+        hours: form.hours.trim(), photos: form.photos || [],
       };
       if (editingId) {
         await updateDoc(doc(db, "vendors", editingId), payload);
@@ -167,7 +172,19 @@ export default function VendorDashboard({ user }) {
               placeId={form.placeId}
               rating={form.rating}
               ratingsCount={form.ratingsCount}
-              onChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
+              onChange={(patch) => setForm((f) => ({
+                ...f,
+                ...patch,
+                // Don't clobber hours the person already typed themselves —
+                // only auto-fill from Google if the field is still empty.
+                hours: f.hours ? f.hours : (patch.hours ?? f.hours),
+              }))}
+            />
+            {field("Hours", <textarea style={{ ...inputStyle, resize: "vertical", minHeight: 56, fontFamily: "'IBM Plex Mono', monospace", fontSize: 12.5 }} value={form.hours} onChange={(e) => setForm({ ...form, hours: e.target.value })} placeholder={"Auto-filled from Google when available, or type your own, e.g.\nMon–Sat: 9:00 AM – 8:00 PM\nSun: Closed"} />)}
+            <ImageUpload
+              photos={form.photos}
+              pathPrefix={`vendor-photos/${editingId || tempId}`}
+              onChange={(photos) => setForm((f) => ({ ...f, photos }))}
             />
 
             {error && <div style={{ color: COLORS.brick, fontSize: 12, marginBottom: 10 }}>{error}</div>}

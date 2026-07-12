@@ -51,7 +51,7 @@ export default function App() {
       {authLoading ? (
         <div style={{ padding: 40, textAlign: "center", color: "#666", fontSize: 14 }}>Loading…</div>
       ) : mode === "find" ? (
-        <FindView />
+        <FindView user={user} isAdmin={isAdmin} onRequestSignIn={() => setMode("auth")} />
       ) : mode === "auth" ? (
         <AuthPage onSignedIn={() => setMode("mine")} />
       ) : mode === "mine" && user ? (
@@ -61,7 +61,7 @@ export default function App() {
       ) : mode === "bulk" && isAdmin ? (
         <DiscoverNearby />
       ) : (
-        <FindView />
+        <FindView user={user} isAdmin={isAdmin} onRequestSignIn={() => setMode("auth")} />
       )}
     </div>
   );

@@ -1,9 +1,9 @@
 import React from "react";
-import { ExternalLink, Star } from "lucide-react";
+import { ExternalLink, Star, Clock, MessageSquare } from "lucide-react";
 import { CATEGORY_COLORS, COLORS } from "./constants";
 import { vendorLink } from "./geo";
 
-export default function VendorTicket({ vendor, highlighted, onClick }) {
+export default function VendorTicket({ vendor, highlighted, onClick, onOpenReviews }) {
   const products = (vendor.products || "")
     .split(",")
     .map((p) => p.trim())
@@ -14,7 +14,14 @@ export default function VendorTicket({ vendor, highlighted, onClick }) {
     window.open(vendorLink(vendor), "_blank", "noopener,noreferrer");
   };
 
+  const handleReviewsClick = (e) => {
+    e.stopPropagation();
+    onOpenReviews?.();
+  };
+
   const accent = CATEGORY_COLORS[vendor.category] || COLORS.ink;
+  const firstHoursLine = (vendor.hours || "").split("\n")[0];
+  const thumbnail = vendor.photos?.[0];
 
   return (
     <div
@@ -34,6 +41,13 @@ export default function VendorTicket({ vendor, highlighted, onClick }) {
         gap: 14,
       }}
     >
+      {thumbnail && (
+        <img
+          src={thumbnail}
+          alt=""
+          style={{ width: 64, height: 64, borderRadius: 8, objectFit: "cover", flexShrink: 0, border: `1.5px solid ${COLORS.ink}22` }}
+        />
+      )}
       <div style={{ minWidth: 0, flex: 1 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3, flexWrap: "wrap" }}>
           <span className="font-display" style={{ fontSize: 17, fontWeight: 700 }}>
@@ -85,6 +99,19 @@ export default function VendorTicket({ vendor, highlighted, onClick }) {
           </div>
         )}
         <div style={{ fontSize: 11.5, color: "#777" }}>{vendor.address}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6, flexWrap: "wrap" }}>
+          {firstHoursLine && (
+            <span style={{ fontSize: 11, color: "#777", display: "flex", alignItems: "center", gap: 4 }}>
+              <Clock size={11} /> {firstHoursLine}
+            </span>
+          )}
+          <button
+            onClick={handleReviewsClick}
+            style={{ background: "none", border: "none", cursor: "pointer", color: COLORS.teal, fontSize: 11, fontWeight: 600, display: "flex", alignItems: "center", gap: 4, padding: 0 }}
+          >
+            <MessageSquare size={11} /> Reviews
+          </button>
+        </div>
       </div>
       <div
         style={{

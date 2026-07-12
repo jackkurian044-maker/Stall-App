@@ -5,6 +5,7 @@ import { db } from "./firebase";
 import { CATEGORIES, CATEGORY_COLORS, COLORS } from "./constants";
 import { uid } from "./geo";
 import LocationSearch from "./LocationSearch";
+import ImageUpload from "./ImageUpload";
 import { loadGoogleMaps } from "./googleMaps";
 
 const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_PLACES_API_KEY;
@@ -12,7 +13,7 @@ const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_PLACES_API_KEY;
 const emptyForm = {
   name: "", category: CATEGORIES[0], description: "", products: "",
   address: "", phone: "", lat: "", lng: "", website: null, mapsUrl: null, placeId: null,
-  rating: null, ratingsCount: null,
+  rating: null, ratingsCount: null, hours: "", photos: [],
 };
 
 export default function AdminDashboard() {
@@ -24,6 +25,7 @@ export default function AdminDashboard() {
   const [saving, setSaving] = useState(false);
   const [lastCode, setLastCode] = useState(null);
   const [refreshingId, setRefreshingId] = useState(null);
+  const [tempId] = useState(() => uid(10));
 
   const refreshRating = async (v) => {
     if (!v.placeId || !GOOGLE_API_KEY) return;
@@ -75,6 +77,7 @@ export default function AdminDashboard() {
       lat: String(v.lat), lng: String(v.lng),
       website: v.website || null, mapsUrl: v.mapsUrl || null, placeId: v.placeId || null,
       rating: v.rating ?? null, ratingsCount: v.ratingsCount ?? null,
+      hours: v.hours || "", photos: v.photos || [],
     });
   };
 
@@ -99,6 +102,7 @@ export default function AdminDashboard() {
         products: form.products.trim(), address: form.address.trim(), phone: form.phone.trim(),
         lat, lng, website: form.website || null, mapsUrl: form.mapsUrl || null, placeId: form.placeId || null,
         rating: form.rating ?? null, ratingsCount: form.ratingsCount ?? null,
+        hours: form.hours.trim(), photos: form.photos || [],
       };
       if (editingId) {
         await updateDoc(doc(db, "vendors", editingId), payload);
@@ -154,7 +158,17 @@ export default function AdminDashboard() {
             placeId={form.placeId}
             rating={form.rating}
             ratingsCount={form.ratingsCount}
-            onChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
+            onChange={(patch) => setForm((f) => ({
+              ...f,
+              ...patch,
+              hours: f.hours ? f.hours : (patch.hours ?? f.hours),
+            }))}
+          />
+          {field("Hours", <textarea style={{ ...inputStyle, resize: "vertical", minHeight: 56, fontFamily: "'IBM Plex Mono', monospace", fontSize: 12.5 }} value={form.hours} onChange={(e) => setForm({ ...form, hours: e.target.value })} placeholder={"Auto-filled from Google when available, or type it, e.g.\nMon–Sat: 9:00 AM – 8:00 PM\nSun: Closed"} />)}
+          <ImageUpload
+            photos={form.photos}
+            pathPrefix={`vendor-photos/${editingId || tempId}`}
+            onChange={(photos) => setForm((f) => ({ ...f, photos }))}
           />
 
           {error && <div style={{ color: COLORS.brick, fontSize: 12, marginBottom: 10 }}>{error}</div>}

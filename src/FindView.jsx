@@ -6,8 +6,9 @@ import { CATEGORIES, COLORS, DEFAULT_LOC } from "./constants";
 import { haversineKm, bearingRad } from "./geo";
 import VendorTicket from "./VendorTicket";
 import RadarChart from "./RadarChart";
+import ReviewsModal from "./ReviewsModal";
 
-export default function FindView() {
+export default function FindView({ user, isAdmin, onRequestSignIn }) {
   const [vendors, setVendors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userLoc, setUserLoc] = useState(null);
@@ -18,6 +19,7 @@ export default function FindView() {
   const [selected, setSelected] = useState(null);
   const [manualLat, setManualLat] = useState("");
   const [manualLng, setManualLng] = useState("");
+  const [reviewsVendor, setReviewsVendor] = useState(null);
 
   useEffect(() => {
     const unsub = onSnapshot(
@@ -189,11 +191,27 @@ export default function FindView() {
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {results.map((v) => (
-              <VendorTicket key={v.id} vendor={v} highlighted={selected === v.id} onClick={() => setSelected(v.id)} />
+              <VendorTicket
+                key={v.id}
+                vendor={v}
+                highlighted={selected === v.id}
+                onClick={() => setSelected(v.id)}
+                onOpenReviews={() => setReviewsVendor(v)}
+              />
             ))}
           </div>
         )}
       </div>
+
+      {reviewsVendor && (
+        <ReviewsModal
+          vendor={reviewsVendor}
+          user={user}
+          isAdmin={isAdmin}
+          onClose={() => setReviewsVendor(null)}
+          onRequestSignIn={onRequestSignIn}
+        />
+      )}
     </div>
   );
 }
