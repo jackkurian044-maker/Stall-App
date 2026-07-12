@@ -136,8 +136,8 @@ export default function AdminDashboard() {
           {form.website && form.mapsUrl && field("When someone taps this listing, open…", (
             <div style={{ display: "flex", gap: 8 }}>
               {[
-                { id: "website", label: "Website" },
                 { id: "mapsUrl", label: "Google Business profile" },
+                { id: "website", label: "Website" },
               ].map((opt) => (
                 <button
                   key={opt.id}
@@ -147,8 +147,8 @@ export default function AdminDashboard() {
                   style={{
                     flex: 1, borderRadius: 7, padding: "8px 10px", fontSize: 12.5, fontWeight: 600,
                     border: `1.5px solid ${COLORS.ink}`,
-                    background: (form.preferredLink || "website") === opt.id ? COLORS.ink : "#fff",
-                    color: (form.preferredLink || "website") === opt.id ? "#fff" : COLORS.ink,
+                    background: (form.preferredLink || "mapsUrl") === opt.id ? COLORS.ink : "#fff",
+                    color: (form.preferredLink || "mapsUrl") === opt.id ? "#fff" : COLORS.ink,
                   }}
                 >
                   {opt.label}

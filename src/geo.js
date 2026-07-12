@@ -28,13 +28,18 @@ export function uid(len = 6) {
   return out;
 }
 
-// Best available external link for a vendor: their own website first,
-// then their Google Business/Maps profile, then (for older listings
-// saved before this existed) a plain Google Maps search as a fallback
-// that always works.
+// Best available external link for a vendor. Google Business Profile is
+// the default for every listing — it's reliably tied to the exact place
+// and vendors don't need to do anything for it to be correct. A vendor's
+// own website is only used if they've explicitly opted into it from the
+// dashboard (the toggle is only offered when both exist); this sidesteps
+// ever needing to detect a "broken" website, since nothing defaults to
+// an unverified link in the first place. Falls back to a plain Google
+// Maps search only for old listings that predate mapsUrl/website entirely.
 export function vendorLink(v) {
-  if (v.website) return v.website;
+  if (v.preferredLink === "website" && v.website) return v.website;
   if (v.mapsUrl) return v.mapsUrl;
+  if (v.website) return v.website;
   const q = encodeURIComponent(`${v.name || ""} ${v.address || ""}`.trim());
   return `https://www.google.com/maps/search/?api=1&query=${q}`;
 }
