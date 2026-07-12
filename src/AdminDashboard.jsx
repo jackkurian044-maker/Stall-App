@@ -3,7 +3,7 @@ import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimest
 import { Plus, Trash2, RefreshCw, Star } from "lucide-react";
 import { db } from "./firebase";
 import { CATEGORIES, CATEGORY_COLORS, COLORS } from "./constants";
-import { uid } from "./geo";
+import { uid, toDateInputValue } from "./geo";
 import { autoRefreshStale, isRatingStale } from "./ratingSync";
 import LocationSearch from "./LocationSearch";
 import ImageUpload from "./ImageUpload";
@@ -12,6 +12,7 @@ const emptyForm = {
   name: "", category: CATEGORIES[0], description: "", products: "",
   address: "", phone: "", lat: "", lng: "", website: null, mapsUrl: null, placeId: null,
   rating: null, ratingsCount: null, hours: "", photos: [], preferredLink: null,
+  offer: "", offerExpiresAt: "",
 };
 
 export default function AdminDashboard() {
@@ -61,6 +62,7 @@ export default function AdminDashboard() {
       website: v.website || null, mapsUrl: v.mapsUrl || null, placeId: v.placeId || null,
       rating: v.rating ?? null, ratingsCount: v.ratingsCount ?? null,
       hours: v.hours || "", photos: v.photos || [], preferredLink: v.preferredLink || null,
+      offer: v.offer || "", offerExpiresAt: toDateInputValue(v.offerExpiresAt),
     });
   };
 
@@ -86,6 +88,7 @@ export default function AdminDashboard() {
         lat, lng, website: form.website || null, mapsUrl: form.mapsUrl || null, placeId: form.placeId || null,
         rating: form.rating ?? null, ratingsCount: form.ratingsCount ?? null,
         hours: form.hours.trim(), photos: form.photos || [], preferredLink: form.preferredLink || null,
+        offer: form.offer.trim(), offerExpiresAt: form.offerExpiresAt ? new Date(`${form.offerExpiresAt}T23:59:59`) : null,
       };
       if (editingId) {
         await updateDoc(doc(db, "vendors", editingId), payload);
@@ -133,6 +136,12 @@ export default function AdminDashboard() {
           {field("Description", <textarea style={{ ...inputStyle, resize: "vertical", minHeight: 56 }} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />)}
           {field("Products (comma separated)", <input style={inputStyle} value={form.products} onChange={(e) => setForm({ ...form, products: e.target.value })} />)}
           {field("Phone (optional)", <input style={inputStyle} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />)}
+          {field("Current offer (optional — e.g. \"20% off today\" or \"Buy 1 get 1, this month\")", (
+            <input style={inputStyle} value={form.offer} onChange={(e) => setForm({ ...form, offer: e.target.value })} placeholder="e.g. Festive discount — 15% off all items" />
+          ))}
+          {form.offer && field("Offer ends on (optional — leave blank to show until you remove it)", (
+            <input type="date" style={inputStyle} value={form.offerExpiresAt} onChange={(e) => setForm({ ...form, offerExpiresAt: e.target.value })} />
+          ))}
           {form.website && form.mapsUrl && field("When someone taps this listing, open…", (
             <div style={{ display: "flex", gap: 8 }}>
               {[

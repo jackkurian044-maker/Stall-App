@@ -1,5 +1,5 @@
 import React from "react";
-import { ExternalLink, Star, Clock, MessageSquare } from "lucide-react";
+import { ExternalLink, Star, Clock, MessageSquare, Tag } from "lucide-react";
 import { CATEGORY_COLORS, COLORS } from "./constants";
 import { vendorLink } from "./geo";
 
@@ -22,6 +22,10 @@ export default function VendorTicket({ vendor, highlighted, onClick, onOpenRevie
   const accent = CATEGORY_COLORS[vendor.category] || COLORS.ink;
   const firstHoursLine = (vendor.hours || "").split("\n")[0];
   const thumbnail = vendor.photos?.[0];
+  // An offer with no end date runs until the vendor removes it themselves;
+  // one with an end date just stops showing on its own once it's passed —
+  // nobody has to remember to come back and take it down.
+  const offerActive = vendor.offer && (!vendor.offerExpiresAt?.toDate || vendor.offerExpiresAt.toDate() >= new Date());
 
   return (
     <div
@@ -37,10 +41,34 @@ export default function VendorTicket({ vendor, highlighted, onClick, onOpenRevie
         cursor: "pointer",
         boxShadow: highlighted ? `4px 4px 0 ${accent}` : "none",
         display: "flex",
-        justifyContent: "space-between",
-        gap: 18,
+        flexDirection: "column",
       }}
     >
+      {offerActive && (
+        <div
+          style={{
+            background: COLORS.marigold,
+            color: COLORS.ink,
+            margin: "-20px -22px 16px -22px",
+            padding: "9px 22px",
+            borderRadius: "11px 11px 0 0",
+            fontSize: 12.5,
+            fontWeight: 700,
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
+          <Tag size={13} />
+          {vendor.offer}
+          {vendor.offerExpiresAt?.toDate && (
+            <span style={{ fontWeight: 500, opacity: 0.8 }}>
+              &nbsp;· ends {vendor.offerExpiresAt.toDate().toLocaleDateString(undefined, { day: "numeric", month: "short" })}
+            </span>
+          )}
+        </div>
+      )}
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 18 }}>
       {thumbnail && (
         <img
           src={thumbnail}
@@ -137,6 +165,7 @@ export default function VendorTicket({ vendor, highlighted, onClick, onOpenRevie
           {vendor.distance.toFixed(1)} km
         </div>
         <ExternalLink size={17} color="#999" style={{ marginTop: 10 }} />
+      </div>
       </div>
     </div>
   );

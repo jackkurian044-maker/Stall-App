@@ -28,6 +28,16 @@ export function uid(len = 6) {
   return out;
 }
 
+// Formats a Firestore Timestamp (or null) as a yyyy-mm-dd string for
+// <input type="date">, and back again isn't needed — Firestore accepts a
+// native JS Date on write, so the form just holds the string in between.
+export function toDateInputValue(ts) {
+  if (!ts?.toDate) return "";
+  const d = ts.toDate();
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 // Best available external link for a vendor. Google Business Profile is
 // the default for every listing — it's reliably tied to the exact place
 // and vendors don't need to do anything for it to be correct. A vendor's
