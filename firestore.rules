@@ -33,6 +33,17 @@ service cloud.firestore {
 
       allow delete: if request.auth != null &&
         (resource.data.ownerId == request.auth.uid || isAdmin());
+
+      // Reviews left by any signed-in user. One review per user per
+      // vendor, enforced by using the reviewer's own UID as the doc ID —
+      // submitting again just edits their existing review instead of
+      // creating a second one.
+      match /reviews/{uid} {
+        allow read: if true;
+        allow create, update: if request.auth != null && request.auth.uid == uid;
+        allow delete: if request.auth != null &&
+          (request.auth.uid == uid || isAdmin());
+      }
     }
 
     // Admin membership list. Documents here are added manually via the
