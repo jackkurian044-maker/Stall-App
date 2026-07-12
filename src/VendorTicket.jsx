@@ -37,7 +37,7 @@ export default function VendorTicket({ vendor, highlighted, onClick, onOpenRevie
         background: "#fff",
         border: `2px solid ${COLORS.ink}`,
         borderRadius: 14,
-        padding: "20px 22px",
+        padding: "24px 26px",
         cursor: "pointer",
         boxShadow: highlighted ? `4px 4px 0 ${accent}` : "none",
         display: "flex",
@@ -49,8 +49,8 @@ export default function VendorTicket({ vendor, highlighted, onClick, onOpenRevie
           style={{
             background: COLORS.marigold,
             color: COLORS.ink,
-            margin: "-20px -22px 16px -22px",
-            padding: "9px 22px",
+            margin: "-24px -26px 18px -26px",
+            padding: "10px 26px",
             borderRadius: "11px 11px 0 0",
             fontSize: 12.5,
             fontWeight: 700,
@@ -68,17 +68,17 @@ export default function VendorTicket({ vendor, highlighted, onClick, onOpenRevie
           )}
         </div>
       )}
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 18 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 22 }}>
       {thumbnail && (
         <img
           src={thumbnail}
           alt=""
-          style={{ width: 88, height: 88, borderRadius: 10, objectFit: "cover", flexShrink: 0, border: `1.5px solid ${COLORS.ink}22` }}
+          style={{ width: 104, height: 104, borderRadius: 12, objectFit: "cover", flexShrink: 0, border: `1.5px solid ${COLORS.ink}22` }}
         />
       )}
       <div style={{ minWidth: 0, flex: 1 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 5, flexWrap: "wrap" }}>
-          <span className="font-display" style={{ fontSize: 20, fontWeight: 700 }}>
+          <span className="font-display" style={{ fontSize: 22, fontWeight: 700 }}>
             {vendor.name}
           </span>
           <span
@@ -106,7 +106,7 @@ export default function VendorTicket({ vendor, highlighted, onClick, onOpenRevie
           )}
         </div>
         {vendor.description && (
-          <div style={{ fontSize: 13.5, color: "#444", marginBottom: 8 }}>{vendor.description}</div>
+          <div style={{ fontSize: 14.5, color: "#444", marginBottom: 10 }}>{vendor.description}</div>
         )}
         {products.length > 0 && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 8 }}>
@@ -126,7 +126,7 @@ export default function VendorTicket({ vendor, highlighted, onClick, onOpenRevie
             ))}
           </div>
         )}
-        <div style={{ fontSize: 12.5, color: "#777" }}>{vendor.address}</div>
+        <div style={{ fontSize: 13.5, color: "#777" }}>{vendor.address}</div>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 8, flexWrap: "wrap" }}>
           {firstHoursLine && (
             <span style={{ fontSize: 12, color: "#777", display: "flex", alignItems: "center", gap: 4 }}>
@@ -157,14 +157,14 @@ export default function VendorTicket({ vendor, highlighted, onClick, onOpenRevie
             background: COLORS.ink,
             color: "#fff",
             borderRadius: 8,
-            padding: "7px 12px",
-            fontSize: 14,
+            padding: "8px 14px",
+            fontSize: 15,
             fontWeight: 600,
           }}
         >
           {vendor.distance.toFixed(1)} km
         </div>
-        <ExternalLink size={17} color="#999" style={{ marginTop: 10 }} />
+        <ExternalLink size={19} color="#999" style={{ marginTop: 12 }} />
       </div>
       </div>
     </div>
