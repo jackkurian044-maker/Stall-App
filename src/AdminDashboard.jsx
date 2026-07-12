@@ -1,14 +1,12 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from "firebase/firestore";
 import { Plus, Trash2, RefreshCw, Star } from "lucide-react";
 import { db } from "./firebase";
 import { CATEGORIES, CATEGORY_COLORS, COLORS } from "./constants";
 import { uid } from "./geo";
+import { autoRefreshStale, isRatingStale } from "./ratingSync";
 import LocationSearch from "./LocationSearch";
 import ImageUpload from "./ImageUpload";
-import { loadGoogleMaps } from "./googleMaps";
-
-const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_PLACES_API_KEY;
 
 const emptyForm = {
   name: "", category: CATEGORIES[0], description: "", products: "",
@@ -24,29 +22,8 @@ export default function AdminDashboard() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [lastCode, setLastCode] = useState(null);
-  const [refreshingId, setRefreshingId] = useState(null);
   const [tempId] = useState(() => uid(10));
-
-  const refreshRating = async (v) => {
-    if (!v.placeId || !GOOGLE_API_KEY) return;
-    setRefreshingId(v.id);
-    try {
-      await loadGoogleMaps(GOOGLE_API_KEY);
-      const service = new window.google.maps.places.PlacesService(document.createElement("div"));
-      service.getDetails({ placeId: v.placeId, fields: ["rating", "user_ratings_total", "formatted_phone_number"] }, async (place, status) => {
-        if (status === window.google.maps.places.PlacesServiceStatus.OK && place) {
-          await updateDoc(doc(db, "vendors", v.id), {
-            rating: typeof place.rating === "number" ? place.rating : null,
-            ratingsCount: typeof place.user_ratings_total === "number" ? place.user_ratings_total : null,
-            ...(place.formatted_phone_number ? { phone: place.formatted_phone_number } : {}),
-          });
-        }
-        setRefreshingId(null);
-      });
-    } catch {
-      setRefreshingId(null);
-    }
-  };
+  const refreshedRef = useRef(new Set());
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "vendors"), (snap) => {
@@ -55,6 +32,12 @@ export default function AdminDashboard() {
     }, () => setLoading(false));
     return unsub;
   }, []);
+
+  // Same zero-click, staleness-gated refresh as the public Find page —
+  // see ratingSync.js and the firestore.rules note for the cost control.
+  useEffect(() => {
+    autoRefreshStale(vendors, refreshedRef.current);
+  }, [vendors]);
 
   const inputStyle = {
     width: "100%", padding: "9px 10px", borderRadius: 7,
@@ -112,6 +95,7 @@ export default function AdminDashboard() {
         const code = uid(6);
         await addDoc(collection(db, "vendors"), {
           ...payload, ownerId: null, claimCode: code, createdAt: serverTimestamp(),
+          ratingUpdatedAt: payload.placeId ? serverTimestamp() : null,
         });
         setLastCode({ name: form.name.trim(), code });
         setForm(emptyForm);
@@ -233,15 +217,10 @@ export default function AdminDashboard() {
                   {v.phone && <div style={{ fontSize: 11.5, color: "#777" }}>{v.phone}</div>}
                 </div>
                 <div style={{ display: "flex", gap: 4, flexShrink: 0, alignItems: "center" }}>
-                  {v.placeId && (
-                    <button
-                      onClick={() => refreshRating(v)}
-                      disabled={refreshingId === v.id}
-                      title="Refresh phone & rating from Google"
-                      style={{ background: "none", border: "none", cursor: "pointer", color: COLORS.teal, padding: 6 }}
-                    >
-                      <RefreshCw size={15} className={refreshingId === v.id ? "spin" : ""} />
-                    </button>
+                  {v.placeId && isRatingStale(v) && (
+                    <span title="Rating/phone will sync from Google automatically" style={{ color: "#bbb", padding: 6, display: "flex" }}>
+                      <RefreshCw size={14} />
+                    </span>
                   )}
                   <button
                     onClick={() => startEdit(v)}

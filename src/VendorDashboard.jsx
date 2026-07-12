@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc,
   getDocs, serverTimestamp,
@@ -8,10 +8,8 @@ import { db } from "./firebase";
 import { CATEGORIES, COLORS } from "./constants";
 import LocationSearch from "./LocationSearch";
 import ImageUpload from "./ImageUpload";
-import { loadGoogleMaps } from "./googleMaps";
+import { autoRefreshStale, isRatingStale } from "./ratingSync";
 import { uid } from "./geo";
-
-const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_PLACES_API_KEY;
 
 const emptyForm = {
   name: "", category: CATEGORIES[0], description: "", products: "",
@@ -28,29 +26,8 @@ export default function VendorDashboard({ user }) {
   const [saving, setSaving] = useState(false);
   const [claimCode, setClaimCode] = useState("");
   const [claimMsg, setClaimMsg] = useState("");
-  const [refreshingId, setRefreshingId] = useState(null);
   const [tempId] = useState(() => uid(10));
-
-  const refreshRating = async (l) => {
-    if (!l.placeId || !GOOGLE_API_KEY) return;
-    setRefreshingId(l.id);
-    try {
-      await loadGoogleMaps(GOOGLE_API_KEY);
-      const service = new window.google.maps.places.PlacesService(document.createElement("div"));
-      service.getDetails({ placeId: l.placeId, fields: ["rating", "user_ratings_total", "formatted_phone_number"] }, async (place, status) => {
-        if (status === window.google.maps.places.PlacesServiceStatus.OK && place) {
-          await updateDoc(doc(db, "vendors", l.id), {
-            rating: typeof place.rating === "number" ? place.rating : null,
-            ratingsCount: typeof place.user_ratings_total === "number" ? place.user_ratings_total : null,
-            ...(place.formatted_phone_number ? { phone: place.formatted_phone_number } : {}),
-          });
-        }
-        setRefreshingId(null);
-      });
-    } catch {
-      setRefreshingId(null);
-    }
-  };
+  const refreshedRef = useRef(new Set());
 
   useEffect(() => {
     const q = query(collection(db, "vendors"), where("ownerId", "==", user.uid));
@@ -60,6 +37,12 @@ export default function VendorDashboard({ user }) {
     }, () => setLoading(false));
     return unsub;
   }, [user.uid]);
+
+  // Same zero-click, staleness-gated refresh as the public Find page —
+  // see ratingSync.js and the firestore.rules note for the cost control.
+  useEffect(() => {
+    autoRefreshStale(listings, refreshedRef.current);
+  }, [listings]);
 
   const inputStyle = {
     width: "100%", padding: "9px 10px", borderRadius: 7,
@@ -106,6 +89,7 @@ export default function VendorDashboard({ user }) {
       } else {
         await addDoc(collection(db, "vendors"), {
           ...payload, ownerId: user.uid, claimCode: null, createdAt: serverTimestamp(),
+          ratingUpdatedAt: payload.placeId ? serverTimestamp() : null,
         });
       }
       setForm(emptyForm);
@@ -250,16 +234,10 @@ export default function VendorDashboard({ user }) {
                   )}
                 </div>
                 <div style={{ display: "flex", gap: 6, flexShrink: 0, alignItems: "flex-start" }}>
-                  {l.placeId && (
-                    <button
-                      onClick={() => refreshRating(l)}
-                      disabled={refreshingId === l.id}
-                      className="stall-btn"
-                      title="Refresh phone & rating from Google"
-                      style={{ background: "transparent", border: `1.5px solid ${COLORS.teal}`, color: COLORS.teal, borderRadius: 7, padding: "6px 8px", fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}
-                    >
-                      <RefreshCw size={13} className={refreshingId === l.id ? "spin" : ""} />
-                    </button>
+                  {l.placeId && isRatingStale(l) && (
+                    <span title="Rating/phone will sync from Google automatically" style={{ color: "#bbb", padding: 6, display: "flex" }}>
+                      <RefreshCw size={13} />
+                    </span>
                   )}
                   <button onClick={() => startEdit(l)} className="stall-btn" style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 7, padding: "6px 10px", fontSize: 12, fontWeight: 600 }}>
                     Edit

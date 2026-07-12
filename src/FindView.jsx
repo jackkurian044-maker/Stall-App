@@ -1,9 +1,10 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { collection, onSnapshot } from "firebase/firestore";
 import { MapPin, Search, Locate, ChevronLeft, ChevronRight } from "lucide-react";
 import { db } from "./firebase";
 import { CATEGORIES, COLORS, DEFAULT_LOC } from "./constants";
 import { haversineKm, bearingRad } from "./geo";
+import { autoRefreshStale } from "./ratingSync";
 import VendorTicket from "./VendorTicket";
 import RadarChart from "./RadarChart";
 import ReviewsModal from "./ReviewsModal";
@@ -23,6 +24,7 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
   const [manualLng, setManualLng] = useState("");
   const [reviewsVendor, setReviewsVendor] = useState(null);
   const [page, setPage] = useState(1);
+  const refreshedRef = useRef(new Set());
 
   useEffect(() => {
     const unsub = onSnapshot(
@@ -35,6 +37,14 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
     );
     return unsub;
   }, []);
+
+  // Keep Google-sourced ratings/phone fresh with zero manual clicks —
+  // gated by staleness both here (avoid redundant checks this session)
+  // and, more importantly, by the Firestore rule itself (avoid redundant
+  // *writes* across every visitor's session, which is the real cost control).
+  useEffect(() => {
+    autoRefreshStale(vendors, refreshedRef.current);
+  }, [vendors]);
 
   const locate = () => {
     setLocating(true);

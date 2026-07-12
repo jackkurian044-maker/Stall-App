@@ -25,3 +25,9 @@ export const COLORS = {
 };
 
 export const DEFAULT_LOC = { lat: 12.9716, lng: 77.5946 }; // Bengaluru
+
+// How long a Google-sourced rating/phone snapshot is trusted before it's
+// treated as stale and worth re-fetching. This is the main cost lever for
+// the Places API — refresh frequency scales with (listings ÷ this window),
+// completely decoupled from how many people visit the site.
+export const RATING_STALE_HOURS = 24;

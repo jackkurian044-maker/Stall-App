@@ -167,6 +167,7 @@ export default function DiscoverNearby() {
           ownerId: null,
           claimCode: code,
           createdAt: serverTimestamp(),
+          ratingUpdatedAt: r.placeId ? serverTimestamp() : null,
         });
         created.push({ name: r.name, code });
         await new Promise((res) => setTimeout(res, 150)); // gentle pacing
