@@ -3,13 +3,15 @@ import {
   collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc,
   getDocs, serverTimestamp,
 } from "firebase/firestore";
-import { Plus, Trash2, KeyRound, RefreshCw, Star } from "lucide-react";
+import { Plus, Trash2, KeyRound, RefreshCw, Star, Zap } from "lucide-react";
 import { db } from "./firebase";
 import { CATEGORIES, COLORS } from "./constants";
 import LocationSearch from "./LocationSearch";
 import ImageUpload from "./ImageUpload";
 import { autoRefreshStale, isRatingStale } from "./ratingSync";
 import { uid, toDateInputValue } from "./geo";
+import PremiumGate from "./PremiumGate";
+import ReviewAutoResponder from "./ReviewAutoResponder";
 
 const emptyForm = {
   name: "", category: CATEGORIES[0], description: "", products: "",
@@ -28,6 +30,7 @@ export default function VendorDashboard({ user }) {
   const [claimCode, setClaimCode] = useState("");
   const [claimMsg, setClaimMsg] = useState("");
   const [tempId] = useState(() => uid(10));
+  const [dashTab, setDashTab] = useState("listings"); // "listings" | "premium"
   const refreshedRef = useRef(new Set());
 
   useEffect(() => {
@@ -39,8 +42,6 @@ export default function VendorDashboard({ user }) {
     return unsub;
   }, [user.uid]);
 
-  // Same zero-click, staleness-gated refresh as the public Find page —
-  // see ratingSync.js and the firestore.rules note for the cost control.
   useEffect(() => {
     autoRefreshStale(listings, refreshedRef.current);
   }, [listings]);
@@ -132,6 +133,7 @@ export default function VendorDashboard({ user }) {
 
   return (
     <div className="stall-grid">
+      {/* ── LEFT COLUMN — unchanged ── */}
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <div style={{ background: "#fff", border: `2px solid ${COLORS.ink}`, borderRadius: 12, padding: 18 }}>
           <div className="font-display" style={{ fontSize: 19, fontWeight: 700, marginBottom: 4 }}>
@@ -191,8 +193,6 @@ export default function VendorDashboard({ user }) {
               onChange={(patch) => setForm((f) => ({
                 ...f,
                 ...patch,
-                // Don't clobber hours the person already typed themselves —
-                // only auto-fill from Google if the field is still empty.
                 hours: f.hours ? f.hours : (patch.hours ?? f.hours),
               }))}
             />
@@ -202,9 +202,7 @@ export default function VendorDashboard({ user }) {
               pathPrefix={`vendor-photos/${editingId || tempId}`}
               onChange={(photos) => setForm((f) => ({ ...f, photos }))}
             />
-
             {error && <div style={{ color: COLORS.brick, fontSize: 12, marginBottom: 10 }}>{error}</div>}
-
             <div style={{ display: "flex", gap: 8 }}>
               <button type="submit" disabled={saving} className="stall-btn" style={{ flex: 1, background: COLORS.ink, color: "#fff", border: "none", borderRadius: 7, padding: "10px", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
                 <Plus size={15} /> {saving ? "Saving…" : editingId ? "Save changes" : "Add listing"}
@@ -241,45 +239,96 @@ export default function VendorDashboard({ user }) {
         </div>
       </div>
 
+      {/* ── RIGHT COLUMN — with Premium tab ── */}
       <div>
-        <div className="font-display" style={{ fontSize: 19, fontWeight: 700, marginBottom: 4 }}>Your listings</div>
-        <div style={{ fontSize: 12, color: "#666", marginBottom: 12 }}>{listings.length} total</div>
-        {loading ? (
-          <div style={{ fontSize: 13, color: "#666" }}>Loading…</div>
-        ) : listings.length === 0 ? (
-          <div style={{ border: `2px dashed ${COLORS.ink}55`, borderRadius: 12, padding: 30, textAlign: "center", color: "#666", fontSize: 13 }}>
-            Nothing yet — create your first listing on the left, or claim one an admin already added.
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {listings.map((l) => (
-              <div key={l.id} style={{ background: "#fff", border: `2px solid ${COLORS.ink}`, borderRadius: 12, padding: 14, display: "flex", justifyContent: "space-between", gap: 12 }}>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 14 }}>{l.name}</div>
-                  <div style={{ fontSize: 11.5, color: "#777" }}>{l.category} · {l.address}</div>
-                  {l.phone && <div style={{ fontSize: 11.5, color: "#777" }}>{l.phone}</div>}
-                  {l.rating != null && (
-                    <div style={{ fontSize: 11.5, color: "#666", marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
-                      <Star size={11} fill={COLORS.marigold} color={COLORS.marigold} />
-                      {l.rating.toFixed(1)}{l.ratingsCount != null ? ` (${l.ratingsCount})` : ""}
-                    </div>
-                  )}
-                </div>
-                <div style={{ display: "flex", gap: 6, flexShrink: 0, alignItems: "flex-start" }}>
-                  {l.placeId && isRatingStale(l) && (
-                    <span title="Rating/phone will sync from Google automatically" style={{ color: "#bbb", padding: 6, display: "flex" }}>
-                      <RefreshCw size={13} />
-                    </span>
-                  )}
-                  <button onClick={() => startEdit(l)} className="stall-btn" style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 7, padding: "6px 10px", fontSize: 12, fontWeight: 600 }}>
-                    Edit
-                  </button>
-                  <button onClick={() => remove(l.id)} style={{ background: "none", border: "none", cursor: "pointer", color: COLORS.brick, padding: 6 }} title="Delete">
-                    <Trash2 size={16} />
-                  </button>
-                </div>
+        {/* Tab bar */}
+        <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
+          <button
+            onClick={() => setDashTab("listings")}
+            className="stall-btn"
+            style={{
+              padding: "7px 16px", borderRadius: 7, fontSize: 13, fontWeight: 600,
+              border: `1.5px solid ${COLORS.ink}`,
+              background: dashTab === "listings" ? COLORS.ink : "#fff",
+              color: dashTab === "listings" ? "#fff" : COLORS.ink,
+              cursor: "pointer",
+            }}
+          >
+            My Listings ({listings.length})
+          </button>
+          <button
+            onClick={() => setDashTab("premium")}
+            className="stall-btn"
+            style={{
+              padding: "7px 16px", borderRadius: 7, fontSize: 13, fontWeight: 600,
+              border: `1.5px solid ${COLORS.ink}`,
+              background: dashTab === "premium" ? COLORS.ink : "#fff",
+              color: dashTab === "premium" ? "#fff" : COLORS.ink,
+              cursor: "pointer",
+              display: "flex", alignItems: "center", gap: 6,
+            }}
+          >
+            <Zap size={13} /> Premium
+          </button>
+        </div>
+
+        {/* ── LISTINGS TAB ── */}
+        {dashTab === "listings" && (
+          <div>
+            <div style={{ fontSize: 12, color: "#666", marginBottom: 12 }}>{listings.length} total</div>
+            {loading ? (
+              <div style={{ fontSize: 13, color: "#666" }}>Loading…</div>
+            ) : listings.length === 0 ? (
+              <div style={{ border: `2px dashed ${COLORS.ink}55`, borderRadius: 12, padding: 30, textAlign: "center", color: "#666", fontSize: 13 }}>
+                Nothing yet — create your first listing on the left, or claim one an admin already added.
               </div>
-            ))}
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {listings.map((l) => (
+                  <div key={l.id} style={{ background: "#fff", border: `2px solid ${COLORS.ink}`, borderRadius: 12, padding: 14, display: "flex", justifyContent: "space-between", gap: 12 }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center", gap: 6 }}>
+                        {l.name}
+                        {l.isPremium && (
+                          <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: COLORS.ink, color: "#fff", fontWeight: 600 }}>
+                            ✦ Premium
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: 11.5, color: "#777" }}>{l.category} · {l.address}</div>
+                      {l.phone && <div style={{ fontSize: 11.5, color: "#777" }}>{l.phone}</div>}
+                      {l.rating != null && (
+                        <div style={{ fontSize: 11.5, color: "#666", marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
+                          <Star size={11} fill={COLORS.marigold} color={COLORS.marigold} />
+                          {l.rating.toFixed(1)}{l.ratingsCount != null ? ` (${l.ratingsCount})` : ""}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ display: "flex", gap: 6, flexShrink: 0, alignItems: "flex-start" }}>
+                      {l.placeId && isRatingStale(l) && (
+                        <span title="Rating/phone will sync from Google automatically" style={{ color: "#bbb", padding: 6, display: "flex" }}>
+                          <RefreshCw size={13} />
+                        </span>
+                      )}
+                      <button onClick={() => startEdit(l)} className="stall-btn" style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 7, padding: "6px 10px", fontSize: 12, fontWeight: 600 }}>
+                        Edit
+                      </button>
+                      <button onClick={() => remove(l.id)} style={{ background: "none", border: "none", cursor: "pointer", color: COLORS.brick, padding: 6 }} title="Delete">
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── PREMIUM TAB ── */}
+        {dashTab === "premium" && (
+          <div>
+            <PremiumGate user={user} listing={listings[0]} />
+            <ReviewAutoResponder listing={listings[0]} />
           </div>
         )}
       </div>
