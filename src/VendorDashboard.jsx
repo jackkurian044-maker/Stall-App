@@ -12,6 +12,7 @@ import { autoRefreshStale, isRatingStale } from "./ratingSync";
 import { uid, toDateInputValue } from "./geo";
 import PremiumGate from "./PremiumGate";
 import ReviewAutoResponder from "./ReviewAutoResponder";
+import { findDuplicateVendor } from "./duplicateCheck";
 
 const emptyForm = {
   name: "", category: CATEGORIES[0], description: "", products: "",
@@ -80,6 +81,15 @@ export default function VendorDashboard({ user }) {
 
     setSaving(true);
     try {
+      if (!editingId) {
+        const dup = await findDuplicateVendor(db, { placeId: form.placeId, name: form.name.trim(), lat, lng });
+        if (dup) {
+          setSaving(false);
+          return setError(
+            'This business already has a listing on Stall. If it\'s yours, use "Claim a listing" below with its claim code instead of creating a new one.'
+          );
+        }
+      }
       const payload = {
         name: form.name.trim(), category: form.category, description: form.description.trim(),
         products: form.products.trim(), address: form.address.trim(), phone: form.phone.trim(),

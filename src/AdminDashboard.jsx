@@ -7,6 +7,7 @@ import { uid, toDateInputValue } from "./geo";
 import { autoRefreshStale, isRatingStale } from "./ratingSync";
 import LocationSearch from "./LocationSearch";
 import ImageUpload from "./ImageUpload";
+import { findDuplicateVendor } from "./duplicateCheck";
 
 const emptyForm = {
   name: "", category: CATEGORIES[0], description: "", products: "",
@@ -82,6 +83,15 @@ export default function AdminDashboard() {
 
     setSaving(true);
     try {
+      if (!editingId) {
+        const dup = await findDuplicateVendor(db, { placeId: form.placeId, name: form.name.trim(), lat, lng });
+        if (dup) {
+          setSaving(false);
+          return setError(
+            `"${dup.name}" is already listed${dup.claimCode ? ` — claim code ${dup.claimCode}` : ""}. Edit that listing instead of adding a duplicate.`
+          );
+        }
+      }
       const payload = {
         name: form.name.trim(), category: form.category, description: form.description.trim(),
         products: form.products.trim(), address: form.address.trim(), phone: form.phone.trim(),

@@ -5,6 +5,7 @@ import { db } from "./firebase";
 import { CATEGORIES, CATEGORY_COLORS, COLORS, DEFAULT_LOC } from "./constants";
 import { uid, haversineKm } from "./geo";
 import { loadGoogleMaps } from "./googleMaps";
+import { findExistingPlaceIds } from "./duplicateCheck";
 
 const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_PLACES_API_KEY;
 
@@ -98,6 +99,7 @@ export default function DiscoverNearby() {
         keyword: keyword.trim() || undefined,
       };
       const res = await runSearch(svc, request);
+      const existingPlaceIds = await findExistingPlaceIds(db, res.map((p) => p.place_id));
       const mapped = res.map((p) => ({
         placeId: p.place_id,
         name: p.name,
@@ -108,6 +110,7 @@ export default function DiscoverNearby() {
         ratingsCount: typeof p.user_ratings_total === "number" ? p.user_ratings_total : null,
         types: p.types || [],
         category: guessCategory(p.types),
+        alreadyListed: existingPlaceIds.has(p.place_id),
       }));
       setResults(mapped);
     } catch {
@@ -118,6 +121,8 @@ export default function DiscoverNearby() {
   };
 
   const toggleSelect = (placeId) => {
+    const r = results.find((res) => res.placeId === placeId);
+    if (r?.alreadyListed) return; // already on Stall — can't be re-added
     setSelected((s) => ({ ...s, [placeId]: !s[placeId] }));
   };
 
@@ -289,16 +294,22 @@ export default function DiscoverNearby() {
         <>
           <div style={{ fontSize: 12.5, color: "#666", marginBottom: 8 }}>
             {results.length} result{results.length === 1 ? "" : "s"} · {selectedResults.length} selected
+            {results.some((r) => r.alreadyListed) && ` · ${results.filter((r) => r.alreadyListed).length} already on Stall`}
           </div>
           <div style={{ border: `2px solid ${COLORS.ink}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
             {results.map((r, i) => {
               const dist = centerLoc ? haversineKm(centerLoc, { lat: r.lat, lng: r.lng }) : null;
               return (
-                <div key={r.placeId} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "12px 16px", borderTop: i === 0 ? "none" : `1px solid ${COLORS.ink}15`, background: selected[r.placeId] ? `${COLORS.marigold}15` : "#fff" }}>
-                  <input type="checkbox" checked={!!selected[r.placeId]} onChange={() => toggleSelect(r.placeId)} style={{ marginTop: 4, width: 16, height: 16, accentColor: COLORS.brick, flexShrink: 0 }} />
+                <div key={r.placeId} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "12px 16px", borderTop: i === 0 ? "none" : `1px solid ${COLORS.ink}15`, background: r.alreadyListed ? "#f5f5f5" : selected[r.placeId] ? `${COLORS.marigold}15` : "#fff", opacity: r.alreadyListed ? 0.6 : 1 }}>
+                  <input type="checkbox" checked={!!selected[r.placeId]} disabled={r.alreadyListed} onChange={() => toggleSelect(r.placeId)} style={{ marginTop: 4, width: 16, height: 16, accentColor: COLORS.brick, flexShrink: 0, cursor: r.alreadyListed ? "not-allowed" : "pointer" }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                       <span style={{ fontWeight: 700, fontSize: 13.5 }}>{r.name}</span>
+                      {r.alreadyListed && (
+                        <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 10, background: COLORS.ink, color: "#fff" }}>
+                          Already listed
+                        </span>
+                      )}
                       {r.rating != null && (
                         <span style={{ fontSize: 11, color: "#666" }}>★ {r.rating.toFixed(1)}{r.ratingsCount != null ? ` (${r.ratingsCount})` : ""}</span>
                       )}
