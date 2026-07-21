@@ -1,6 +1,6 @@
 import React from "react";
 import { COLORS } from "./constants";
-import stallLogo from "./stall-logo.png";
+import stallLogo from "./stall-logo-v2.png";
 
 export default function Footer() {
   return (
