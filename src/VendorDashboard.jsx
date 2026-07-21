@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
   collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc,
-  getDocs, serverTimestamp,
+  getDocs, getDoc, serverTimestamp,
 } from "firebase/firestore";
-import { Plus, Trash2, KeyRound, RefreshCw, Star, Zap } from "lucide-react";
+import { Plus, Trash2, KeyRound, RefreshCw, Star, Zap, ShieldCheck, Check, X } from "lucide-react";
 import { db } from "./firebase";
 import { CATEGORIES, COLORS } from "./constants";
 import LocationSearch from "./LocationSearch";
@@ -31,8 +31,33 @@ export default function VendorDashboard({ user }) {
   const [claimCode, setClaimCode] = useState("");
   const [claimMsg, setClaimMsg] = useState("");
   const [tempId] = useState(() => uid(10));
-  const [dashTab, setDashTab] = useState("listings"); // "listings" | "premium"
+  const [dashTab, setDashTab] = useState("listings"); // "listings" | "premium" | "pending"
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [pendingListings, setPendingListings] = useState([]);
   const refreshedRef = useRef(new Set());
+
+  useEffect(() => {
+    getDoc(doc(db, "admins", user.uid))
+      .then((snap) => setIsAdmin(snap.exists()))
+      .catch(() => setIsAdmin(false));
+  }, [user.uid]);
+
+  useEffect(() => {
+    if (!isAdmin) { setPendingListings([]); return; }
+    const q = query(collection(db, "vendors"), where("status", "==", "pending"));
+    const unsub = onSnapshot(q, (snap) => {
+      setPendingListings(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    });
+    return unsub;
+  }, [isAdmin]);
+
+  const reviewListing = async (id, decision) => {
+    await updateDoc(doc(db, "vendors", id), {
+      status: decision, // 'approved' or 'rejected'
+      reviewedAt: serverTimestamp(),
+      reviewedBy: user.uid,
+    });
+  };
 
   useEffect(() => {
     const q = query(collection(db, "vendors"), where("ownerId", "==", user.uid));
@@ -293,6 +318,22 @@ export default function VendorDashboard({ user }) {
           >
             <Zap size={13} /> Premium
           </button>
+          {isAdmin && (
+            <button
+              onClick={() => setDashTab("pending")}
+              className="stall-btn"
+              style={{
+                padding: "7px 16px", borderRadius: 7, fontSize: 13, fontWeight: 600,
+                border: `1.5px solid ${COLORS.ink}`,
+                background: dashTab === "pending" ? COLORS.ink : "#fff",
+                color: dashTab === "pending" ? "#fff" : COLORS.ink,
+                cursor: "pointer",
+                display: "flex", alignItems: "center", gap: 6,
+              }}
+            >
+              <ShieldCheck size={13} /> Pending Approvals ({pendingListings.length})
+            </button>
+          )}
         </div>
 
         {/* ── LISTINGS TAB ── */}
@@ -352,6 +393,48 @@ export default function VendorDashboard({ user }) {
           <div>
             <PremiumGate user={user} listing={listings[0]} />
             <ReviewAutoResponder listing={listings[0]} />
+          </div>
+        )}
+
+        {/* ── PENDING APPROVALS TAB (admin only) ── */}
+        {dashTab === "pending" && isAdmin && (
+          <div>
+            <div style={{ fontSize: 12, color: "#666", marginBottom: 12 }}>
+              {pendingListings.length} awaiting review — direct self-registrations only stay hidden from the public Find page until approved here.
+            </div>
+            {pendingListings.length === 0 ? (
+              <div style={{ border: `2px dashed ${COLORS.ink}55`, borderRadius: 12, padding: 30, textAlign: "center", color: "#666", fontSize: 13 }}>
+                Nothing waiting on you right now.
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {pendingListings.map((l) => (
+                  <div key={l.id} style={{ background: "#fff", border: `2px solid ${COLORS.ink}`, borderRadius: 12, padding: 14 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14 }}>{l.name}</div>
+                    <div style={{ fontSize: 11.5, color: "#777", marginTop: 2 }}>{l.category} · {l.address}</div>
+                    {l.phone && <div style={{ fontSize: 11.5, color: "#777" }}>{l.phone}</div>}
+                    {l.ownerEmail && <div style={{ fontSize: 11.5, color: "#777" }}>{l.ownerEmail}</div>}
+                    {l.description && <div style={{ fontSize: 12.5, color: "#444", marginTop: 6 }}>{l.description}</div>}
+                    <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                      <button
+                        onClick={() => reviewListing(l.id, "approved")}
+                        className="stall-btn"
+                        style={{ background: COLORS.teal, color: "#fff", border: "none", borderRadius: 7, padding: "7px 14px", fontSize: 12.5, fontWeight: 700, display: "flex", alignItems: "center", gap: 5 }}
+                      >
+                        <Check size={14} /> Approve
+                      </button>
+                      <button
+                        onClick={() => reviewListing(l.id, "rejected")}
+                        className="stall-btn"
+                        style={{ background: "transparent", color: COLORS.brick, border: `1.5px solid ${COLORS.brick}`, borderRadius: 7, padding: "7px 14px", fontSize: 12.5, fontWeight: 700, display: "flex", alignItems: "center", gap: 5 }}
+                      >
+                        <X size={14} /> Reject
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
