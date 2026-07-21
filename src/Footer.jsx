@@ -1,4 +1,5 @@
 import React from "react";
+import { COLORS } from "./constants";
 import stallLogo from "./stall-logo.png";
 
 export default function Footer() {
@@ -6,33 +7,22 @@ export default function Footer() {
     <div
       style={{
         marginTop: 40,
-        padding: "28px 24px",
-        background: "#fff",
-        borderTop: "1px solid #eee",
+        padding: "36px 24px 28px",
+        background: COLORS.navy,
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        gap: 8,
+        gap: 14,
         textAlign: "center",
       }}
     >
       <img
         src={stallLogo}
         alt="Stall"
-        style={{ height: 48, width: "auto" }}
+        style={{ height: 72, width: "auto" }}
       />
-      <div
-        style={{
-          fontSize: 11,
-          letterSpacing: "0.04em",
-          color: "#6b7580",
-          fontWeight: 600,
-        }}
-      >
-        what's around the corner
-      </div>
-      <div style={{ fontSize: 12, color: "#9aa1a8", marginTop: 6 }}>
-        © {new Date().getFullYear()} Stall App · your neighbourhood · Built for local commerce, everywhere
+      <div style={{ fontSize: 13, color: "#c7ccd1" }}>
+        © {new Date().getFullYear()} Stall App · Bengaluru · Built for local commerce, everywhere
       </div>
     </div>
   );
