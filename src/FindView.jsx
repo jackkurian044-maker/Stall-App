@@ -71,6 +71,17 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
     );
   };
 
+  // Auto-detect on load instead of waiting for the "Use my location" click —
+  // same pattern as Swiggy/Zomato-style "near me" apps. Browsers show their
+  // own permission prompt for this automatically; if it's denied, times out,
+  // or geolocation isn't supported, userLoc just stays null and the existing
+  // "Use my location" button + manual lat/lng fallback below still work
+  // exactly as before — nothing about that UI changed.
+  useEffect(() => {
+    locate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const useManualLoc = () => {
     const lat = parseFloat(manualLat);
     const lng = parseFloat(manualLng);
@@ -188,7 +199,7 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
           )}
         </div>
 
-        {userLoc && <RadarChart radarData={radarData} radiusKm={radiusKm} onSelect={setSelected} />}
+        {userLoc && isAdmin && <RadarChart radarData={radarData} radiusKm={radiusKm} onSelect={setSelected} />}
       </div>
 
       <div>
