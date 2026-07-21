@@ -133,6 +133,19 @@ export default function VendorDashboard({ user }) {
         return;
       }
       const d = snap.docs[0];
+      const listingData = d.data();
+      // Listings self-registered via register.html carry the ownerEmail
+      // the vendor typed at signup — only that same email can claim it.
+      // Admin-added listings (no ownerEmail on file) skip this check.
+      if (listingData.ownerEmail) {
+        const signedInEmail = (user.email || "").toLowerCase();
+        if (signedInEmail !== listingData.ownerEmail.toLowerCase()) {
+          setClaimMsg(
+            `This listing is registered to a different email. Please sign in with ${listingData.ownerEmail} to claim it.`
+          );
+          return;
+        }
+      }
       await updateDoc(doc(db, "vendors", d.id), { ownerId: user.uid, claimCode: code });
       setClaimMsg(`Claimed "${d.data().name}" — it now appears below.`);
       setClaimCode("");
