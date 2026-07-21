@@ -9,6 +9,7 @@ import AuthPage from "./AuthPage";
 import VendorDashboard from "./VendorDashboard";
 import AdminDashboard from "./AdminDashboard";
 import DiscoverNearby from "./DiscoverNearby";
+import Footer from "./Footer";
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -63,6 +64,8 @@ export default function App() {
       ) : (
         <FindView user={user} isAdmin={isAdmin} onRequestSignIn={() => setMode("auth")} />
       )}
+
+      <Footer />
     </div>
   );
 }
