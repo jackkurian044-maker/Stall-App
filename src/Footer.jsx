@@ -22,9 +22,8 @@ export default function Footer() {
         style={{ height: 72, width: "auto" }}
       />
       <div style={{ fontSize: 13, color: "#c7ccd1" }}>
-        © {new Date().getFullYear()} Stall App · Bengaluru · Built for local commerce, everywhere
+        © {new Date().getFullYear()} Stall App · your neighbourhood · Built for local commerce, everywhere
       </div>
     </div>
   );
 }
-
