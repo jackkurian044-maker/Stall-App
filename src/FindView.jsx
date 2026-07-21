@@ -30,7 +30,15 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
     const unsub = onSnapshot(
       collection(db, "vendors"),
       (snap) => {
-        setVendors(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+        // Hide direct self-registrations still awaiting admin review, and
+        // any that were rejected. Listings without a status field at all
+        // (admin-added, or anything created before this field existed)
+        // are treated as public — status is only ever set to 'pending' by
+        // register.html, so its absence means "not subject to this gate".
+        const visible = snap.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .filter((v) => v.status !== "pending" && v.status !== "rejected");
+        setVendors(visible);
         setLoading(false);
       },
       () => setLoading(false)
