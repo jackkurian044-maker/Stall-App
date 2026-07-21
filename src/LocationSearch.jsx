@@ -110,7 +110,7 @@ export default function LocationSearch({ address, lat, lng, website, mapsUrl, pl
   };
 
   const inputStyle = {
-    width: "100%", padding: "9px 10px", borderRadius: 7,
+    width: "100%", padding: "9px 10px", borderRadius: 14,
     border: `1.5px solid ${COLORS.ink}`, fontSize: 13, background: "#fff", boxSizing: "border-box",
   };
 
@@ -122,7 +122,7 @@ export default function LocationSearch({ address, lat, lng, website, mapsUrl, pl
           <button
             type="button"
             onClick={() => setManualMode(false)}
-            style={{ background: "none", border: "none", color: COLORS.teal, fontSize: 11, cursor: "pointer", textDecoration: "underline" }}
+            style={{ background: "none", border: "none", color: COLORS.green, fontSize: 11, cursor: "pointer", textDecoration: "underline" }}
           >
             search by name/address instead
           </button>
@@ -190,7 +190,7 @@ export default function LocationSearch({ address, lat, lng, website, mapsUrl, pl
 
       {hasLocation ? (
         <>
-          <div className="font-mono" style={{ fontSize: 11, color: COLORS.teal, marginTop: 4, marginBottom: rating != null ? 2 : 8 }}>
+          <div className="font-mono" style={{ fontSize: 11, color: COLORS.green, marginTop: 4, marginBottom: rating != null ? 2 : 8 }}>
             ✓ location set ({Number(lat).toFixed(5)}, {Number(lng).toFixed(5)})
           </div>
           {rating != null && (

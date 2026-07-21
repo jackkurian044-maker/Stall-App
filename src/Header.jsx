@@ -14,18 +14,17 @@ export default function Header({ mode, setMode, user, isAdmin, onSignOut }) {
   return (
     <div
       style={{
-        borderBottom: `2px solid ${COLORS.ink}`,
-        boxShadow: "0 3px 0 #18262010",
-        background: "#EDEEE6",
-        padding: "18px 24px",
+        position: "sticky",
+        top: 0,
+        zIndex: 20,
+        background: "#fff",
+        boxShadow: "0 2px 14px rgba(0,0,0,0.12)",
+        padding: "14px 24px",
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
         flexWrap: "wrap",
         gap: 12,
-        position: "sticky",
-        top: 0,
-        zIndex: 20,
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -33,8 +32,8 @@ export default function Header({ mode, setMode, user, isAdmin, onSignOut }) {
           style={{
             width: 38,
             height: 38,
-            background: COLORS.ink,
-            borderRadius: 8,
+            background: COLORS.navy,
+            borderRadius: 10,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -44,15 +43,14 @@ export default function Header({ mode, setMode, user, isAdmin, onSignOut }) {
           <Store size={20} color={COLORS.marigold} />
         </div>
         <div>
-          <div className="font-display" style={{ fontSize: 26, fontWeight: 700, lineHeight: 1 }}>
+          <div className="font-display" style={{ fontSize: 24, fontWeight: 700, lineHeight: 1, color: COLORS.navy }}>
             STALL
           </div>
           <div
             style={{
               fontSize: 11,
-              letterSpacing: "0.08em",
-              textTransform: "uppercase",
-              color: COLORS.teal,
+              letterSpacing: "0.04em",
+              color: "#6b7580",
               fontWeight: 600,
             }}
           >
@@ -65,10 +63,10 @@ export default function Header({ mode, setMode, user, isAdmin, onSignOut }) {
         <div
           style={{
             display: "flex",
-            background: "#fff",
-            border: `2px solid ${COLORS.ink}`,
-            borderRadius: 10,
-            overflow: "hidden",
+            background: "#f4f2ec",
+            borderRadius: 999,
+            padding: 4,
+            gap: 2,
           }}
         >
           {tabs.map((t) => (
@@ -80,13 +78,12 @@ export default function Header({ mode, setMode, user, isAdmin, onSignOut }) {
                 padding: "9px 16px",
                 fontSize: 13,
                 fontWeight: 600,
-                letterSpacing: "0.02em",
-                textTransform: "uppercase",
+                borderRadius: 999,
                 border: "none",
                 cursor: "pointer",
                 transition: "background .12s ease, color .12s ease",
-                background: mode === t.id ? COLORS.ink : "transparent",
-                color: mode === t.id ? COLORS.paper : COLORS.ink,
+                background: mode === t.id ? COLORS.navy : "transparent",
+                color: mode === t.id ? "#fff" : COLORS.navy,
               }}
             >
               {t.label}
@@ -96,15 +93,8 @@ export default function Header({ mode, setMode, user, isAdmin, onSignOut }) {
         {user && (
           <button
             onClick={onSignOut}
-            className="stall-btn"
-            style={{
-              background: "transparent",
-              border: `1.5px solid ${COLORS.ink}`,
-              borderRadius: 8,
-              padding: "8px 12px",
-              fontSize: 12,
-              fontWeight: 600,
-            }}
+            className="stall-btn stall-pill stall-pill-gold"
+            style={{ padding: "9px 18px", fontSize: 13 }}
           >
             Sign out
           </button>

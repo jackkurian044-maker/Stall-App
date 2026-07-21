@@ -4,51 +4,60 @@ html, body, #root {
   margin: 0;
   padding: 0;
   min-height: 100%;
-  background: #EDEEE6;
-  color: #182620;
-  font-family: 'Inter', sans-serif;
+  background: #fdf9ef;
+  color: #17222c;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-body {
-  /* faint dot-grid, like pegboard at a market stall — barely-there texture,
-     not decoration for its own sake */
-  background-image: radial-gradient(#18262014 1px, transparent 1px);
-  background-size: 18px 18px;
-  background-attachment: fixed;
-}
-
-.font-display { font-family: 'Fraunces', serif; }
-.font-mono { font-family: 'IBM Plex Mono', monospace; }
+.font-display { font-family: Georgia, 'Times New Roman', serif; }
+.font-mono { font-family: ui-monospace, 'SF Mono', 'IBM Plex Mono', monospace; }
 
 input, select, textarea, button {
   font-family: inherit;
 }
 
 input:focus, select:focus, textarea:focus, button:focus-visible {
-  outline: 2px solid #E2A73D;
+  outline: 2px solid #f3b73d;
   outline-offset: 1px;
 }
 
 .stall-btn { transition: transform .12s ease, box-shadow .12s ease; cursor: pointer; }
 .stall-btn:active { transform: translateY(1px); }
 
-.stall-tab:hover { background: #18262014 !important; }
+.stall-tab:hover { background: #17222c0d !important; }
 
 .stall-card { transition: box-shadow .15s ease, transform .15s ease; }
-.stall-card:hover { box-shadow: 4px 4px 0 var(--stall-shadow, #182620); transform: translate(-2px, -2px); }
+.stall-card:hover { box-shadow: 0 12px 28px rgba(15,26,36,0.14); transform: translateY(-2px); }
 
-/* Shared white bordered panel — used by every form/section card so the
-   border weight, radius and shadow stay identical across the app. */
+/* Shared panel — soft rounded card, no hard border, gentle shadow.
+   Mirrors the landing page's stat-strip / step-card treatment so every
+   form/section in the app reads as part of the same product as the site. */
 .stall-panel {
   background: #fff;
-  border: 2px solid #182620;
-  border-radius: 12px;
-  box-shadow: 3px 3px 0 #18262012;
+  border: 1px solid rgba(15,26,36,0.08);
+  border-radius: 20px;
+  box-shadow: 0 8px 24px rgba(15,26,36,0.08);
 }
 
+/* Pill buttons, matching the landing page's .pill / .btn-gold */
+.stall-pill {
+  font-weight: 700;
+  border-radius: 40px;
+  padding: 12px 24px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+}
+.stall-pill-dark { background: #0f1a24; color: #fff; }
+.stall-pill-gold { background: #f3b73d; color: #17222c; }
+.stall-pill-outline { background: transparent; color: #0f1a24; border: 1.5px solid #0f1a24; }
+
 /* ---- Radar scope: the app's signature element ----
-   A literal scanning radar screen instead of a plain scatter plot —
-   dark dish, three concentric range rings, a slow rotating sweep. */
+   Recolored to the landing page's navy/gold instead of the old dark-green
+   scheme, same rotating-sweep mechanic. */
 .radar-scope {
   position: relative;
   width: 100%;
@@ -62,20 +71,20 @@ input:focus, select:focus, textarea:focus, button:focus-visible {
       circle at center,
       transparent 0,
       transparent calc(33.33% - 1px),
-      #E2A73D2e calc(33.33% - 1px),
-      #E2A73D2e 33.33%,
+      #f3b73d2e calc(33.33% - 1px),
+      #f3b73d2e 33.33%,
       transparent calc(33.33% + 1px)
     ),
-    radial-gradient(circle at 50% 50%, #1c2e26 0%, #182620 75%, #101b16 100%);
-  border: 2px solid #182620;
-  box-shadow: inset 0 0 24px #00000055, 3px 3px 0 #18262012;
+    radial-gradient(circle at 50% 50%, #16232f 0%, #0f1a24 75%, #0a1219 100%);
+  border: 1px solid rgba(15,26,36,0.08);
+  box-shadow: inset 0 0 24px #00000055, 0 8px 24px rgba(15,26,36,0.14);
 }
 
 .radar-scope::before,
 .radar-scope::after {
   content: "";
   position: absolute;
-  background: #E2A73D26;
+  background: #f3b73d26;
   pointer-events: none;
 }
 .radar-scope::before { left: 0; right: 0; top: 50%; height: 1px; }
@@ -85,7 +94,7 @@ input:focus, select:focus, textarea:focus, button:focus-visible {
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  background: conic-gradient(from 0deg, transparent 0deg, #E2A73D4d 18deg, transparent 46deg);
+  background: conic-gradient(from 0deg, transparent 0deg, #f3b73d4d 18deg, transparent 46deg);
   animation: radar-rotate 4.5s linear infinite;
   pointer-events: none;
 }
@@ -111,16 +120,16 @@ input:focus, select:focus, textarea:focus, button:focus-visible {
 }
 
 ::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-thumb { background: #182620aa; border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: #17222caa; border-radius: 4px; }
 
 /* Google Places Autocomplete dropdown styling (structure is fixed by
    Google; only cosmetic overrides are supported/allowed). */
 .pac-container {
-  font-family: 'Inter', sans-serif;
-  border: 2px solid #182620;
-  border-radius: 8px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  border: 1px solid rgba(15,26,36,0.1);
+  border-radius: 12px;
   margin-top: 4px;
-  box-shadow: none;
+  box-shadow: 0 8px 24px rgba(15,26,36,0.14);
 }
 .pac-item {
   padding: 8px 10px;
@@ -128,7 +137,7 @@ input:focus, select:focus, textarea:focus, button:focus-visible {
   cursor: pointer;
 }
 .pac-item:hover, .pac-item-selected {
-  background: #E2A73D33;
+  background: #f3b73d33;
 }
 .pac-icon { display: none; }
-.pac-item-query { font-size: 13px; color: #182620; }
+.pac-item-query { font-size: 13px; color: #17222c; }

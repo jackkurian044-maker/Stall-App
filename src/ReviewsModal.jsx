@@ -132,7 +132,7 @@ export default function ReviewsModal({ vendor, user, isAdmin, onClose, onRequest
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: "#fff", borderRadius: 14, border: `2px solid ${COLORS.ink}`,
+          background: "#fff", borderRadius: 14, border: "1px solid rgba(15,26,36,0.08)", boxShadow: "0 8px 24px rgba(15,26,36,0.08)",
           width: "100%", maxWidth: 520, maxHeight: "85vh", overflowY: "auto", padding: 24,
         }}
       >
@@ -166,7 +166,7 @@ export default function ReviewsModal({ vendor, user, isAdmin, onClose, onRequest
         )}
 
         {user ? (
-          <form onSubmit={submitReview} style={{ background: COLORS.paper, borderRadius: 10, padding: 14, marginBottom: 18 }}>
+          <form onSubmit={submitReview} style={{ background: COLORS.paper, borderRadius: 16, padding: 14, marginBottom: 18 }}>
             <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 8 }}>
               {myExisting ? "Edit your review" : "Leave a review"}
             </div>
@@ -176,11 +176,11 @@ export default function ReviewsModal({ vendor, user, isAdmin, onClose, onRequest
               onChange={(e) => setMyComment(e.target.value)}
               placeholder="What was your experience?"
               rows={3}
-              style={{ width: "100%", marginTop: 10, padding: "8px 10px", borderRadius: 7, border: `1.5px solid ${COLORS.ink}`, fontSize: 13, resize: "vertical", boxSizing: "border-box" }}
+              style={{ width: "100%", marginTop: 10, padding: "8px 10px", borderRadius: 14, border: `1.5px solid ${COLORS.ink}`, fontSize: 13, resize: "vertical", boxSizing: "border-box" }}
             />
             {error && <div style={{ fontSize: 11.5, color: COLORS.brick, marginTop: 6 }}>{error}</div>}
             <div style={{ display: "flex", gap: 8, marginTop: 10, alignItems: "center", flexWrap: "wrap" }}>
-              <button type="submit" disabled={saving} className="stall-btn" style={{ background: COLORS.ink, color: "#fff", border: "none", borderRadius: 7, padding: "8px 14px", fontSize: 12.5, fontWeight: 700 }}>
+              <button type="submit" disabled={saving} className="stall-btn" style={{ background: COLORS.navy, color: "#fff", border: "none", borderRadius: 999, padding: "8px 14px", fontSize: 12.5, fontWeight: 700 }}>
                 {saving ? "Saving…" : myExisting ? "Update review" : "Post review"}
               </button>
               {myExisting && (
@@ -193,7 +193,7 @@ export default function ReviewsModal({ vendor, user, isAdmin, onClose, onRequest
                   href={`https://search.google.com/local/writereview?placeid=${vendor.placeId}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ fontSize: 11.5, color: COLORS.teal, display: "flex", alignItems: "center", gap: 4, textDecoration: "none", marginLeft: "auto" }}
+                  style={{ fontSize: 11.5, color: COLORS.green, display: "flex", alignItems: "center", gap: 4, textDecoration: "none", marginLeft: "auto" }}
                 >
                   Also post on Google <ExternalLink size={11} />
                 </a>
@@ -201,7 +201,7 @@ export default function ReviewsModal({ vendor, user, isAdmin, onClose, onRequest
             </div>
 
             {justSubmitted && vendor.placeId && (
-              <div style={{ marginTop: 12, background: `${COLORS.marigold}22`, border: `1.5px solid ${COLORS.marigold}`, borderRadius: 8, padding: 12, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <div style={{ marginTop: 12, background: `${COLORS.marigold}22`, border: `1.5px solid ${COLORS.marigold}`, borderRadius: 14, padding: 12, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                 <span style={{ fontSize: 12.5 }}>
                   ✓ Posted on STALL. Want it on Google too?
                 </span>
@@ -210,7 +210,7 @@ export default function ReviewsModal({ vendor, user, isAdmin, onClose, onRequest
                   target="_blank"
                   rel="noopener noreferrer"
                   className="stall-btn"
-                  style={{ background: COLORS.ink, color: "#fff", borderRadius: 7, padding: "7px 12px", fontSize: 12, fontWeight: 700, textDecoration: "none", display: "flex", alignItems: "center", gap: 5, whiteSpace: "nowrap" }}
+                  style={{ background: COLORS.ink, color: "#fff", borderRadius: 14, padding: "7px 12px", fontSize: 12, fontWeight: 700, textDecoration: "none", display: "flex", alignItems: "center", gap: 5, whiteSpace: "nowrap" }}
                 >
                   Also post on Google <ExternalLink size={12} />
                 </a>
@@ -218,12 +218,12 @@ export default function ReviewsModal({ vendor, user, isAdmin, onClose, onRequest
             )}
           </form>
         ) : (
-          <div style={{ background: COLORS.paper, borderRadius: 10, padding: 14, marginBottom: 18, fontSize: 12.5, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+          <div style={{ background: COLORS.paper, borderRadius: 16, padding: 14, marginBottom: 18, fontSize: 12.5, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
             <span>Sign in to leave a review.</span>
             <button
               onClick={() => { onRequestSignIn?.(); onClose(); }}
               className="stall-btn"
-              style={{ background: COLORS.ink, color: "#fff", border: "none", borderRadius: 7, padding: "7px 12px", fontSize: 12, fontWeight: 700, whiteSpace: "nowrap" }}
+              style={{ background: COLORS.navy, color: "#fff", border: "none", borderRadius: 999, padding: "7px 12px", fontSize: 12, fontWeight: 700, whiteSpace: "nowrap" }}
             >
               Sign in
             </button>

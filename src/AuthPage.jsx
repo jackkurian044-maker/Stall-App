@@ -16,7 +16,7 @@ export default function AuthPage({ onSignedIn }) {
   const [resetSent, setResetSent] = useState(false);
 
   const inputStyle = {
-    width: "100%", padding: "9px 10px", borderRadius: 7,
+    width: "100%", padding: "9px 10px", borderRadius: 14,
     border: `1.5px solid ${COLORS.ink}`, fontSize: 13, background: "#fff", boxSizing: "border-box",
   };
 
@@ -50,7 +50,7 @@ export default function AuthPage({ onSignedIn }) {
 
   return (
     <div style={{ padding: 24, display: "flex", justifyContent: "center" }}>
-      <div style={{ width: "100%", maxWidth: 380, background: "#fff", border: `2px solid ${COLORS.ink}`, borderRadius: 12, padding: 24 }}>
+      <div style={{ width: "100%", maxWidth: 380, background: "#fff", border: "1px solid rgba(15,26,36,0.08)", boxShadow: "0 8px 24px rgba(15,26,36,0.08)", borderRadius: 20, padding: 24 }}>
         <div className="font-display" style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>
           {mode === "signup" ? "Create your account" : "Sign in"}
         </div>
@@ -71,13 +71,13 @@ export default function AuthPage({ onSignedIn }) {
           </div>
 
           {error && <div style={{ color: COLORS.brick, fontSize: 12, marginBottom: 10 }}>{error}</div>}
-          {resetSent && <div style={{ color: COLORS.teal, fontSize: 12, marginBottom: 10 }}>Password reset email sent.</div>}
+          {resetSent && <div style={{ color: COLORS.green, fontSize: 12, marginBottom: 10 }}>Password reset email sent.</div>}
 
           <button
             type="submit"
             disabled={busy}
             className="stall-btn"
-            style={{ width: "100%", background: COLORS.ink, color: "#fff", border: "none", borderRadius: 7, padding: "10px", fontSize: 13, fontWeight: 700, marginBottom: 10 }}
+            style={{ width: "100%", background: COLORS.navy, color: "#fff", border: "none", borderRadius: 999, padding: "10px", fontSize: 13, fontWeight: 700, marginBottom: 10 }}
           >
             {busy ? "Please wait…" : mode === "signup" ? "Create account" : "Sign in"}
           </button>
@@ -86,7 +86,7 @@ export default function AuthPage({ onSignedIn }) {
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
           <button
             onClick={() => { setMode(mode === "signup" ? "signin" : "signup"); setError(""); }}
-            style={{ background: "none", border: "none", color: COLORS.teal, cursor: "pointer", textDecoration: "underline", padding: 0 }}
+            style={{ background: "none", border: "none", color: COLORS.green, cursor: "pointer", textDecoration: "underline", padding: 0 }}
           >
             {mode === "signup" ? "Already have an account? Sign in" : "New vendor? Create an account"}
           </button>

@@ -45,7 +45,7 @@ export default function RadarChart({ radarData, radiusKm, onSelect }) {
                   const d = payload[0].payload;
                   if (d.distance == null) return null;
                   return (
-                    <div style={{ background: COLORS.ink, color: "#fff", padding: "6px 10px", borderRadius: 6, fontSize: 12, border: `1px solid ${COLORS.marigold}` }}>
+                    <div style={{ background: COLORS.ink, color: "#fff", padding: "6px 10px", borderRadius: 20, fontSize: 12, border: `1px solid ${COLORS.marigold}` }}>
                       <div style={{ fontWeight: 600 }}>{d.name}</div>
                       <div className="font-mono" style={{ fontSize: 11 }}>
                         {d.distance.toFixed(2)} km · {d.category}

@@ -124,15 +124,15 @@ export default function PremiumGate({ user, listing }) {
   }
 
   const inputStyle = {
-    width: "100%", padding: "9px 10px", borderRadius: 7,
+    width: "100%", padding: "9px 10px", borderRadius: 14,
     border: `1.5px solid ${COLORS.ink}`, fontSize: 13,
     background: "#fff", boxSizing: "border-box",
   };
 
   const cardStyle = {
     background: "#fff",
-    border: `2px solid ${COLORS.ink}`,
-    borderRadius: 12,
+    border: "1px solid rgba(15,26,36,0.08)", boxShadow: "0 8px 24px rgba(15,26,36,0.08)",
+    borderRadius: 20,
     padding: 18,
     marginBottom: 16,
   };
@@ -152,7 +152,7 @@ export default function PremiumGate({ user, listing }) {
       <div style={cardStyle}>
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: COLORS.ink, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ width: 36, height: 36, borderRadius: 16, background: COLORS.ink, display: "flex", alignItems: "center", justifyContent: "center" }}>
             <Zap size={18} color="#fff" />
           </div>
           <div>
@@ -200,12 +200,12 @@ export default function PremiumGate({ user, listing }) {
         {!showConfirmCancel ? (
           <button
             onClick={() => setShowConfirmCancel(true)}
-            style={{ background: "transparent", border: `1.5px solid #E24B4A`, borderRadius: 7, padding: "7px 14px", fontSize: 12, color: "#E24B4A", cursor: "pointer", fontWeight: 600 }}
+            style={{ background: "transparent", border: `1.5px solid #E24B4A`, borderRadius: 14, padding: "7px 14px", fontSize: 12, color: "#E24B4A", cursor: "pointer", fontWeight: 600 }}
           >
             Cancel subscription
           </button>
         ) : (
-          <div style={{ background: "#FEF3F2", border: "1px solid #FECACA", borderRadius: 8, padding: 12 }}>
+          <div style={{ background: "#FEF3F2", border: "1px solid #FECACA", borderRadius: 14, padding: 12 }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: "#991B1B", marginBottom: 6 }}>
               Cancel Premium?
             </div>
@@ -216,13 +216,13 @@ export default function PremiumGate({ user, listing }) {
               <button
                 onClick={handleCancel}
                 disabled={cancelling}
-                style={{ background: "#E24B4A", border: "none", borderRadius: 7, padding: "8px 16px", fontSize: 12, color: "#fff", cursor: "pointer", fontWeight: 600 }}
+                style={{ background: "#E24B4A", border: "none", borderRadius: 14, padding: "8px 16px", fontSize: 12, color: "#fff", cursor: "pointer", fontWeight: 600 }}
               >
                 {cancelling ? "Cancelling..." : "Yes, cancel"}
               </button>
               <button
                 onClick={() => setShowConfirmCancel(false)}
-                style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 7, padding: "8px 14px", fontSize: 12, cursor: "pointer" }}
+                style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 14, padding: "8px 14px", fontSize: 12, cursor: "pointer" }}
               >
                 Keep Premium
               </button>
@@ -256,7 +256,7 @@ export default function PremiumGate({ user, listing }) {
       </div>
 
       {/* Pricing */}
-      <div style={{ background: "#F9FAFB", borderRadius: 10, padding: "14px 16px", marginBottom: 16, border: "1px solid #E5E7EB" }}>
+      <div style={{ background: "#F9FAFB", borderRadius: 16, padding: "14px 16px", marginBottom: 16, border: "1px solid #E5E7EB" }}>
         <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 4 }}>
           <span style={{ fontSize: 32, fontWeight: 800, color: COLORS.ink }}>₹{PLAN_PRICE}</span>
           <span style={{ fontSize: 14, color: "#6B7280" }}>/month</span>
@@ -282,7 +282,7 @@ export default function PremiumGate({ user, listing }) {
         className="stall-btn"
         style={{
           width: "100%", background: loading ? `${COLORS.ink}88` : COLORS.ink,
-          color: "#fff", border: "none", borderRadius: 7, padding: "12px",
+          color: "#fff", border: "none", borderRadius: 14, padding: "12px",
           fontSize: 14, fontWeight: 700, cursor: loading ? "not-allowed" : "pointer",
           display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
         }}
@@ -325,7 +325,7 @@ INTEGRATION: Add to VendorDashboard.jsx
          onClick={() => setDashTab(t)}
          className="stall-btn"
          style={{
-           padding: "7px 16px", borderRadius: 7, fontSize: 13, fontWeight: 600,
+           padding: "7px 16px", borderRadius: 14, fontSize: 13, fontWeight: 600,
            border: `1.5px solid ${COLORS.ink}`,
            background: dashTab === t ? COLORS.ink : "#fff",
            color: dashTab === t ? "#fff" : COLORS.ink,

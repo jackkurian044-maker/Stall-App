@@ -42,7 +42,7 @@ export default function AdminDashboard() {
   }, [vendors]);
 
   const inputStyle = {
-    width: "100%", padding: "9px 10px", borderRadius: 7,
+    width: "100%", padding: "9px 10px", borderRadius: 14,
     border: `1.5px solid ${COLORS.ink}`, fontSize: 13, background: "#fff", boxSizing: "border-box",
   };
   const field = (label, node) => (
@@ -164,7 +164,7 @@ export default function AdminDashboard() {
                   onClick={() => setForm({ ...form, preferredLink: opt.id })}
                   className="stall-btn"
                   style={{
-                    flex: 1, borderRadius: 7, padding: "8px 10px", fontSize: 12.5, fontWeight: 600,
+                    flex: 1, borderRadius: 14, padding: "8px 10px", fontSize: 12.5, fontWeight: 600,
                     border: `1.5px solid ${COLORS.ink}`,
                     background: (form.preferredLink || "mapsUrl") === opt.id ? COLORS.ink : "#fff",
                     color: (form.preferredLink || "mapsUrl") === opt.id ? "#fff" : COLORS.ink,
@@ -200,11 +200,11 @@ export default function AdminDashboard() {
           {error && <div style={{ color: COLORS.brick, fontSize: 12, marginBottom: 10 }}>{error}</div>}
 
           <div style={{ display: "flex", gap: 8 }}>
-            <button type="submit" disabled={saving} className="stall-btn" style={{ flex: 1, background: COLORS.ink, color: "#fff", border: "none", borderRadius: 7, padding: "10px", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+            <button type="submit" disabled={saving} className="stall-btn" style={{ flex: 1, background: COLORS.navy, color: "#fff", border: "none", borderRadius: 999, padding: "10px", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
               <Plus size={15} /> {saving ? "Saving…" : editingId ? "Save changes" : "Add vendor"}
             </button>
             {editingId && (
-              <button type="button" onClick={cancelEdit} className="stall-btn" style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 7, padding: "10px 14px", fontSize: 13 }}>
+              <button type="button" onClick={cancelEdit} className="stall-btn" style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 14, padding: "10px 14px", fontSize: 13 }}>
                 Cancel
               </button>
             )}
@@ -212,7 +212,7 @@ export default function AdminDashboard() {
         </form>
 
         {lastCode && (
-          <div style={{ marginTop: 14, background: `${COLORS.marigold}22`, border: `1.5px solid ${COLORS.marigold}`, borderRadius: 8, padding: 12 }}>
+          <div style={{ marginTop: 14, background: `${COLORS.marigold}22`, border: `1.5px solid ${COLORS.marigold}`, borderRadius: 14, padding: 12 }}>
             <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>Claim code for "{lastCode.name}"</div>
             <div className="font-mono" style={{ fontSize: 18, letterSpacing: "0.1em" }}>{lastCode.code}</div>
             <div style={{ fontSize: 11, color: "#666", marginTop: 4 }}>
@@ -229,11 +229,11 @@ export default function AdminDashboard() {
         {loading ? (
           <div style={{ fontSize: 13, color: "#666" }}>Loading…</div>
         ) : vendors.length === 0 ? (
-          <div style={{ border: `2px dashed ${COLORS.ink}55`, borderRadius: 12, padding: 30, textAlign: "center", color: "#666", fontSize: 13 }}>
+          <div style={{ border: `2px dashed ${COLORS.ink}55`, borderRadius: 20, padding: 30, textAlign: "center", color: "#666", fontSize: 13 }}>
             No vendors yet.
           </div>
         ) : (
-          <div style={{ border: `2px solid ${COLORS.ink}`, borderRadius: 12, overflow: "hidden" }}>
+          <div style={{ border: "1px solid rgba(15,26,36,0.08)", boxShadow: "0 8px 24px rgba(15,26,36,0.08)", borderRadius: 20, overflow: "hidden" }}>
             {vendors.map((v, i) => (
               <div key={v.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderTop: i === 0 ? "none" : `1px solid ${COLORS.ink}22`, background: editingId === v.id ? `${COLORS.marigold}18` : "#fff" }}>
                 <div style={{ minWidth: 0 }}>
@@ -242,7 +242,7 @@ export default function AdminDashboard() {
                     <span style={{ fontSize: 10, textTransform: "uppercase", fontWeight: 700, color: "#fff", background: CATEGORY_COLORS[v.category] || COLORS.ink, padding: "2px 7px", borderRadius: 999 }}>
                       {v.category}
                     </span>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: v.ownerId ? COLORS.teal : COLORS.brick }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: v.ownerId ? COLORS.green : COLORS.brick }}>
                       {v.ownerId ? "CLAIMED" : "UNCLAIMED"}
                     </span>
                     {v.rating != null && (
@@ -267,7 +267,7 @@ export default function AdminDashboard() {
                   <button
                     onClick={() => startEdit(v)}
                     className="stall-btn"
-                    style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 7, padding: "5px 10px", fontSize: 12, fontWeight: 600 }}
+                    style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 14, padding: "5px 10px", fontSize: 12, fontWeight: 600 }}
                   >
                     Edit
                   </button>

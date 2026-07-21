@@ -45,7 +45,7 @@ export default function MapPicker({ lat, lng, onMove, height = 220 }) {
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
 
   return (
-    <div style={{ height, borderRadius: 8, overflow: "hidden", border: "1.5px solid #182620" }}>
+    <div style={{ height, borderRadius: 14, overflow: "hidden", border: "1.5px solid #182620" }}>
       <MapContainer
         center={[lat, lng]}
         zoom={17}

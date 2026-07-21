@@ -194,7 +194,7 @@ export default function DiscoverNearby() {
   };
 
   const inputStyle = {
-    padding: "9px 10px", borderRadius: 7,
+    padding: "9px 10px", borderRadius: 14,
     border: `1.5px solid ${COLORS.ink}`, fontSize: 13, background: "#fff", boxSizing: "border-box",
   };
 
@@ -208,7 +208,7 @@ export default function DiscoverNearby() {
           Share each claim code with that business — they enter it under
           "Claim a listing" in My Listings to take over editing.
         </div>
-        <div style={{ background: "#fff", border: `2px solid ${COLORS.ink}`, borderRadius: 12, padding: 16, marginBottom: 14 }}>
+        <div style={{ background: "#fff", border: "1px solid rgba(15,26,36,0.08)", boxShadow: "0 8px 24px rgba(15,26,36,0.08)", borderRadius: 20, padding: 16, marginBottom: 14 }}>
           {importResults.map((r, i) => (
             <div
               key={i}
@@ -223,10 +223,10 @@ export default function DiscoverNearby() {
           ))}
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={copyResults} className="stall-btn" style={{ background: COLORS.ink, color: "#fff", border: "none", borderRadius: 7, padding: "9px 14px", fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
+          <button onClick={copyResults} className="stall-btn" style={{ background: COLORS.navy, color: "#fff", border: "none", borderRadius: 999, padding: "9px 14px", fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
             <Copy size={14} /> Copy all as text
           </button>
-          <button onClick={() => setImportResults(null)} className="stall-btn" style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 7, padding: "9px 14px", fontSize: 13, fontWeight: 600 }}>
+          <button onClick={() => setImportResults(null)} className="stall-btn" style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 14, padding: "9px 14px", fontSize: 13, fontWeight: 600 }}>
             Search again
           </button>
         </div>
@@ -245,24 +245,24 @@ export default function DiscoverNearby() {
         set if you don't see what you're after.
       </div>
 
-      <div style={{ background: "#fff", border: `2px solid ${COLORS.ink}`, borderRadius: 12, padding: 16, marginBottom: 16 }}>
+      <div style={{ background: "#fff", border: "1px solid rgba(15,26,36,0.08)", boxShadow: "0 8px 24px rgba(15,26,36,0.08)", borderRadius: 20, padding: 16, marginBottom: 16 }}>
         {!centerLoc ? (
           <div>
             <div style={{ fontSize: 13, marginBottom: 10 }}>Set a center point to search around.</div>
-            <button onClick={locate} className="stall-btn" style={{ background: COLORS.ink, color: "#fff", border: "none", borderRadius: 8, padding: "10px 14px", display: "flex", alignItems: "center", gap: 8, fontWeight: 600, fontSize: 13, marginBottom: 10 }}>
+            <button onClick={locate} className="stall-btn" style={{ background: COLORS.navy, color: "#fff", border: "none", borderRadius: 999, padding: "10px 14px", display: "flex", alignItems: "center", gap: 8, fontWeight: 600, fontSize: 13, marginBottom: 10 }}>
               <Locate size={16} /> {locating ? "Locating…" : "Use my location"}
             </button>
             <div style={{ fontSize: 11, color: "#555", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>or enter coordinates</div>
             <div style={{ display: "flex", gap: 8 }}>
               <input placeholder="Latitude" value={manualLat} onChange={(e) => setManualLat(e.target.value)} className="font-mono" style={{ ...inputStyle, flex: 1 }} />
               <input placeholder="Longitude" value={manualLng} onChange={(e) => setManualLng(e.target.value)} className="font-mono" style={{ ...inputStyle, flex: 1 }} />
-              <button onClick={useManualLoc} className="stall-btn" style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 7, padding: "0 14px", fontSize: 12.5, fontWeight: 600 }}>Set</button>
+              <button onClick={useManualLoc} className="stall-btn" style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 14, padding: "0 14px", fontSize: 12.5, fontWeight: 600 }}>Set</button>
             </div>
           </div>
         ) : (
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <div style={{ fontSize: 12, color: COLORS.teal, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
+              <div style={{ fontSize: 12, color: COLORS.green, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
                 <MapPin size={14} /> CENTER SET · <span className="font-mono">{centerLoc.lat.toFixed(4)}, {centerLoc.lng.toFixed(4)}</span>
               </div>
               <button onClick={locate} style={{ background: "none", border: "none", fontSize: 11, textDecoration: "underline", cursor: "pointer" }}>{locating ? "…" : "re-locate"}</button>
@@ -279,7 +279,7 @@ export default function DiscoverNearby() {
                 </div>
                 <input type="range" min={0.5} max={10} step={0.5} value={radiusKm} onChange={(e) => setRadiusKm(parseFloat(e.target.value))} style={{ width: "100%", accentColor: COLORS.brick }} />
               </div>
-              <button onClick={search} disabled={searching} className="stall-btn" style={{ background: COLORS.ink, color: "#fff", border: "none", borderRadius: 7, padding: "10px 16px", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
+              <button onClick={search} disabled={searching} className="stall-btn" style={{ background: COLORS.navy, color: "#fff", border: "none", borderRadius: 999, padding: "10px 16px", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
                 <Search size={15} /> {searching ? "Searching…" : "Search nearby"}
               </button>
             </div>
@@ -296,7 +296,7 @@ export default function DiscoverNearby() {
             {results.length} result{results.length === 1 ? "" : "s"} · {selectedResults.length} selected
             {results.some((r) => r.alreadyListed) && ` · ${results.filter((r) => r.alreadyListed).length} already on Stall`}
           </div>
-          <div style={{ border: `2px solid ${COLORS.ink}`, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
+          <div style={{ border: "1px solid rgba(15,26,36,0.08)", boxShadow: "0 8px 24px rgba(15,26,36,0.08)", borderRadius: 20, overflow: "hidden", marginBottom: 16 }}>
             {results.map((r, i) => {
               const dist = centerLoc ? haversineKm(centerLoc, { lat: r.lat, lng: r.lng }) : null;
               return (
@@ -306,7 +306,7 @@ export default function DiscoverNearby() {
                     <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                       <span style={{ fontWeight: 700, fontSize: 13.5 }}>{r.name}</span>
                       {r.alreadyListed && (
-                        <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 10, background: COLORS.ink, color: "#fff" }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 16, background: COLORS.ink, color: "#fff" }}>
                           Already listed
                         </span>
                       )}
@@ -319,7 +319,7 @@ export default function DiscoverNearby() {
                     <select
                       value={r.category}
                       onChange={(e) => updateResultCategory(r.placeId, e.target.value)}
-                      style={{ fontSize: 11, padding: "3px 6px", borderRadius: 6, border: `1px solid ${COLORS.ink}55`, background: "#fff" }}
+                      style={{ fontSize: 11, padding: "3px 6px", borderRadius: 20, border: `1px solid ${COLORS.ink}55`, background: "#fff" }}
                     >
                       {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
                     </select>
@@ -333,7 +333,7 @@ export default function DiscoverNearby() {
             onClick={addSelected}
             disabled={adding || selectedResults.length === 0}
             className="stall-btn"
-            style={{ background: COLORS.brick, color: "#fff", border: "none", borderRadius: 7, padding: "10px 16px", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}
+            style={{ background: COLORS.brick, color: "#fff", border: "none", borderRadius: 14, padding: "10px 16px", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}
           >
             {adding && <Loader2 size={14} className="spin" />}
             {adding ? "Adding…" : `Add ${selectedResults.length} selected`}

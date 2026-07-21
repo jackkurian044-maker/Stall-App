@@ -35,11 +35,11 @@ export default function VendorTicket({ vendor, highlighted, onClick, onOpenRevie
       style={{
         "--stall-shadow": accent,
         background: "#fff",
-        border: `2px solid ${COLORS.ink}`,
+        border: "1px solid rgba(15,26,36,0.08)",
         borderRadius: 14,
         padding: "24px 26px",
         cursor: "pointer",
-        boxShadow: highlighted ? `4px 4px 0 ${accent}` : "none",
+        boxShadow: highlighted ? `0 8px 24px ${accent}55` : "0 8px 24px rgba(15,26,36,0.08)",
         display: "flex",
         flexDirection: "column",
       }}
@@ -73,7 +73,7 @@ export default function VendorTicket({ vendor, highlighted, onClick, onOpenRevie
         <img
           src={thumbnail}
           alt=""
-          style={{ width: 104, height: 104, borderRadius: 12, objectFit: "cover", flexShrink: 0, border: `1.5px solid ${COLORS.ink}22` }}
+          style={{ width: 104, height: 104, borderRadius: 20, objectFit: "cover", flexShrink: 0, border: `1.5px solid ${COLORS.ink}22` }}
         />
       )}
       <div style={{ minWidth: 0, flex: 1 }}>
@@ -128,10 +128,10 @@ export default function VendorTicket({ vendor, highlighted, onClick, onOpenRevie
                 key={i}
                 style={{
                   fontSize: 12,
-                  background: `${COLORS.teal}1a`,
-                  color: COLORS.teal,
+                  background: `${COLORS.green}1a`,
+                  color: COLORS.green,
                   padding: "3px 9px",
-                  borderRadius: 6,
+                  borderRadius: 20,
                 }}
               >
                 {p}
@@ -148,7 +148,7 @@ export default function VendorTicket({ vendor, highlighted, onClick, onOpenRevie
           )}
           <button
             onClick={handleReviewsClick}
-            style={{ background: "none", border: "none", cursor: "pointer", color: COLORS.teal, fontSize: 12, fontWeight: 600, display: "flex", alignItems: "center", gap: 4, padding: 0 }}
+            style={{ background: "none", border: "none", cursor: "pointer", color: COLORS.green, fontSize: 12, fontWeight: 600, display: "flex", alignItems: "center", gap: 4, padding: 0 }}
           >
             <MessageSquare size={12} /> Reviews
           </button>
@@ -169,7 +169,7 @@ export default function VendorTicket({ vendor, highlighted, onClick, onOpenRevie
           style={{
             background: COLORS.ink,
             color: "#fff",
-            borderRadius: 8,
+            borderRadius: 14,
             padding: "8px 14px",
             fontSize: 15,
             fontWeight: 600,

@@ -17,9 +17,14 @@ export const CATEGORY_COLORS = {
 };
 
 export const COLORS = {
-  ink: "#182620",
-  paper: "#EDEEE6",
-  marigold: "#E2A73D",
+  ink: "#17222c",
+  paper: "#fdf9ef",
+  marigold: "#f3b73d",
+  goldDark: "#d99a1e",
+  navy: "#0f1a24",
+  navy2: "#16232f",
+  muted: "#b7c2cb",
+  green: "#2f9e44",
   brick: "#B4472A",
   teal: "#3F6D64",
 };

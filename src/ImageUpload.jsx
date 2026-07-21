@@ -67,7 +67,7 @@ export default function ImageUpload({ photos = [], pathPrefix, onChange }) {
       </label>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
         {photos.map((url) => (
-          <div key={url} style={{ position: "relative", width: 72, height: 72, borderRadius: 8, overflow: "hidden", border: `1.5px solid ${COLORS.ink}` }}>
+          <div key={url} style={{ position: "relative", width: 72, height: 72, borderRadius: 14, overflow: "hidden", border: `1.5px solid ${COLORS.ink}` }}>
             <img src={url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
             <button
               type="button"
@@ -89,7 +89,7 @@ export default function ImageUpload({ photos = [], pathPrefix, onChange }) {
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
             style={{
-              width: 72, height: 72, borderRadius: 8, border: `1.5px dashed ${COLORS.ink}77`,
+              width: 72, height: 72, borderRadius: 14, border: `1.5px dashed ${COLORS.ink}77`,
               background: "#fff", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
               gap: 4, cursor: "pointer", color: "#777",
             }}

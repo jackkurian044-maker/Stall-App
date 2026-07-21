@@ -123,28 +123,28 @@ export default function ReviewAutoResponder({ listing }) {
 
   const S = {
     wrap: { fontFamily: "'Inter','Segoe UI',Arial,sans-serif", color: "#1A1A2E" },
-    card: { background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: "1.25rem", marginBottom: "1rem" },
+    card: { background: "#fff", border: "1px solid #E5E7EB", borderRadius: 20, padding: "1.25rem", marginBottom: "1rem" },
     heading: { fontSize: 18, fontWeight: 700, color: "#111", marginBottom: 4 },
     sub: { fontSize: 13, color: "#6B7280", marginBottom: "1.25rem" },
     metricGrid: { display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: "1.25rem" },
-    metric: { background: "#F9FAFB", borderRadius: 10, padding: "1rem", textAlign: "center", border: "1px solid #E5E7EB" },
+    metric: { background: "#F9FAFB", borderRadius: 16, padding: "1rem", textAlign: "center", border: "1px solid #E5E7EB" },
     mv: { fontSize: 26, fontWeight: 700, color: "#111" },
     ml: { fontSize: 12, color: "#6B7280", marginTop: 3 },
     btn: (color) => ({
-      background: color || "#111", border: "none", borderRadius: 8,
+      background: color || "#111", border: "none", borderRadius: 14,
       padding: "10px 20px", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer"
     }),
-    outlineBtn: { background: "#fff", border: "1px solid #E5E7EB", borderRadius: 8, padding: "8px 16px", fontSize: 13, cursor: "pointer", color: "#374151" },
+    outlineBtn: { background: "#fff", border: "1px solid #E5E7EB", borderRadius: 14, padding: "8px 16px", fontSize: 13, cursor: "pointer", color: "#374151" },
     tabBar: { display: "flex", gap: 4, marginBottom: "1.25rem", borderBottom: "1px solid #E5E7EB", paddingBottom: 0 },
     tab: (active) => ({
       padding: "8px 16px", border: "none", background: "none", fontSize: 13, fontWeight: active ? 600 : 400,
       color: active ? "#1D9E75" : "#6B7280", cursor: "pointer",
       borderBottom: active ? "2px solid #1D9E75" : "2px solid transparent", marginBottom: -1
     }),
-    reviewCard: { border: "1px solid #E5E7EB", borderRadius: 10, padding: "1rem", marginBottom: "0.75rem", background: "#FAFAFA" },
+    reviewCard: { border: "1px solid #E5E7EB", borderRadius: 16, padding: "1rem", marginBottom: "0.75rem", background: "#FAFAFA" },
     label: { fontSize: 11, fontWeight: 600, color: "#6B7280", textTransform: "uppercase", letterSpacing: ".04em", marginBottom: 4 },
-    responseBox: { background: "#fff", border: "1px solid #E5E7EB", borderRadius: 8, padding: "10px 12px", fontSize: 13, color: "#374151", lineHeight: 1.65 },
-    textarea: { width: "100%", minHeight: 90, border: "1px solid #1D9E75", borderRadius: 8, padding: "10px 12px", fontSize: 13, resize: "vertical", outline: "none", fontFamily: "inherit", boxSizing: "border-box" },
+    responseBox: { background: "#fff", border: "1px solid #E5E7EB", borderRadius: 14, padding: "10px 12px", fontSize: 13, color: "#374151", lineHeight: 1.65 },
+    textarea: { width: "100%", minHeight: 90, border: "1px solid #1D9E75", borderRadius: 14, padding: "10px 12px", fontSize: 13, resize: "vertical", outline: "none", fontFamily: "inherit", boxSizing: "border-box" },
   };
 
   return (
@@ -166,7 +166,7 @@ export default function ReviewAutoResponder({ listing }) {
 
         {/* Connect / Connected state */}
         {!connection?.connected ? (
-          <div style={{ background: "#F9FAFB", borderRadius: 10, padding: "1.25rem", textAlign: "center", border: "1px dashed #D1D5DB" }}>
+          <div style={{ background: "#F9FAFB", borderRadius: 16, padding: "1.25rem", textAlign: "center", border: "1px dashed #D1D5DB" }}>
             <div style={{ fontSize: 32, marginBottom: 10 }}>🔗</div>
             <div style={{ fontSize: 14, fontWeight: 600, color: "#111", marginBottom: 6 }}>Connect your Google Business Profile</div>
             <div style={{ fontSize: 12, color: "#6B7280", marginBottom: 16, maxWidth: 380, margin: "0 auto 16px" }}>
@@ -180,7 +180,7 @@ export default function ReviewAutoResponder({ listing }) {
             </div>
           </div>
         ) : (
-          <div style={{ display: "flex", alignItems: "center", gap: 12, background: "#E1F5EE", borderRadius: 10, padding: "12px 16px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, background: "#E1F5EE", borderRadius: 16, padding: "12px 16px" }}>
             <div style={{ fontSize: 24 }}>✅</div>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: "#085041" }}>Connected to Google Business Profile</div>
@@ -352,14 +352,14 @@ function ResponseSettings({ vendorId, listing }) {
 
   const S2 = {
     label: { fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 6, display: "block" },
-    select: { width: "100%", border: "1px solid #E5E7EB", borderRadius: 8, padding: "9px 12px", fontSize: 13, background: "#fff", outline: "none", marginBottom: 14 },
-    input: { width: "100%", border: "1px solid #E5E7EB", borderRadius: 8, padding: "9px 12px", fontSize: 13, outline: "none", marginBottom: 14, boxSizing: "border-box" },
-    textarea: { width: "100%", minHeight: 80, border: "1px solid #E5E7EB", borderRadius: 8, padding: "10px 12px", fontSize: 13, resize: "vertical", outline: "none", fontFamily: "inherit", boxSizing: "border-box", marginBottom: 14 },
+    select: { width: "100%", border: "1px solid #E5E7EB", borderRadius: 14, padding: "9px 12px", fontSize: 13, background: "#fff", outline: "none", marginBottom: 14 },
+    input: { width: "100%", border: "1px solid #E5E7EB", borderRadius: 14, padding: "9px 12px", fontSize: 13, outline: "none", marginBottom: 14, boxSizing: "border-box" },
+    textarea: { width: "100%", minHeight: 80, border: "1px solid #E5E7EB", borderRadius: 14, padding: "10px 12px", fontSize: 13, resize: "vertical", outline: "none", fontFamily: "inherit", boxSizing: "border-box", marginBottom: 14 },
     checkRow: { display: "flex", alignItems: "center", gap: 8, marginBottom: 8, fontSize: 13, color: "#374151" },
   };
 
   return (
-    <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: "1.25rem" }}>
+    <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 20, padding: "1.25rem" }}>
       <div style={{ fontSize: 14, fontWeight: 600, color: "#111", marginBottom: "1rem" }}>Response Settings</div>
 
       <label style={S2.label}>Response Tone</label>
@@ -411,11 +411,11 @@ function ResponseSettings({ vendorId, listing }) {
         </div>
       ))}
 
-      <button onClick={saveSettings} disabled={saving} style={{ marginTop: 16, background: saving || saved ? "#1D9E75" : "#111", border: "none", borderRadius: 8, padding: "10px 24px", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+      <button onClick={saveSettings} disabled={saving} style={{ marginTop: 16, background: saving || saved ? "#1D9E75" : "#111", border: "none", borderRadius: 14, padding: "10px 24px", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
         {saved ? "✓ Saved!" : saving ? "Saving..." : "Save Settings"}
       </button>
 
-      <div style={{ marginTop: "1.25rem", padding: "12px 14px", background: "#F9FAFB", borderRadius: 8, fontSize: 12, color: "#6B7280", lineHeight: 1.65 }}>
+      <div style={{ marginTop: "1.25rem", padding: "12px 14px", background: "#F9FAFB", borderRadius: 14, fontSize: 12, color: "#6B7280", lineHeight: 1.65 }}>
         <strong style={{ color: "#374151" }}>How AI generates responses:</strong><br />
         Uses your business name (<strong>{listing?.name}</strong>), category (<strong>{listing?.category}</strong>), and the settings above. 5★ reviews get warm thank-you responses. 3★ gets acknowledgment + improvement commitment. 1–2★ gets empathetic resolution-focused responses. All personalised with the reviewer's name.
       </div>

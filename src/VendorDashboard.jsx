@@ -85,7 +85,7 @@ export default function VendorDashboard({ user }) {
   }, [listings]);
 
   const inputStyle = {
-    width: "100%", padding: "9px 10px", borderRadius: 7,
+    width: "100%", padding: "9px 10px", borderRadius: 14,
     border: `1.5px solid ${COLORS.ink}`, fontSize: 13, background: "#fff", boxSizing: "border-box",
   };
   const field = (label, node) => (
@@ -195,7 +195,7 @@ export default function VendorDashboard({ user }) {
     <div className="stall-grid">
       {/* ── LEFT COLUMN — unchanged ── */}
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        <div style={{ background: "#fff", border: `2px solid ${COLORS.ink}`, borderRadius: 12, padding: 18 }}>
+        <div style={{ background: "#fff", border: "1px solid rgba(15,26,36,0.08)", boxShadow: "0 8px 24px rgba(15,26,36,0.08)", borderRadius: 20, padding: 18 }}>
           <div className="font-display" style={{ fontSize: 19, fontWeight: 700, marginBottom: 4 }}>
             {editingId ? "Edit listing" : "Create a listing"}
           </div>
@@ -230,7 +230,7 @@ export default function VendorDashboard({ user }) {
                     onClick={() => setForm({ ...form, preferredLink: opt.id })}
                     className="stall-btn"
                     style={{
-                      flex: 1, borderRadius: 7, padding: "8px 10px", fontSize: 12.5, fontWeight: 600,
+                      flex: 1, borderRadius: 14, padding: "8px 10px", fontSize: 12.5, fontWeight: 600,
                       border: `1.5px solid ${COLORS.ink}`,
                       background: (form.preferredLink || "mapsUrl") === opt.id ? COLORS.ink : "#fff",
                       color: (form.preferredLink || "mapsUrl") === opt.id ? "#fff" : COLORS.ink,
@@ -264,11 +264,11 @@ export default function VendorDashboard({ user }) {
             />
             {error && <div style={{ color: COLORS.brick, fontSize: 12, marginBottom: 10 }}>{error}</div>}
             <div style={{ display: "flex", gap: 8 }}>
-              <button type="submit" disabled={saving} className="stall-btn" style={{ flex: 1, background: COLORS.ink, color: "#fff", border: "none", borderRadius: 7, padding: "10px", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+              <button type="submit" disabled={saving} className="stall-btn" style={{ flex: 1, background: COLORS.navy, color: "#fff", border: "none", borderRadius: 999, padding: "10px", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
                 <Plus size={15} /> {saving ? "Saving…" : editingId ? "Save changes" : "Add listing"}
               </button>
               {editingId && (
-                <button type="button" onClick={() => { setEditingId(null); setForm(emptyForm); }} className="stall-btn" style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 7, padding: "10px 14px", fontSize: 13 }}>
+                <button type="button" onClick={() => { setEditingId(null); setForm(emptyForm); }} className="stall-btn" style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 14, padding: "10px 14px", fontSize: 13 }}>
                   Cancel
                 </button>
               )}
@@ -276,7 +276,7 @@ export default function VendorDashboard({ user }) {
           </form>
         </div>
 
-        <div style={{ background: "#fff", border: `2px solid ${COLORS.ink}`, borderRadius: 12, padding: 18 }}>
+        <div style={{ background: "#fff", border: "1px solid rgba(15,26,36,0.08)", boxShadow: "0 8px 24px rgba(15,26,36,0.08)", borderRadius: 20, padding: 18 }}>
           <div className="font-display" style={{ fontSize: 16, fontWeight: 700, marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}>
             <KeyRound size={15} /> Claim a listing
           </div>
@@ -289,13 +289,13 @@ export default function VendorDashboard({ user }) {
               value={claimCode}
               onChange={(e) => setClaimCode(e.target.value)}
               placeholder="e.g. 7K3PQR"
-              style={{ flex: 1, padding: "8px 10px", borderRadius: 7, border: `1.5px solid ${COLORS.ink}`, fontSize: 13 }}
+              style={{ flex: 1, padding: "8px 10px", borderRadius: 14, border: `1.5px solid ${COLORS.ink}`, fontSize: 13 }}
             />
-            <button type="submit" className="stall-btn" style={{ background: COLORS.ink, color: "#fff", border: "none", borderRadius: 7, padding: "8px 14px", fontSize: 13, fontWeight: 600 }}>
+            <button type="submit" className="stall-btn" style={{ background: COLORS.navy, color: "#fff", border: "none", borderRadius: 999, padding: "8px 14px", fontSize: 13, fontWeight: 600 }}>
               Claim
             </button>
           </form>
-          {claimMsg && <div style={{ fontSize: 12, color: COLORS.teal, marginTop: 8 }}>{claimMsg}</div>}
+          {claimMsg && <div style={{ fontSize: 12, color: COLORS.green, marginTop: 8 }}>{claimMsg}</div>}
         </div>
       </div>
 
@@ -307,7 +307,7 @@ export default function VendorDashboard({ user }) {
             onClick={() => setDashTab("listings")}
             className="stall-btn"
             style={{
-              padding: "7px 16px", borderRadius: 7, fontSize: 13, fontWeight: 600,
+              padding: "7px 16px", borderRadius: 14, fontSize: 13, fontWeight: 600,
               border: `1.5px solid ${COLORS.ink}`,
               background: dashTab === "listings" ? COLORS.ink : "#fff",
               color: dashTab === "listings" ? "#fff" : COLORS.ink,
@@ -320,7 +320,7 @@ export default function VendorDashboard({ user }) {
             onClick={() => setDashTab("premium")}
             className="stall-btn"
             style={{
-              padding: "7px 16px", borderRadius: 7, fontSize: 13, fontWeight: 600,
+              padding: "7px 16px", borderRadius: 14, fontSize: 13, fontWeight: 600,
               border: `1.5px solid ${COLORS.ink}`,
               background: dashTab === "premium" ? COLORS.ink : "#fff",
               color: dashTab === "premium" ? "#fff" : COLORS.ink,
@@ -335,7 +335,7 @@ export default function VendorDashboard({ user }) {
               onClick={() => setDashTab("all")}
               className="stall-btn"
               style={{
-                padding: "7px 16px", borderRadius: 7, fontSize: 13, fontWeight: 600,
+                padding: "7px 16px", borderRadius: 14, fontSize: 13, fontWeight: 600,
                 border: `1.5px solid ${COLORS.ink}`,
                 background: dashTab === "all" ? COLORS.ink : "#fff",
                 color: dashTab === "all" ? "#fff" : COLORS.ink,
@@ -350,7 +350,7 @@ export default function VendorDashboard({ user }) {
               onClick={() => setDashTab("pending")}
               className="stall-btn"
               style={{
-                padding: "7px 16px", borderRadius: 7, fontSize: 13, fontWeight: 600,
+                padding: "7px 16px", borderRadius: 14, fontSize: 13, fontWeight: 600,
                 border: `1.5px solid ${COLORS.ink}`,
                 background: dashTab === "pending" ? COLORS.ink : "#fff",
                 color: dashTab === "pending" ? "#fff" : COLORS.ink,
@@ -370,18 +370,18 @@ export default function VendorDashboard({ user }) {
             {loading ? (
               <div style={{ fontSize: 13, color: "#666" }}>Loading…</div>
             ) : listings.length === 0 ? (
-              <div style={{ border: `2px dashed ${COLORS.ink}55`, borderRadius: 12, padding: 30, textAlign: "center", color: "#666", fontSize: 13 }}>
+              <div style={{ border: `2px dashed ${COLORS.ink}55`, borderRadius: 20, padding: 30, textAlign: "center", color: "#666", fontSize: 13 }}>
                 Nothing yet — create your first listing on the left, or claim one an admin already added.
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {listings.map((l) => (
-                  <div key={l.id} style={{ background: "#fff", border: `2px solid ${COLORS.ink}`, borderRadius: 12, padding: 14, display: "flex", justifyContent: "space-between", gap: 12 }}>
+                  <div key={l.id} style={{ background: "#fff", border: "1px solid rgba(15,26,36,0.08)", boxShadow: "0 8px 24px rgba(15,26,36,0.08)", borderRadius: 20, padding: 14, display: "flex", justifyContent: "space-between", gap: 12 }}>
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center", gap: 6 }}>
                         {l.name}
                         {l.isPremium && (
-                          <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: COLORS.ink, color: "#fff", fontWeight: 600 }}>
+                          <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 16, background: COLORS.ink, color: "#fff", fontWeight: 600 }}>
                             ✦ Premium
                           </span>
                         )}
@@ -401,7 +401,7 @@ export default function VendorDashboard({ user }) {
                           <RefreshCw size={13} />
                         </span>
                       )}
-                      <button onClick={() => startEdit(l)} className="stall-btn" style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 7, padding: "6px 10px", fontSize: 12, fontWeight: 600 }}>
+                      <button onClick={() => startEdit(l)} className="stall-btn" style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 14, padding: "6px 10px", fontSize: 12, fontWeight: 600 }}>
                         Edit
                       </button>
                       <button onClick={() => remove(l.id)} style={{ background: "none", border: "none", cursor: "pointer", color: COLORS.brick, padding: 6 }} title="Delete">
@@ -433,19 +433,19 @@ export default function VendorDashboard({ user }) {
               {allListings.length} total across every vendor, owner, and status.
             </div>
             {allListings.length === 0 ? (
-              <div style={{ border: `2px dashed ${COLORS.ink}55`, borderRadius: 12, padding: 30, textAlign: "center", color: "#666", fontSize: 13 }}>
+              <div style={{ border: `2px dashed ${COLORS.ink}55`, borderRadius: 20, padding: 30, textAlign: "center", color: "#666", fontSize: 13 }}>
                 No listings in the database yet.
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {allListings.map((l) => {
                   const statusColor =
-                    l.status === "approved" ? COLORS.teal :
+                    l.status === "approved" ? COLORS.green :
                     l.status === "rejected" ? COLORS.brick :
                     l.status === "pending" ? COLORS.marigold : "#999";
                   const statusLabel = l.status ? l.status : "no status (legacy/admin-added)";
                   return (
-                    <div key={l.id} style={{ background: "#fff", border: `2px solid ${COLORS.ink}`, borderRadius: 12, padding: 14 }}>
+                    <div key={l.id} style={{ background: "#fff", border: "1px solid rgba(15,26,36,0.08)", boxShadow: "0 8px 24px rgba(15,26,36,0.08)", borderRadius: 20, padding: 14 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
                         <div style={{ minWidth: 0 }}>
                           <div style={{ fontWeight: 700, fontSize: 14 }}>{l.name}</div>
@@ -454,10 +454,10 @@ export default function VendorDashboard({ user }) {
                           {l.ownerEmail && <div style={{ fontSize: 11.5, color: "#777" }}>{l.ownerEmail}</div>}
                         </div>
                         <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-end", flexShrink: 0 }}>
-                          <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 10, background: statusColor, color: "#fff", fontWeight: 600, whiteSpace: "nowrap" }}>
+                          <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 16, background: statusColor, color: "#fff", fontWeight: 600, whiteSpace: "nowrap" }}>
                             {statusLabel}
                           </span>
-                          <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 10, background: l.ownerId ? COLORS.ink : "#ddd", color: l.ownerId ? "#fff" : "#555", fontWeight: 600, whiteSpace: "nowrap" }}>
+                          <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 16, background: l.ownerId ? COLORS.ink : "#ddd", color: l.ownerId ? "#fff" : "#555", fontWeight: 600, whiteSpace: "nowrap" }}>
                             {l.ownerId ? "claimed" : "unclaimed"}
                           </span>
                           {l.source && (
@@ -466,21 +466,21 @@ export default function VendorDashboard({ user }) {
                         </div>
                       </div>
                       <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
-                        <button onClick={() => startEdit(l)} className="stall-btn" style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 7, padding: "6px 10px", fontSize: 12, fontWeight: 600 }}>
+                        <button onClick={() => startEdit(l)} className="stall-btn" style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 14, padding: "6px 10px", fontSize: 12, fontWeight: 600 }}>
                           Edit
                         </button>
                         {l.status !== "approved" && (
-                          <button onClick={() => reviewListing(l.id, "approved")} className="stall-btn" style={{ background: COLORS.teal, color: "#fff", border: "none", borderRadius: 7, padding: "6px 10px", fontSize: 12, fontWeight: 600 }}>
+                          <button onClick={() => reviewListing(l.id, "approved")} className="stall-btn" style={{ background: COLORS.green, color: "#fff", border: "none", borderRadius: 14, padding: "6px 10px", fontSize: 12, fontWeight: 600 }}>
                             Approve
                           </button>
                         )}
                         {l.status !== "rejected" && (
-                          <button onClick={() => reviewListing(l.id, "rejected")} className="stall-btn" style={{ background: "transparent", color: COLORS.brick, border: `1.5px solid ${COLORS.brick}`, borderRadius: 7, padding: "6px 10px", fontSize: 12, fontWeight: 600 }}>
+                          <button onClick={() => reviewListing(l.id, "rejected")} className="stall-btn" style={{ background: "transparent", color: COLORS.brick, border: `1.5px solid ${COLORS.brick}`, borderRadius: 14, padding: "6px 10px", fontSize: 12, fontWeight: 600 }}>
                             Reject
                           </button>
                         )}
                         {l.status !== "pending" && l.status && (
-                          <button onClick={() => reviewListing(l.id, "pending")} className="stall-btn" style={{ background: "transparent", color: "#777", border: "1.5px solid #ccc", borderRadius: 7, padding: "6px 10px", fontSize: 12, fontWeight: 600 }}>
+                          <button onClick={() => reviewListing(l.id, "pending")} className="stall-btn" style={{ background: "transparent", color: "#777", border: "1.5px solid #ccc", borderRadius: 14, padding: "6px 10px", fontSize: 12, fontWeight: 600 }}>
                             Reset to pending
                           </button>
                         )}
@@ -503,13 +503,13 @@ export default function VendorDashboard({ user }) {
               {pendingListings.length} awaiting review — direct self-registrations only stay hidden from the public Find page until approved here.
             </div>
             {pendingListings.length === 0 ? (
-              <div style={{ border: `2px dashed ${COLORS.ink}55`, borderRadius: 12, padding: 30, textAlign: "center", color: "#666", fontSize: 13 }}>
+              <div style={{ border: `2px dashed ${COLORS.ink}55`, borderRadius: 20, padding: 30, textAlign: "center", color: "#666", fontSize: 13 }}>
                 Nothing waiting on you right now.
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {pendingListings.map((l) => (
-                  <div key={l.id} style={{ background: "#fff", border: `2px solid ${COLORS.ink}`, borderRadius: 12, padding: 14 }}>
+                  <div key={l.id} style={{ background: "#fff", border: "1px solid rgba(15,26,36,0.08)", boxShadow: "0 8px 24px rgba(15,26,36,0.08)", borderRadius: 20, padding: 14 }}>
                     <div style={{ fontWeight: 700, fontSize: 14 }}>{l.name}</div>
                     <div style={{ fontSize: 11.5, color: "#777", marginTop: 2 }}>{l.category} · {l.address}</div>
                     {l.phone && <div style={{ fontSize: 11.5, color: "#777" }}>{l.phone}</div>}
@@ -519,14 +519,14 @@ export default function VendorDashboard({ user }) {
                       <button
                         onClick={() => reviewListing(l.id, "approved")}
                         className="stall-btn"
-                        style={{ background: COLORS.teal, color: "#fff", border: "none", borderRadius: 7, padding: "7px 14px", fontSize: 12.5, fontWeight: 700, display: "flex", alignItems: "center", gap: 5 }}
+                        style={{ background: COLORS.green, color: "#fff", border: "none", borderRadius: 14, padding: "7px 14px", fontSize: 12.5, fontWeight: 700, display: "flex", alignItems: "center", gap: 5 }}
                       >
                         <Check size={14} /> Approve
                       </button>
                       <button
                         onClick={() => reviewListing(l.id, "rejected")}
                         className="stall-btn"
-                        style={{ background: "transparent", color: COLORS.brick, border: `1.5px solid ${COLORS.brick}`, borderRadius: 7, padding: "7px 14px", fontSize: 12.5, fontWeight: 700, display: "flex", alignItems: "center", gap: 5 }}
+                        style={{ background: "transparent", color: COLORS.brick, border: `1.5px solid ${COLORS.brick}`, borderRadius: 14, padding: "7px 14px", fontSize: 12.5, fontWeight: 700, display: "flex", alignItems: "center", gap: 5 }}
                       >
                         <X size={14} /> Reject
                       </button>
