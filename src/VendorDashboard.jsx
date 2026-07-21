@@ -31,9 +31,10 @@ export default function VendorDashboard({ user }) {
   const [claimCode, setClaimCode] = useState("");
   const [claimMsg, setClaimMsg] = useState("");
   const [tempId] = useState(() => uid(10));
-  const [dashTab, setDashTab] = useState("listings"); // "listings" | "premium" | "pending"
+  const [dashTab, setDashTab] = useState("listings"); // "listings" | "premium" | "pending" | "all"
   const [isAdmin, setIsAdmin] = useState(false);
   const [pendingListings, setPendingListings] = useState([]);
+  const [allListings, setAllListings] = useState([]);
   const refreshedRef = useRef(new Set());
 
   useEffect(() => {
@@ -47,6 +48,17 @@ export default function VendorDashboard({ user }) {
     const q = query(collection(db, "vendors"), where("status", "==", "pending"));
     const unsub = onSnapshot(q, (snap) => {
       setPendingListings(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    });
+    return unsub;
+  }, [isAdmin]);
+
+  // Every listing in the collection, regardless of owner or status — this
+  // is the admin's full-visibility view, separate from "My Listings" (own
+  // claimed listings) and "Pending Approvals" (just the review queue).
+  useEffect(() => {
+    if (!isAdmin) { setAllListings([]); return; }
+    const unsub = onSnapshot(collection(db, "vendors"), (snap) => {
+      setAllListings(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     });
     return unsub;
   }, [isAdmin]);
@@ -320,6 +332,21 @@ export default function VendorDashboard({ user }) {
           </button>
           {isAdmin && (
             <button
+              onClick={() => setDashTab("all")}
+              className="stall-btn"
+              style={{
+                padding: "7px 16px", borderRadius: 7, fontSize: 13, fontWeight: 600,
+                border: `1.5px solid ${COLORS.ink}`,
+                background: dashTab === "all" ? COLORS.ink : "#fff",
+                color: dashTab === "all" ? "#fff" : COLORS.ink,
+                cursor: "pointer",
+              }}
+            >
+              All Listings ({allListings.length})
+            </button>
+          )}
+          {isAdmin && (
+            <button
               onClick={() => setDashTab("pending")}
               className="stall-btn"
               style={{
@@ -393,6 +420,79 @@ export default function VendorDashboard({ user }) {
           <div>
             <PremiumGate user={user} listing={listings[0]} />
             <ReviewAutoResponder listing={listings[0]} />
+          </div>
+        )}
+
+        {/* ── ALL LISTINGS TAB (admin only) ── */}
+        {/* Every listing regardless of owner or status — full admin visibility,
+            distinct from "My Listings" (own claimed) and "Pending Approvals"
+            (just the review queue). */}
+        {dashTab === "all" && isAdmin && (
+          <div>
+            <div style={{ fontSize: 12, color: "#666", marginBottom: 12 }}>
+              {allListings.length} total across every vendor, owner, and status.
+            </div>
+            {allListings.length === 0 ? (
+              <div style={{ border: `2px dashed ${COLORS.ink}55`, borderRadius: 12, padding: 30, textAlign: "center", color: "#666", fontSize: 13 }}>
+                No listings in the database yet.
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {allListings.map((l) => {
+                  const statusColor =
+                    l.status === "approved" ? COLORS.teal :
+                    l.status === "rejected" ? COLORS.brick :
+                    l.status === "pending" ? COLORS.marigold : "#999";
+                  const statusLabel = l.status ? l.status : "no status (legacy/admin-added)";
+                  return (
+                    <div key={l.id} style={{ background: "#fff", border: `2px solid ${COLORS.ink}`, borderRadius: 12, padding: 14 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontWeight: 700, fontSize: 14 }}>{l.name}</div>
+                          <div style={{ fontSize: 11.5, color: "#777", marginTop: 2 }}>{l.category} · {l.address}</div>
+                          {l.phone && <div style={{ fontSize: 11.5, color: "#777" }}>{l.phone}</div>}
+                          {l.ownerEmail && <div style={{ fontSize: 11.5, color: "#777" }}>{l.ownerEmail}</div>}
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-end", flexShrink: 0 }}>
+                          <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 10, background: statusColor, color: "#fff", fontWeight: 600, whiteSpace: "nowrap" }}>
+                            {statusLabel}
+                          </span>
+                          <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 10, background: l.ownerId ? COLORS.ink : "#ddd", color: l.ownerId ? "#fff" : "#555", fontWeight: 600, whiteSpace: "nowrap" }}>
+                            {l.ownerId ? "claimed" : "unclaimed"}
+                          </span>
+                          {l.source && (
+                            <span style={{ fontSize: 10, color: "#999" }}>{l.source}</span>
+                          )}
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
+                        <button onClick={() => startEdit(l)} className="stall-btn" style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 7, padding: "6px 10px", fontSize: 12, fontWeight: 600 }}>
+                          Edit
+                        </button>
+                        {l.status !== "approved" && (
+                          <button onClick={() => reviewListing(l.id, "approved")} className="stall-btn" style={{ background: COLORS.teal, color: "#fff", border: "none", borderRadius: 7, padding: "6px 10px", fontSize: 12, fontWeight: 600 }}>
+                            Approve
+                          </button>
+                        )}
+                        {l.status !== "rejected" && (
+                          <button onClick={() => reviewListing(l.id, "rejected")} className="stall-btn" style={{ background: "transparent", color: COLORS.brick, border: `1.5px solid ${COLORS.brick}`, borderRadius: 7, padding: "6px 10px", fontSize: 12, fontWeight: 600 }}>
+                            Reject
+                          </button>
+                        )}
+                        {l.status !== "pending" && l.status && (
+                          <button onClick={() => reviewListing(l.id, "pending")} className="stall-btn" style={{ background: "transparent", color: "#777", border: "1.5px solid #ccc", borderRadius: 7, padding: "6px 10px", fontSize: 12, fontWeight: 600 }}>
+                            Reset to pending
+                          </button>
+                        )}
+                        <button onClick={() => remove(l.id)} style={{ background: "none", border: "none", cursor: "pointer", color: COLORS.brick, padding: 6 }} title="Delete">
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
