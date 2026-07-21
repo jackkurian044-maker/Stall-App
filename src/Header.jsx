@@ -1,6 +1,6 @@
 import React from "react";
 import { COLORS } from "./constants";
-import stallLogo from "./assets/stall-logo.png";
+import stallLogo from "./stall-logo.png";
 
 export default function Header({ mode, setMode, user, isAdmin, onSignOut }) {
   const tabs = [
