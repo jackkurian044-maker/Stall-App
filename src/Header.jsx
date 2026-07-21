@@ -31,7 +31,7 @@ export default function Header({ mode, setMode, user, isAdmin, onSignOut }) {
         <img
           src={stallLogo}
           alt="Stall"
-          style={{ height: 42, width: "auto", flexShrink: 0 }}
+          style={{ height: 56, width: "auto", flexShrink: 0 }}
         />
         <div
           style={{
