@@ -53,5 +53,41 @@ service cloud.firestore {
       allow read: if request.auth != null && request.auth.uid == uid;
       allow write: if false;
     }
+
+    // Premium subscription status, doc ID = vendor's Firebase Auth UID.
+    // Only that vendor (or an admin) can read their own status. Writes
+    // happen only from the createSubscription/verifySubscription/
+    // cancelSubscription Cloud Functions using the Admin SDK, which
+    // bypasses these rules — so no client write path is opened here.
+    match /premium_vendors/{uid} {
+      allow read: if request.auth != null &&
+        (request.auth.uid == uid || isAdmin());
+      allow write: if false;
+    }
+
+    // Google Business Profile connection status + response settings,
+    // doc ID = vendor's Firebase Auth UID. The vendor can read their own
+    // connection, and can update non-token fields (disconnecting,
+    // response settings) themselves. The refreshToken/accessToken fields
+    // are only ever written by the googleOAuthCallback Cloud Function via
+    // the Admin SDK, which bypasses these rules.
+    match /gbp_connections/{uid} {
+      allow read: if request.auth != null &&
+        (request.auth.uid == uid || isAdmin());
+      allow update: if request.auth != null && request.auth.uid == uid;
+      allow create, delete: if false;
+    }
+
+    // Individual review + AI response records. Queried by vendorId, so
+    // reads are scoped to documents owned by the requesting vendor.
+    // Vendors can edit their own response text/status; creation and
+    // deletion happen only from backend jobs via the Admin SDK.
+    match /review_responses/{docId} {
+      allow read: if request.auth != null &&
+        (resource.data.vendorId == request.auth.uid || isAdmin());
+      allow update: if request.auth != null &&
+        resource.data.vendorId == request.auth.uid;
+      allow create, delete: if false;
+    }
   }
 }
