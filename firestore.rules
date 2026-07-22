@@ -8,6 +8,14 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
+    // True if the signed-in user owns the listing at vendors/{listingId}.
+    // Used to authorize per-listing Premium/Google-connection access for
+    // whichever vendor claimed that specific listing.
+    function isListingOwner(listingId) {
+      return request.auth != null &&
+        get(/databases/$(database)/documents/vendors/$(listingId)).data.ownerId == request.auth.uid;
+    }
+
     // Vendor listings: anyone can read (public search).
     // Any signed-in user can create a listing (it becomes theirs).
     // A listing can be edited/deleted by its owner, by an admin,
@@ -54,39 +62,43 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // Premium subscription status, doc ID = vendor's Firebase Auth UID.
-    // Only that vendor (or an admin) can read their own status. Writes
-    // happen only from the createSubscription/verifySubscription/
-    // cancelSubscription Cloud Functions using the Admin SDK, which
-    // bypasses these rules — so no client write path is opened here.
-    match /premium_vendors/{uid} {
+    // Premium subscription status, doc ID = the LISTING's ID (vendors/{id}),
+    // not a user UID — a listing can be premium whether or not it's
+    // currently claimed by a vendor account. Readable by an admin or by
+    // whoever currently owns that listing. Writes happen only from the
+    // createSubscription/verifySubscription/cancelSubscription Cloud
+    // Functions using the Admin SDK, which bypasses these rules — so no
+    // client write path is opened here.
+    match /premium_vendors/{listingId} {
       allow read: if request.auth != null &&
-        (request.auth.uid == uid || isAdmin());
+        (isAdmin() || isListingOwner(listingId));
       allow write: if false;
     }
 
     // Google Business Profile connection status + response settings,
-    // doc ID = vendor's Firebase Auth UID. The vendor can read their own
-    // connection, and can update non-token fields (disconnecting,
-    // response settings) themselves. The refreshToken/accessToken fields
-    // are only ever written by the googleOAuthCallback Cloud Function via
-    // the Admin SDK, which bypasses these rules.
-    match /gbp_connections/{uid} {
+    // doc ID = the LISTING's ID (vendors/{id}). Readable/updatable by an
+    // admin or by whoever currently owns that listing — covers both an
+    // admin connecting an unclaimed listing on a business's behalf, and a
+    // vendor connecting their own claimed listing. The refreshToken/
+    // accessToken fields are only ever written by the oauthCallback Cloud
+    // Function via the Admin SDK, which bypasses these rules.
+    match /gbp_connections/{listingId} {
       allow read: if request.auth != null &&
-        (request.auth.uid == uid || isAdmin());
-      allow update: if request.auth != null && request.auth.uid == uid;
+        (isAdmin() || isListingOwner(listingId));
+      allow update: if request.auth != null &&
+        (isAdmin() || isListingOwner(listingId));
       allow create, delete: if false;
     }
 
-    // Individual review + AI response records. Queried by vendorId, so
-    // reads are scoped to documents owned by the requesting vendor.
-    // Vendors can edit their own response text/status; creation and
-    // deletion happen only from backend jobs via the Admin SDK.
+    // Individual review + AI response records. Queried by listingId, so
+    // reads are scoped to documents belonging to a listing the requester
+    // is authorized for. Creation and deletion happen only from backend
+    // jobs via the Admin SDK.
     match /review_responses/{docId} {
       allow read: if request.auth != null &&
-        (resource.data.vendorId == request.auth.uid || isAdmin());
+        (isAdmin() || isListingOwner(resource.data.listingId));
       allow update: if request.auth != null &&
-        resource.data.vendorId == request.auth.uid;
+        (isAdmin() || isListingOwner(resource.data.listingId));
       allow create, delete: if false;
     }
   }

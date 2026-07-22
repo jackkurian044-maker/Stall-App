@@ -22,6 +22,20 @@ const crypto = require("crypto");
 if (!admin.apps.length) admin.initializeApp();
 const db = admin.firestore();
 
+// True if uid is an admin, or is the claimed owner of vendors/{listingId}.
+// Used to authorize Premium + Google-connection actions on a per-listing
+// basis, since a listing can be managed by an admin (including unclaimed
+// listings) or by the vendor who claimed it.
+async function isAuthorizedForListing(uid, listingId) {
+  const [adminDoc, listingDoc] = await Promise.all([
+    db.collection("admins").doc(uid).get(),
+    db.collection("vendors").doc(listingId).get(),
+  ]);
+  if (adminDoc.exists) return true;
+  if (listingDoc.exists && listingDoc.data().ownerId === uid) return true;
+  return false;
+}
+
 // ═══════════════════════════════════════════════════════════════
 //  SECTION 1 — RAZORPAY SUBSCRIPTION FUNCTIONS
 // ═══════════════════════════════════════════════════════════════
@@ -40,13 +54,13 @@ exports.createSubscription = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError("unauthenticated", "Login required");
   }
 
-  const { vendorId, vendorName, vendorEmail } = data;
+  const { listingId, vendorName, vendorEmail } = data;
 
-  if (context.auth.uid !== vendorId) {
+  if (!(await isAuthorizedForListing(context.auth.uid, listingId))) {
     throw new functions.https.HttpsError("permission-denied", "Unauthorized");
   }
 
-  const premiumDoc = await db.collection("premium_vendors").doc(vendorId).get();
+  const premiumDoc = await db.collection("premium_vendors").doc(listingId).get();
   if (premiumDoc.exists && premiumDoc.data().isPremium) {
     throw new functions.https.HttpsError("already-exists", "Already subscribed");
   }
@@ -77,16 +91,17 @@ exports.createSubscription = functions.https.onCall(async (data, context) => {
       customer_notify: 1,
       quantity: 1,
       total_count: 120,
-      notes: { vendorId, vendorName: vendorName || "", vendorEmail: vendorEmail || "", source: "stall-app" },
+      notes: { listingId, initiatedBy: context.auth.uid, vendorName: vendorName || "", vendorEmail: vendorEmail || "", source: "stall-app" },
     });
 
-    await db.collection("premium_vendors").doc(vendorId).set({
+    await db.collection("premium_vendors").doc(listingId).set({
       isPremium: false,
       subscriptionId: subscription.id,
       planId,
       status: "created",
       vendorName: vendorName || "",
       vendorEmail: vendorEmail || "",
+      initiatedBy: context.auth.uid,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       activatedAt: null,
       nextBillingDate: null,
@@ -110,9 +125,9 @@ exports.verifySubscription = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError("unauthenticated", "Login required");
   }
 
-  const { razorpay_payment_id, razorpay_subscription_id, razorpay_signature, vendorId } = data;
+  const { razorpay_payment_id, razorpay_subscription_id, razorpay_signature, listingId } = data;
 
-  if (context.auth.uid !== vendorId) {
+  if (!(await isAuthorizedForListing(context.auth.uid, listingId))) {
     throw new functions.https.HttpsError("permission-denied", "Unauthorized");
   }
 
@@ -137,7 +152,7 @@ exports.verifySubscription = functions.https.onCall(async (data, context) => {
     nextBilling.setDate(nextBilling.getDate() + 30);
 
     // Activate premium
-    await db.collection("premium_vendors").doc(vendorId).set({
+    await db.collection("premium_vendors").doc(listingId).set({
       isPremium: true,
       status: "active",
       subscriptionId: razorpay_subscription_id,
@@ -151,13 +166,11 @@ exports.verifySubscription = functions.https.onCall(async (data, context) => {
       }),
     }, { merge: true });
 
-    // Mark listing as premium too
-    const vendorSnap = await db.collection("vendors").where("ownerId", "==", vendorId).limit(1).get();
-    if (!vendorSnap.empty) {
-      await vendorSnap.docs[0].ref.update({ isPremium: true });
-    }
+    // Mark listing as premium too — direct doc reference now that
+    // premium status is keyed by listingId rather than owner UID.
+    await db.collection("vendors").doc(listingId).update({ isPremium: true });
 
-    console.log(`✅ Premium activated for vendor ${vendorId}`);
+    console.log(`✅ Premium activated for listing ${listingId}`);
     return { success: true };
 
   } catch (err) {
@@ -174,10 +187,14 @@ exports.cancelSubscription = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError("unauthenticated", "Login required");
   }
 
-  const vendorId = context.auth.uid;
+  const { listingId } = data;
+
+  if (!(await isAuthorizedForListing(context.auth.uid, listingId))) {
+    throw new functions.https.HttpsError("permission-denied", "Unauthorized");
+  }
 
   try {
-    const premiumDoc = await db.collection("premium_vendors").doc(vendorId).get();
+    const premiumDoc = await db.collection("premium_vendors").doc(listingId).get();
     if (!premiumDoc.exists || !premiumDoc.data().subscriptionId) {
       throw new functions.https.HttpsError("not-found", "No active subscription");
     }
@@ -188,12 +205,12 @@ exports.cancelSubscription = functions.https.onCall(async (data, context) => {
     // cancel_at_cycle_end: 1 = keep access till billing period ends
     await razorpay.subscriptions.cancel(subscriptionId, { cancel_at_cycle_end: 1 });
 
-    await db.collection("premium_vendors").doc(vendorId).update({
+    await db.collection("premium_vendors").doc(listingId).update({
       status: "cancelling",
       cancelledAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
-    console.log(`Cancelled subscription ${subscriptionId} for vendor ${vendorId}`);
+    console.log(`Cancelled subscription ${subscriptionId} for listing ${listingId}`);
     return { success: true };
 
   } catch (err) {
@@ -239,11 +256,11 @@ exports.razorpayWebhook = functions.https.onRequest(async (req, res) => {
           .where("subscriptionId", "==", subscription.id).limit(1).get();
         if (snap.empty) break;
 
-        const vendorId = snap.docs[0].id;
+        const listingId = snap.docs[0].id;
         const nextBilling = new Date();
         nextBilling.setDate(nextBilling.getDate() + 30);
 
-        await db.collection("premium_vendors").doc(vendorId).update({
+        await db.collection("premium_vendors").doc(listingId).update({
           isPremium: true,
           status: "active",
           nextBillingDate: nextBilling,
@@ -254,7 +271,7 @@ exports.razorpayWebhook = functions.https.onRequest(async (req, res) => {
             method: payment?.method || "auto",
           }),
         });
-        console.log(`✅ Subscription renewed for vendor ${vendorId}`);
+        console.log(`✅ Subscription renewed for listing ${listingId}`);
         break;
       }
 
@@ -267,19 +284,15 @@ exports.razorpayWebhook = functions.https.onRequest(async (req, res) => {
           .where("subscriptionId", "==", subscription.id).limit(1).get();
         if (snap.empty) break;
 
-        const vendorId = snap.docs[0].id;
-        await db.collection("premium_vendors").doc(vendorId).update({
+        const listingId = snap.docs[0].id;
+        await db.collection("premium_vendors").doc(listingId).update({
           isPremium: false,
           status: "payment_failed",
           failedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
-        const vendorSnap = await db.collection("vendors")
-          .where("ownerId", "==", vendorId).limit(1).get();
-        if (!vendorSnap.empty) {
-          await vendorSnap.docs[0].ref.update({ isPremium: false });
-        }
-        console.log(`⚠️ Payment failed — premium deactivated for vendor ${vendorId}`);
+        await db.collection("vendors").doc(listingId).update({ isPremium: false });
+        console.log(`⚠️ Payment failed — premium deactivated for listing ${listingId}`);
         break;
       }
 
@@ -292,19 +305,15 @@ exports.razorpayWebhook = functions.https.onRequest(async (req, res) => {
           .where("subscriptionId", "==", subscription.id).limit(1).get();
         if (snap.empty) break;
 
-        const vendorId = snap.docs[0].id;
-        await db.collection("premium_vendors").doc(vendorId).update({
+        const listingId = snap.docs[0].id;
+        await db.collection("premium_vendors").doc(listingId).update({
           isPremium: false,
           status: "cancelled",
           cancelledAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
-        const vendorSnap = await db.collection("vendors")
-          .where("ownerId", "==", vendorId).limit(1).get();
-        if (!vendorSnap.empty) {
-          await vendorSnap.docs[0].ref.update({ isPremium: false });
-        }
-        console.log(`Subscription cancelled for vendor ${vendorId}`);
+        await db.collection("vendors").doc(listingId).update({ isPremium: false });
+        console.log(`Subscription cancelled for listing ${listingId}`);
         break;
       }
 
@@ -327,8 +336,12 @@ exports.getSubscriptionStatus = functions.https.onCall(async (data, context) => 
     throw new functions.https.HttpsError("unauthenticated", "Login required");
   }
 
-  const vendorId = context.auth.uid;
-  const snap = await db.collection("premium_vendors").doc(vendorId).get();
+  const { listingId } = data;
+  if (!(await isAuthorizedForListing(context.auth.uid, listingId))) {
+    throw new functions.https.HttpsError("permission-denied", "Unauthorized");
+  }
+
+  const snap = await db.collection("premium_vendors").doc(listingId).get();
   if (!snap.exists) return { isPremium: false, status: "none" };
 
   const { isPremium, status, subscriptionId, nextBillingDate } = snap.data();
@@ -346,8 +359,8 @@ exports.getSubscriptionStatus = functions.https.onCall(async (data, context) => 
 // URL: https://<region>-stall-app-1aab7.cloudfunctions.net/oauthCallback
 // ─────────────────────────────────────────────────────────────
 exports.oauthCallback = functions.https.onRequest(async (req, res) => {
-  const { code, state: vendorId } = req.query;
-  if (!code || !vendorId) return res.status(400).send("Missing code or state");
+  const { code, state: listingId } = req.query;
+  if (!code || !listingId) return res.status(400).send("Missing code or state");
 
   try {
     const cfg = functions.config().google;
@@ -363,7 +376,7 @@ exports.oauthCallback = functions.https.onRequest(async (req, res) => {
 
     const { access_token, refresh_token, expires_in } = tokenRes.data;
 
-    // Get vendor's GBP account
+    // Get the connected Google account's GBP account
     const accountsRes = await axios.get(
       "https://mybusinessaccountmanagement.googleapis.com/v1/accounts",
       { headers: { Authorization: `Bearer ${access_token}` } }
@@ -380,9 +393,10 @@ exports.oauthCallback = functions.https.onRequest(async (req, res) => {
 
     const location = locationsRes.data.locations?.[0];
 
-    // Store in Firestore
-    await db.collection("gbp_connections").doc(vendorId).set({
+    // Store in Firestore, keyed by listingId
+    await db.collection("gbp_connections").doc(listingId).set({
       connected: true,
+      listingId,
       accessToken: access_token,
       refreshToken: refresh_token,
       tokenExpiresAt: new Date(Date.now() + expires_in * 1000),
@@ -395,7 +409,7 @@ exports.oauthCallback = functions.https.onRequest(async (req, res) => {
 
     // Redirect back to app
     const appUrl = cfg.redirect_uri.replace("/oauthCallback", "");
-    res.redirect(`${appUrl}?gbp=connected`);
+    res.redirect(`${appUrl}?gbp=connected&listingId=${listingId}`);
 
   } catch (err) {
     console.error("OAuth callback error:", err.response?.data || err.message);
@@ -406,7 +420,7 @@ exports.oauthCallback = functions.https.onRequest(async (req, res) => {
 // ─────────────────────────────────────────────────────────────
 // 2B. TOKEN HELPERS
 // ─────────────────────────────────────────────────────────────
-async function refreshAccessToken(vendorId, connectionData) {
+async function refreshAccessToken(listingId, connectionData) {
   const cfg = functions.config().google;
   const res = await axios.post("https://oauth2.googleapis.com/token", {
     refresh_token: connectionData.refreshToken,
@@ -415,17 +429,17 @@ async function refreshAccessToken(vendorId, connectionData) {
     grant_type: "refresh_token",
   });
   const { access_token, expires_in } = res.data;
-  await db.collection("gbp_connections").doc(vendorId).update({
+  await db.collection("gbp_connections").doc(listingId).update({
     accessToken: access_token,
     tokenExpiresAt: new Date(Date.now() + expires_in * 1000),
   });
   return access_token;
 }
 
-async function getValidToken(vendorId, connectionData) {
+async function getValidToken(listingId, connectionData) {
   const expiry = connectionData.tokenExpiresAt?.toDate?.() || new Date(0);
   const isExpired = expiry < new Date(Date.now() + 5 * 60 * 1000);
-  if (isExpired) return await refreshAccessToken(vendorId, connectionData);
+  if (isExpired) return await refreshAccessToken(listingId, connectionData);
   return connectionData.accessToken;
 }
 
@@ -489,35 +503,36 @@ exports.pollReviews = functions.pubsub
   .onRun(async () => {
     console.log("pollReviews: starting");
 
-    // Get all connected GBP vendors
+    // Get all connected GBP listings
     const connectionsSnap = await db.collection("gbp_connections")
       .where("connected", "==", true).get();
 
     if (connectionsSnap.empty) {
-      console.log("No connected vendors");
+      console.log("No connected listings");
       return null;
     }
 
     const promises = connectionsSnap.docs.map(async (connDoc) => {
-      const vendorId = connDoc.id;
+      const listingId = connDoc.id;
       const connectionData = connDoc.data();
 
       try {
-        // ── PREMIUM GATE: only process premium vendors ──
-        const premiumDoc = await db.collection("premium_vendors").doc(vendorId).get();
+        // ── PREMIUM GATE: only process premium listings ──
+        const premiumDoc = await db.collection("premium_vendors").doc(listingId).get();
         if (!premiumDoc.exists || !premiumDoc.data().isPremium) {
-          console.log(`Skipping vendor ${vendorId} — not premium`);
+          console.log(`Skipping listing ${listingId} — not premium`);
           return;
         }
 
-        // Get vendor listing for context
-        const vendorSnap = await db.collection("vendors")
-          .where("ownerId", "==", vendorId).limit(1).get();
-        const listing = vendorSnap.docs[0]?.data() || {};
+        // Get the listing itself for AI response context. Fetched directly
+        // by ID now — works for claimed AND unclaimed listings, unlike the
+        // old ownerId lookup which silently skipped unclaimed ones.
+        const listingSnap = await db.collection("vendors").doc(listingId).get();
+        const listing = listingSnap.exists ? listingSnap.data() : {};
         const settings = connectionData.responseSettings || {};
 
         // Get valid token
-        const accessToken = await getValidToken(vendorId, connectionData);
+        const accessToken = await getValidToken(listingId, connectionData);
 
         // Fetch reviews from Google
         const reviewsRes = await axios.get(
@@ -526,7 +541,7 @@ exports.pollReviews = functions.pubsub
         );
 
         const reviews = reviewsRes.data.reviews || [];
-        console.log(`Vendor ${vendorId}: ${reviews.length} reviews found`);
+        console.log(`Listing ${listingId}: ${reviews.length} reviews found`);
 
         for (const review of reviews) {
           const reviewId = review.reviewId;
@@ -534,17 +549,17 @@ exports.pollReviews = functions.pubsub
 
           // Skip if already responded in Firestore
           const existingDoc = await db.collection("review_responses")
-            .doc(`${vendorId}_${reviewId}`).get();
+            .doc(`${listingId}_${reviewId}`).get();
           if (existingDoc.exists) continue;
 
           // Skip if already has reply on Google
           if (review.reviewReply) continue;
 
-          // Skip per vendor settings
+          // Skip per listing settings
           if (settings[`replyTo${starRating}Star`] === false) continue;
 
           const reviewData = {
-            vendorId,
+            listingId,
             reviewId,
             reviewerName: review.reviewer?.displayName || "Valued Customer",
             reviewText: review.comment || "",
@@ -557,7 +572,7 @@ exports.pollReviews = functions.pubsub
 
           // Save to Firestore
           await db.collection("review_responses")
-            .doc(`${vendorId}_${reviewId}`).set(reviewData);
+            .doc(`${listingId}_${reviewId}`).set(reviewData);
 
           // Generate AI response
           const aiResponse = await generateAIResponse(reviewData, listing, settings);
@@ -571,21 +586,21 @@ exports.pollReviews = functions.pubsub
 
           // Update Firestore
           await db.collection("review_responses")
-            .doc(`${vendorId}_${reviewId}`).update({
+            .doc(`${listingId}_${reviewId}`).update({
               aiResponse,
               status: "posted",
               postedAt: admin.firestore.FieldValue.serverTimestamp(),
             });
 
-          console.log(`✅ Posted response — vendor ${vendorId}, review ${reviewId}`);
+          console.log(`✅ Posted response — listing ${listingId}, review ${reviewId}`);
         }
 
         // Update last polled
-        await db.collection("gbp_connections").doc(vendorId)
+        await db.collection("gbp_connections").doc(listingId)
           .update({ lastPolled: admin.firestore.FieldValue.serverTimestamp() });
 
       } catch (err) {
-        console.error(`Error processing vendor ${vendorId}:`, err.response?.data || err.message);
+        console.error(`Error processing listing ${listingId}:`, err.response?.data || err.message);
       }
     });
 
@@ -602,11 +617,14 @@ exports.triggerPollForVendor = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError("unauthenticated", "Login required");
   }
 
-  const vendorId = context.auth.uid;
+  const { listingId } = data;
+  if (!(await isAuthorizedForListing(context.auth.uid, listingId))) {
+    throw new functions.https.HttpsError("permission-denied", "Unauthorized");
+  }
 
   const [connDoc, premiumDoc] = await Promise.all([
-    db.collection("gbp_connections").doc(vendorId).get(),
-    db.collection("premium_vendors").doc(vendorId).get(),
+    db.collection("gbp_connections").doc(listingId).get(),
+    db.collection("premium_vendors").doc(listingId).get(),
   ]);
 
   if (!connDoc.exists || !connDoc.data().connected) {
@@ -618,7 +636,7 @@ exports.triggerPollForVendor = functions.https.onCall(async (data, context) => {
   }
 
   const connectionData = connDoc.data();
-  const accessToken = await getValidToken(vendorId, connectionData);
+  const accessToken = await getValidToken(listingId, connectionData);
 
   const reviewsRes = await axios.get(
     `https://mybusiness.googleapis.com/v4/${connectionData.locationId}/reviews`,
