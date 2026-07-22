@@ -3,7 +3,7 @@
 // Import it in VendorDashboard.jsx for premium vendors
 
 import { useState, useEffect } from "react";
-import { db, auth } from "./firebase";
+import { db } from "./firebase";
 import {
   doc, getDoc, setDoc, collection,
   query, where, orderBy, onSnapshot, updateDoc
@@ -38,7 +38,7 @@ function StatusBadge({ status }) {
   );
 }
 
-export default function ReviewAutoResponder({ listing }) {
+export default function ReviewAutoResponder({ listingId, listing }) {
   const [connection, setConnection] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [loadingConnect, setLoadingConnect] = useState(false);
@@ -48,12 +48,10 @@ export default function ReviewAutoResponder({ listing }) {
   const [stats, setStats] = useState({ total: 0, posted: 0, avgRating: 0 });
   const [tab, setTab] = useState("reviews"); // reviews | settings
 
-  const vendorId = auth.currentUser?.uid;
-
   // Load GBP connection status
   useEffect(() => {
-    if (!vendorId) return;
-    const ref = doc(db, "gbp_connections", vendorId);
+    if (!listingId) return;
+    const ref = doc(db, "gbp_connections", listingId);
     const unsub = onSnapshot(
       ref,
       snap => {
@@ -65,14 +63,14 @@ export default function ReviewAutoResponder({ listing }) {
       }
     );
     return unsub;
-  }, [vendorId]);
+  }, [listingId]);
 
   // Load review responses
   useEffect(() => {
-    if (!vendorId) return;
+    if (!listingId) return;
     const q = query(
       collection(db, "review_responses"),
-      where("vendorId", "==", vendorId),
+      where("listingId", "==", listingId),
       orderBy("receivedAt", "desc")
     );
     const unsub = onSnapshot(
@@ -93,7 +91,7 @@ export default function ReviewAutoResponder({ listing }) {
       }
     );
     return unsub;
-  }, [vendorId]);
+  }, [listingId]);
 
   // Initiate Google OAuth — opens Google consent screen
   function connectGBP() {
@@ -108,7 +106,7 @@ export default function ReviewAutoResponder({ listing }) {
       ].join(" "),
       access_type: "offline",
       prompt: "consent",
-      state: vendorId, // pass vendorId so callback knows who this is
+      state: listingId, // pass listingId so the callback knows which listing this is
     });
     window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
   }
@@ -116,7 +114,7 @@ export default function ReviewAutoResponder({ listing }) {
   // Disconnect GBP
   async function disconnectGBP() {
     if (!confirm("Disconnect Google Business Profile? Auto-responses will stop.")) return;
-    await setDoc(doc(db, "gbp_connections", vendorId), {
+    await setDoc(doc(db, "gbp_connections", listingId), {
       connected: false,
       disconnectedAt: new Date(),
     }, { merge: true });
@@ -322,14 +320,14 @@ export default function ReviewAutoResponder({ listing }) {
 
       {/* TAB: Settings */}
       {tab === "settings" && (
-        <ResponseSettings vendorId={vendorId} listing={listing} />
+        <ResponseSettings listingId={listingId} listing={listing} />
       )}
     </div>
   );
 }
 
 // Settings panel — tone, language, custom instructions
-function ResponseSettings({ vendorId, listing }) {
+function ResponseSettings({ listingId, listing }) {
   const [settings, setSettings] = useState({
     tone: "friendly",
     language: "english",
@@ -345,17 +343,17 @@ function ResponseSettings({ vendorId, listing }) {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    if (!vendorId) return;
-    getDoc(doc(db, "gbp_connections", vendorId)).then(snap => {
+    if (!listingId) return;
+    getDoc(doc(db, "gbp_connections", listingId)).then(snap => {
       if (snap.exists() && snap.data().responseSettings) {
         setSettings(s => ({ ...s, ...snap.data().responseSettings }));
       }
     });
-  }, [vendorId]);
+  }, [listingId]);
 
   async function saveSettings() {
     setSaving(true);
-    await updateDoc(doc(db, "gbp_connections", vendorId), {
+    await updateDoc(doc(db, "gbp_connections", listingId), {
       responseSettings: settings,
       settingsUpdatedAt: new Date(),
     });

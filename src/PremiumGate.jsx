@@ -21,7 +21,7 @@ const FEATURES = [
   "🌐 Multi-language support (EN, HI, KN, TA, TE)",
 ];
 
-export default function PremiumGate({ user, listing }) {
+export default function PremiumGate({ user, listingId, listing }) {
   const [premium, setPremium] = useState(null); // null = loading
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -33,8 +33,8 @@ export default function PremiumGate({ user, listing }) {
 
   // Listen to premium status in real-time
   useEffect(() => {
-    if (!user?.uid) return;
-    const ref = doc(db, "premium_vendors", user.uid);
+    if (!listingId) return;
+    const ref = doc(db, "premium_vendors", listingId);
     const unsub = onSnapshot(
       ref,
       (snap) => {
@@ -48,7 +48,7 @@ export default function PremiumGate({ user, listing }) {
       }
     );
     return unsub;
-  }, [user?.uid]);
+  }, [listingId]);
 
   // Load Razorpay script
   useEffect(() => {
@@ -68,9 +68,9 @@ export default function PremiumGate({ user, listing }) {
       // Step 1: Create subscription on backend
       const createSubscription = httpsCallable(functions, "createSubscription");
       const { data } = await createSubscription({
-        vendorId: user.uid,
-        vendorName: user.displayName || listing?.name || "Vendor",
-        vendorEmail: user.email || "",
+        listingId,
+        vendorName: listing?.name || user?.displayName || "Vendor",
+        vendorEmail: user?.email || "",
       });
 
       if (!data.subscriptionId) throw new Error("Failed to create subscription");
@@ -90,7 +90,7 @@ export default function PremiumGate({ user, listing }) {
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_subscription_id: response.razorpay_subscription_id,
               razorpay_signature: response.razorpay_signature,
-              vendorId: user.uid,
+              listingId,
             });
             // Firestore listener above will auto-update UI
           } catch (err) {
@@ -98,8 +98,8 @@ export default function PremiumGate({ user, listing }) {
           }
         },
         prefill: {
-          name: user.displayName || listing?.name || "",
-          email: user.email || "",
+          name: user?.displayName || listing?.name || "",
+          email: user?.email || "",
         },
         theme: { color: COLORS.ink },
         modal: {
@@ -124,7 +124,7 @@ export default function PremiumGate({ user, listing }) {
     setError("");
     try {
       const cancelSubscription = httpsCallable(functions, "cancelSubscription");
-      await cancelSubscription({ vendorId: user.uid });
+      await cancelSubscription({ listingId });
       setShowConfirmCancel(false);
     } catch (err) {
       setError("Couldn't cancel — please try again or contact support.");

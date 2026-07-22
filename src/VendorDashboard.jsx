@@ -35,7 +35,16 @@ export default function VendorDashboard({ user }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [pendingListings, setPendingListings] = useState([]);
   const [allListings, setAllListings] = useState([]);
+  const [selectedListingId, setSelectedListingId] = useState(null);
   const refreshedRef = useRef(new Set());
+
+  // Open the Premium tab pre-loaded for a specific listing — used by the
+  // "Manage Premium" button on each listing row (My Listings and, for
+  // admins, All Listings) so you don't have to hunt for it afterward.
+  const manageListing = (id) => {
+    setSelectedListingId(id);
+    setDashTab("premium");
+  };
 
   useEffect(() => {
     getDoc(doc(db, "admins", user.uid))
@@ -401,6 +410,9 @@ export default function VendorDashboard({ user }) {
                           <RefreshCw size={13} />
                         </span>
                       )}
+                      <button onClick={() => manageListing(l.id)} className="stall-btn" style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 14, padding: "6px 10px", fontSize: 12, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
+                        <Zap size={12} /> Premium
+                      </button>
                       <button onClick={() => startEdit(l)} className="stall-btn" style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 14, padding: "6px 10px", fontSize: 12, fontWeight: 600 }}>
                         Edit
                       </button>
@@ -416,12 +428,46 @@ export default function VendorDashboard({ user }) {
         )}
 
         {/* ── PREMIUM TAB ── */}
-        {dashTab === "premium" && (
-          <div>
-            <PremiumGate user={user} listing={listings[0]} />
-            <ReviewAutoResponder listing={listings[0]} />
-          </div>
-        )}
+        {dashTab === "premium" && (() => {
+          // Admins can manage any listing (claimed or not); vendors can
+          // only manage listings they've claimed themselves.
+          const pickable = isAdmin ? allListings : listings;
+          const selected = pickable.find(l => l.id === selectedListingId) || null;
+
+          return (
+            <div>
+              <div style={{ background: "#fff", border: "1px solid rgba(15,26,36,0.08)", boxShadow: "0 8px 24px rgba(15,26,36,0.08)", borderRadius: 20, padding: 14, marginBottom: 16 }}>
+                <label style={{ display: "block", fontSize: 11, textTransform: "uppercase", fontWeight: 700, marginBottom: 6, color: "#666" }}>
+                  {isAdmin ? "Select a listing to manage" : "Select one of your listings"}
+                </label>
+                <select
+                  value={selectedListingId || ""}
+                  onChange={(e) => setSelectedListingId(e.target.value || null)}
+                  style={{ width: "100%", padding: "9px 10px", borderRadius: 14, border: `1.5px solid ${COLORS.ink}`, fontSize: 13, background: "#fff", boxSizing: "border-box" }}
+                >
+                  <option value="">— Choose a listing —</option>
+                  {pickable.map(l => (
+                    <option key={l.id} value={l.id}>
+                      {l.name}{!l.ownerId ? " (unclaimed)" : ""}{l.isPremium ? " ✦" : ""}
+                    </option>
+                  ))}
+                </select>
+                {pickable.length === 0 && (
+                  <div style={{ fontSize: 12, color: "#999", marginTop: 8 }}>
+                    {isAdmin ? "No listings in the database yet." : "You don't have any claimed listings yet — create or claim one first."}
+                  </div>
+                )}
+              </div>
+
+              {selected && (
+                <div>
+                  <PremiumGate user={user} listingId={selected.id} listing={selected} />
+                  <ReviewAutoResponder listingId={selected.id} listing={selected} />
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* ── ALL LISTINGS TAB (admin only) ── */}
         {/* Every listing regardless of owner or status — full admin visibility,
@@ -466,6 +512,9 @@ export default function VendorDashboard({ user }) {
                         </div>
                       </div>
                       <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
+                        <button onClick={() => manageListing(l.id)} className="stall-btn" style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 14, padding: "6px 10px", fontSize: 12, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
+                          <Zap size={12} /> Premium
+                        </button>
                         <button onClick={() => startEdit(l)} className="stall-btn" style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 14, padding: "6px 10px", fontSize: 12, fontWeight: 600 }}>
                           Edit
                         </button>
