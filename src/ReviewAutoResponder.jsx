@@ -54,9 +54,16 @@ export default function ReviewAutoResponder({ listing }) {
   useEffect(() => {
     if (!vendorId) return;
     const ref = doc(db, "gbp_connections", vendorId);
-    const unsub = onSnapshot(ref, snap => {
-      setConnection(snap.exists() ? snap.data() : null);
-    });
+    const unsub = onSnapshot(
+      ref,
+      snap => {
+        setConnection(snap.exists() ? snap.data() : null);
+      },
+      err => {
+        console.error("GBP connection listener error:", err);
+        setConnection(null); // falls back to the "Connect" card instead of hanging
+      }
+    );
     return unsub;
   }, [vendorId]);
 
@@ -68,16 +75,23 @@ export default function ReviewAutoResponder({ listing }) {
       where("vendorId", "==", vendorId),
       orderBy("receivedAt", "desc")
     );
-    const unsub = onSnapshot(q, snap => {
-      const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      setReviews(data);
-      // Compute stats
-      const posted = data.filter(r => r.status === "posted").length;
-      const avg = data.length
-        ? (data.reduce((s, r) => s + (r.starRating || 0), 0) / data.length).toFixed(1)
-        : 0;
-      setStats({ total: data.length, posted, avgRating: avg });
-    });
+    const unsub = onSnapshot(
+      q,
+      snap => {
+        const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setReviews(data);
+        // Compute stats
+        const posted = data.filter(r => r.status === "posted").length;
+        const avg = data.length
+          ? (data.reduce((s, r) => s + (r.starRating || 0), 0) / data.length).toFixed(1)
+          : 0;
+        setStats({ total: data.length, posted, avgRating: avg });
+      },
+      err => {
+        console.error("Review responses listener error:", err);
+        setReviews([]); // falls back to the "No reviews yet" empty state
+      }
+    );
     return unsub;
   }, [vendorId]);
 

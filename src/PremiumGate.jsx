@@ -25,6 +25,7 @@ export default function PremiumGate({ user, listing }) {
   const [premium, setPremium] = useState(null); // null = loading
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [statusError, setStatusError] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [showConfirmCancel, setShowConfirmCancel] = useState(false);
 
@@ -34,9 +35,18 @@ export default function PremiumGate({ user, listing }) {
   useEffect(() => {
     if (!user?.uid) return;
     const ref = doc(db, "premium_vendors", user.uid);
-    const unsub = onSnapshot(ref, (snap) => {
-      setPremium(snap.exists() ? snap.data() : { isPremium: false });
-    });
+    const unsub = onSnapshot(
+      ref,
+      (snap) => {
+        setStatusError(false);
+        setPremium(snap.exists() ? snap.data() : { isPremium: false });
+      },
+      (err) => {
+        console.error("Premium status listener error:", err);
+        setStatusError(true);
+        setPremium({ isPremium: false }); // stop the infinite loading state
+      }
+    );
     return unsub;
   }, [user?.uid]);
 
@@ -254,6 +264,12 @@ export default function PremiumGate({ user, listing }) {
       <div style={{ fontSize: 13, color: "#666", marginBottom: 16 }}>
         Let AI respond to every Google review automatically — 24/7, no effort needed.
       </div>
+
+      {statusError && (
+        <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#E24B4A", marginBottom: 14 }}>
+          <AlertCircle size={13} /> Couldn't load your current plan status. If you already subscribed, try refreshing the page.
+        </div>
+      )}
 
       {/* Pricing */}
       <div style={{ background: "#F9FAFB", borderRadius: 16, padding: "14px 16px", marginBottom: 16, border: "1px solid #E5E7EB" }}>
