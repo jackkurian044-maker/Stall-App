@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { collection, onSnapshot } from "firebase/firestore";
 import { MapPin, Search, Locate, ChevronLeft, ChevronRight } from "lucide-react";
 import { db } from "./firebase";
@@ -8,6 +8,7 @@ import { autoRefreshStale } from "./ratingSync";
 import VendorTicket from "./VendorTicket";
 import RadarChart from "./RadarChart";
 import ReviewsModal from "./ReviewsModal";
+import CustomerLocationSearch from "./CustomerLocationSearch";
 
 const PAGE_SIZE = 10;
 
@@ -20,8 +21,6 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [locating, setLocating] = useState(false);
   const [selected, setSelected] = useState(null);
-  const [manualLat, setManualLat] = useState("");
-  const [manualLng, setManualLng] = useState("");
   const [reviewsVendor, setReviewsVendor] = useState(null);
   const [page, setPage] = useState(1);
   const refreshedRef = useRef(new Set());
@@ -66,7 +65,13 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
         setUserLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude });
         setLocating(false);
       },
-      () => setLocating(false),
+      () => {
+        // Permission denied, timed out, or otherwise failed — fall back
+        // to the default city rather than stranding the user on the
+        // "set your location" empty state.
+        setUserLoc(DEFAULT_LOC);
+        setLocating(false);
+      },
       { timeout: 6000 }
     );
   };
@@ -74,19 +79,19 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
   // Auto-detect on load instead of waiting for the "Use my location" click —
   // same pattern as Swiggy/Zomato-style "near me" apps. Browsers show their
   // own permission prompt for this automatically; if it's denied, times out,
-  // or geolocation isn't supported, userLoc just stays null and the existing
-  // "Use my location" button + manual lat/lng fallback below still work
-  // exactly as before — nothing about that UI changed.
+  // or geolocation isn't supported, locate() now falls back to DEFAULT_LOC
+  // itself, so userLoc is always set one way or another after this runs.
   useEffect(() => {
     locate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const useManualLoc = () => {
-    const lat = parseFloat(manualLat);
-    const lng = parseFloat(manualLng);
-    if (Number.isFinite(lat) && Number.isFinite(lng)) setUserLoc({ lat, lng });
-  };
+  // Stable reference so CustomerLocationSearch's internal effect (which
+  // depends on this callback) doesn't re-run its Autocomplete setup on
+  // every FindView re-render — see review notes on the initial version.
+  const handleLocationSelect = useCallback((loc) => {
+    setUserLoc({ lat: loc.lat, lng: loc.lng });
+  }, []);
 
   const results = useMemo(() => {
     if (!userLoc) return [];
@@ -150,31 +155,9 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
                 <Locate size={16} /> {locating ? "Locating…" : "Use my location"}
               </button>
               <div style={{ fontSize: 11, color: "#555", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                or enter coordinates
+                or search your area
               </div>
-              <div style={{ display: "flex", gap: 8 }}>
-                <input
-                  placeholder="Latitude"
-                  value={manualLat}
-                  onChange={(e) => setManualLat(e.target.value)}
-                  className="font-mono"
-                  style={{ flex: 1, padding: "8px 10px", borderRadius: 20, border: `1.5px solid ${COLORS.ink}`, fontSize: 13 }}
-                />
-                <input
-                  placeholder="Longitude"
-                  value={manualLng}
-                  onChange={(e) => setManualLng(e.target.value)}
-                  className="font-mono"
-                  style={{ flex: 1, padding: "8px 10px", borderRadius: 20, border: `1.5px solid ${COLORS.ink}`, fontSize: 13 }}
-                />
-              </div>
-              <button
-                onClick={useManualLoc}
-                className="stall-btn"
-                style={{ marginTop: 8, width: "100%", background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 20, padding: "7px", fontSize: 12, fontWeight: 600 }}
-              >
-                Set location
-              </button>
+              <CustomerLocationSearch onSelect={handleLocationSelect} />
             </div>
           ) : (
             <div>
@@ -185,6 +168,9 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
                 <button onClick={locate} style={{ background: "none", border: "none", fontSize: 11, textDecoration: "underline", cursor: "pointer" }}>
                   {locating ? "…" : "refresh"}
                 </button>
+              </div>
+              <div style={{ marginBottom: 12 }}>
+                <CustomerLocationSearch onSelect={handleLocationSelect} />
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
                 <span>Search radius</span>
