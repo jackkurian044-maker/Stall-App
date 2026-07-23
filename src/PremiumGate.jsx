@@ -21,7 +21,7 @@ const FEATURES = [
   "🌐 Multi-language support (EN, HI, KN, TA, TE)",
 ];
 
-export default function PremiumGate({ user, listingId, listing }) {
+export default function PremiumGate({ user, listing }) {
   const [premium, setPremium] = useState(null); // null = loading
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -29,12 +29,17 @@ export default function PremiumGate({ user, listingId, listing }) {
   const [cancelling, setCancelling] = useState(false);
   const [showConfirmCancel, setShowConfirmCancel] = useState(false);
 
+  // premium_vendors and the Cloud Functions are keyed by the vendor's
+  // Firebase Auth uid (context.auth.uid on the backend) — NOT the
+  // listing id, since one account can own multiple listings.
+  const vendorId = user?.uid;
+
   const functions = getFunctions();
 
   // Listen to premium status in real-time
   useEffect(() => {
-    if (!listingId) return;
-    const ref = doc(db, "premium_vendors", listingId);
+    if (!vendorId) return;
+    const ref = doc(db, "premium_vendors", vendorId);
     const unsub = onSnapshot(
       ref,
       (snap) => {
@@ -48,7 +53,7 @@ export default function PremiumGate({ user, listingId, listing }) {
       }
     );
     return unsub;
-  }, [listingId]);
+  }, [vendorId]);
 
   // Load Razorpay script
   useEffect(() => {
@@ -68,7 +73,7 @@ export default function PremiumGate({ user, listingId, listing }) {
       // Step 1: Create subscription on backend
       const createSubscription = httpsCallable(functions, "createSubscription");
       const { data } = await createSubscription({
-        listingId,
+        vendorId,
         vendorName: listing?.name || user?.displayName || "Vendor",
         vendorEmail: user?.email || "",
       });
@@ -90,7 +95,7 @@ export default function PremiumGate({ user, listingId, listing }) {
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_subscription_id: response.razorpay_subscription_id,
               razorpay_signature: response.razorpay_signature,
-              listingId,
+              vendorId,
             });
             // Firestore listener above will auto-update UI
           } catch (err) {
@@ -124,7 +129,7 @@ export default function PremiumGate({ user, listingId, listing }) {
     setError("");
     try {
       const cancelSubscription = httpsCallable(functions, "cancelSubscription");
-      await cancelSubscription({ listingId });
+      await cancelSubscription({ vendorId }); // backend actually uses context.auth.uid, but keep payload consistent
       setShowConfirmCancel(false);
     } catch (err) {
       setError("Couldn't cancel — please try again or contact support.");
