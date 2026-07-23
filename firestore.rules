@@ -8,14 +8,6 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
-    // True if the signed-in user owns the listing at vendors/{listingId}.
-    // Used to authorize per-listing Premium/Google-connection access for
-    // whichever vendor claimed that specific listing.
-    function isListingOwner(listingId) {
-      return request.auth != null &&
-        get(/databases/$(database)/documents/vendors/$(listingId)).data.ownerId == request.auth.uid;
-    }
-
     // Vendor listings: anyone can read (public search).
     // Any signed-in user can create a listing (it becomes theirs).
     // A listing can be edited/deleted by its owner, by an admin,
@@ -37,6 +29,15 @@ service cloud.firestore {
           request.resource.data.ownerId == request.auth.uid &&
           request.resource.data.claimCode == resource.data.claimCode
         )
+      ) || (
+        // Anyone — including anonymous browsers — can bump interaction
+        // counters (view/call/whatsapp/directions) to power analytics and
+        // social proof. This must work without sign-in, since customers
+        // browsing Stall don't need an account. The affectedKeys() check
+        // is what keeps this safe: it only ever touches these four
+        // counter fields and nothing else on the listing.
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['viewCount', 'callCount', 'whatsappCount', 'directionsCount'])
       );
 
       allow delete: if request.auth != null &&
@@ -52,6 +53,19 @@ service cloud.firestore {
         allow delete: if request.auth != null &&
           (request.auth.uid == uid || isAdmin());
       }
+
+      // Raw interaction events (view/call/whatsapp/directions), used to
+      // compute real time-windowed counts (e.g. "recent" views) rather
+      // than a misleading all-time number. Write-only for clients —
+      // nobody, including the vendor themselves, reads individual event
+      // rows; only admins can read them (e.g. for abuse investigation).
+      // Anonymous writes are allowed for the same reason as the counter
+      // update above: customers browsing shouldn't need an account.
+      match /events/{eventId} {
+        allow create: if request.resource.data.type in ['view', 'call', 'whatsapp', 'directions'];
+        allow read: if isAdmin();
+        allow update, delete: if false;
+      }
     }
 
     // Admin membership list. Documents here are added manually via the
@@ -62,44 +76,52 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // Premium subscription status, doc ID = the LISTING's ID (vendors/{id}),
-    // not a user UID — a listing can be premium whether or not it's
-    // currently claimed by a vendor account. Readable by an admin or by
-    // whoever currently owns that listing. Writes happen only from the
-    // createSubscription/verifySubscription/cancelSubscription Cloud
-    // Functions using the Admin SDK, which bypasses these rules — so no
-    // client write path is opened here.
-    match /premium_vendors/{listingId} {
-      allow read: if request.auth != null &&
-        (isAdmin() || isListingOwner(listingId));
-      allow write: if false;
+    // Reports (dispute a listing). Anyone signed in or anonymous can file
+    // one — that's deliberate, requiring an account to report something
+    // wrong would just suppress reports. Nobody but admins can read or
+    // resolve them; a report is never publicly visible and never affects
+    // the listing on its own.
+    match /reports/{reportId} {
+      allow create: if request.resource.data.status == 'open';
+      allow read, update: if isAdmin();
+      allow delete: if false;
     }
 
-    // Google Business Profile connection status + response settings,
-    // doc ID = the LISTING's ID (vendors/{id}). Readable/updatable by an
-    // admin or by whoever currently owns that listing — covers both an
-    // admin connecting an unclaimed listing on a business's behalf, and a
-    // vendor connecting their own claimed listing. The refreshToken/
-    // accessToken fields are only ever written by the oauthCallback Cloud
-    // Function via the Admin SDK, which bypasses these rules.
-    match /gbp_connections/{listingId} {
-      allow read: if request.auth != null &&
-        (isAdmin() || isListingOwner(listingId));
-      allow update: if request.auth != null &&
-        (isAdmin() || isListingOwner(listingId));
+    // Favorites: fully private to each user. A user can only read/write
+    // their own favorites subcollection, never anyone else's.
+    match /users/{uid} {
+      match /favorites/{vendorId} {
+        allow read, write: if request.auth != null && request.auth.uid == uid;
+      }
+    }
+
+    // Weekly digests (see digestFunctions.js). Written only by Cloud
+    // Functions via the Admin SDK, which bypasses these rules entirely —
+    // so "write: if false" here just blocks any *client* from forging
+    // their own digest. Reading and marking-as-read stays client-side.
+    match /digests/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow update: if request.auth != null && request.auth.uid == uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
       allow create, delete: if false;
     }
 
-    // Individual review + AI response records. Queried by listingId, so
-    // reads are scoped to documents belonging to a listing the requester
-    // is authorized for. Creation and deletion happen only from backend
-    // jobs via the Admin SDK.
-    match /review_responses/{docId} {
-      allow read: if request.auth != null &&
-        (isAdmin() || isListingOwner(resource.data.listingId));
+    match /vendor_digests/{vendorId} {
+      allow read: if request.auth != null && (
+        get(/databases/$(database)/documents/vendors/$(vendorId)).data.ownerId == request.auth.uid ||
+        isAdmin()
+      );
       allow update: if request.auth != null &&
-        (isAdmin() || isListingOwner(resource.data.listingId));
+        get(/databases/$(database)/documents/vendors/$(vendorId)).data.ownerId == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
       allow create, delete: if false;
+    }
+
+    // Internal bookkeeping for weeklyVendorDigest's week-over-week
+    // comparison — never read by any client, only by the Cloud Function
+    // itself (Admin SDK, bypasses rules).
+    match /vendor_counter_snapshots/{vendorId} {
+      allow read, write: if false;
     }
   }
 }
