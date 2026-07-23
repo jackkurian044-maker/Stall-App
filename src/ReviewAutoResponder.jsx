@@ -3,7 +3,7 @@
 // Import it in VendorDashboard.jsx for premium vendors
 
 import { useState, useEffect } from "react";
-import { db } from "./firebase";
+import { db, auth } from "./firebase";
 import {
   doc, getDoc, setDoc, collection,
   query, where, orderBy, onSnapshot, updateDoc
@@ -38,60 +38,60 @@ function StatusBadge({ status }) {
   );
 }
 
-export default function ReviewAutoResponder({ listingId, listing }) {
+export default function ReviewAutoResponder({ listing }) {
   const [connection, setConnection] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [loadingConnect, setLoadingConnect] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editText, setEditText] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
-  const [stats, setStats] = useState({ total: 0, posted: 0, avgRating: 0 });
+  const [stats, setStats] = useState({ total: 0, posted: 0, avgRating: 0, avgResponseMinutes: null });
   const [tab, setTab] = useState("reviews"); // reviews | settings
+
+  const vendorId = auth.currentUser?.uid;
 
   // Load GBP connection status
   useEffect(() => {
-    if (!listingId) return;
-    const ref = doc(db, "gbp_connections", listingId);
-    const unsub = onSnapshot(
-      ref,
-      snap => {
-        setConnection(snap.exists() ? snap.data() : null);
-      },
-      err => {
-        console.error("GBP connection listener error:", err);
-        setConnection(null); // falls back to the "Connect" card instead of hanging
-      }
-    );
+    if (!vendorId) return;
+    const ref = doc(db, "gbp_connections", vendorId);
+    const unsub = onSnapshot(ref, snap => {
+      setConnection(snap.exists() ? snap.data() : null);
+    });
     return unsub;
-  }, [listingId]);
+  }, [vendorId]);
 
   // Load review responses
   useEffect(() => {
-    if (!listingId) return;
+    if (!vendorId) return;
     const q = query(
       collection(db, "review_responses"),
-      where("listingId", "==", listingId),
+      where("vendorId", "==", vendorId),
       orderBy("receivedAt", "desc")
     );
-    const unsub = onSnapshot(
-      q,
-      snap => {
-        const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        setReviews(data);
-        // Compute stats
-        const posted = data.filter(r => r.status === "posted").length;
-        const avg = data.length
-          ? (data.reduce((s, r) => s + (r.starRating || 0), 0) / data.length).toFixed(1)
-          : 0;
-        setStats({ total: data.length, posted, avgRating: avg });
-      },
-      err => {
-        console.error("Review responses listener error:", err);
-        setReviews([]); // falls back to the "No reviews yet" empty state
-      }
-    );
+    const unsub = onSnapshot(q, snap => {
+      const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setReviews(data);
+      // Compute stats
+      const posted = data.filter(r => r.status === "posted").length;
+      const avg = data.length
+        ? (data.reduce((s, r) => s + (r.starRating || 0), 0) / data.length).toFixed(1)
+        : 0;
+      // Average response time, in minutes, across replies that actually
+      // posted — this is what powers the "replies within Xm" badge.
+      // Uses receivedAt -> postedAt on each review individually rather than
+      // a single global average timestamp, so it stays accurate as older
+      // reviews (posted before this feature existed, with no postedAt)
+      // just get skipped instead of skewing the number.
+      const timedReplies = data.filter(r => r.status === "posted" && r.receivedAt?.toDate && r.postedAt?.toDate);
+      const avgResponseMinutes = timedReplies.length
+        ? Math.round(
+            timedReplies.reduce((sum, r) => sum + (r.postedAt.toDate() - r.receivedAt.toDate()) / 60000, 0) / timedReplies.length
+          )
+        : null;
+      setStats({ total: data.length, posted, avgRating: avg, avgResponseMinutes });
+    });
     return unsub;
-  }, [listingId]);
+  }, [vendorId]);
 
   // Initiate Google OAuth — opens Google consent screen
   function connectGBP() {
@@ -106,7 +106,7 @@ export default function ReviewAutoResponder({ listingId, listing }) {
       ].join(" "),
       access_type: "offline",
       prompt: "consent",
-      state: listingId, // pass listingId so the callback knows which listing this is
+      state: vendorId, // pass vendorId so callback knows who this is
     });
     window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
   }
@@ -114,7 +114,7 @@ export default function ReviewAutoResponder({ listingId, listing }) {
   // Disconnect GBP
   async function disconnectGBP() {
     if (!confirm("Disconnect Google Business Profile? Auto-responses will stop.")) return;
-    await setDoc(doc(db, "gbp_connections", listingId), {
+    await setDoc(doc(db, "gbp_connections", vendorId), {
       connected: false,
       disconnectedAt: new Date(),
     }, { merge: true });
@@ -135,28 +135,28 @@ export default function ReviewAutoResponder({ listingId, listing }) {
 
   const S = {
     wrap: { fontFamily: "'Inter','Segoe UI',Arial,sans-serif", color: "#1A1A2E" },
-    card: { background: "#fff", border: "1px solid #E5E7EB", borderRadius: 20, padding: "1.25rem", marginBottom: "1rem" },
+    card: { background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: "1.25rem", marginBottom: "1rem" },
     heading: { fontSize: 18, fontWeight: 700, color: "#111", marginBottom: 4 },
     sub: { fontSize: 13, color: "#6B7280", marginBottom: "1.25rem" },
     metricGrid: { display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: "1.25rem" },
-    metric: { background: "#F9FAFB", borderRadius: 16, padding: "1rem", textAlign: "center", border: "1px solid #E5E7EB" },
+    metric: { background: "#F9FAFB", borderRadius: 10, padding: "1rem", textAlign: "center", border: "1px solid #E5E7EB" },
     mv: { fontSize: 26, fontWeight: 700, color: "#111" },
     ml: { fontSize: 12, color: "#6B7280", marginTop: 3 },
     btn: (color) => ({
-      background: color || "#111", border: "none", borderRadius: 14,
+      background: color || "#111", border: "none", borderRadius: 8,
       padding: "10px 20px", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer"
     }),
-    outlineBtn: { background: "#fff", border: "1px solid #E5E7EB", borderRadius: 14, padding: "8px 16px", fontSize: 13, cursor: "pointer", color: "#374151" },
+    outlineBtn: { background: "#fff", border: "1px solid #E5E7EB", borderRadius: 8, padding: "8px 16px", fontSize: 13, cursor: "pointer", color: "#374151" },
     tabBar: { display: "flex", gap: 4, marginBottom: "1.25rem", borderBottom: "1px solid #E5E7EB", paddingBottom: 0 },
     tab: (active) => ({
       padding: "8px 16px", border: "none", background: "none", fontSize: 13, fontWeight: active ? 600 : 400,
       color: active ? "#1D9E75" : "#6B7280", cursor: "pointer",
       borderBottom: active ? "2px solid #1D9E75" : "2px solid transparent", marginBottom: -1
     }),
-    reviewCard: { border: "1px solid #E5E7EB", borderRadius: 16, padding: "1rem", marginBottom: "0.75rem", background: "#FAFAFA" },
+    reviewCard: { border: "1px solid #E5E7EB", borderRadius: 10, padding: "1rem", marginBottom: "0.75rem", background: "#FAFAFA" },
     label: { fontSize: 11, fontWeight: 600, color: "#6B7280", textTransform: "uppercase", letterSpacing: ".04em", marginBottom: 4 },
-    responseBox: { background: "#fff", border: "1px solid #E5E7EB", borderRadius: 14, padding: "10px 12px", fontSize: 13, color: "#374151", lineHeight: 1.65 },
-    textarea: { width: "100%", minHeight: 90, border: "1px solid #1D9E75", borderRadius: 14, padding: "10px 12px", fontSize: 13, resize: "vertical", outline: "none", fontFamily: "inherit", boxSizing: "border-box" },
+    responseBox: { background: "#fff", border: "1px solid #E5E7EB", borderRadius: 8, padding: "10px 12px", fontSize: 13, color: "#374151", lineHeight: 1.65 },
+    textarea: { width: "100%", minHeight: 90, border: "1px solid #1D9E75", borderRadius: 8, padding: "10px 12px", fontSize: 13, resize: "vertical", outline: "none", fontFamily: "inherit", boxSizing: "border-box" },
   };
 
   return (
@@ -178,7 +178,7 @@ export default function ReviewAutoResponder({ listingId, listing }) {
 
         {/* Connect / Connected state */}
         {!connection?.connected ? (
-          <div style={{ background: "#F9FAFB", borderRadius: 16, padding: "1.25rem", textAlign: "center", border: "1px dashed #D1D5DB" }}>
+          <div style={{ background: "#F9FAFB", borderRadius: 10, padding: "1.25rem", textAlign: "center", border: "1px dashed #D1D5DB" }}>
             <div style={{ fontSize: 32, marginBottom: 10 }}>🔗</div>
             <div style={{ fontSize: 14, fontWeight: 600, color: "#111", marginBottom: 6 }}>Connect your Google Business Profile</div>
             <div style={{ fontSize: 12, color: "#6B7280", marginBottom: 16, maxWidth: 380, margin: "0 auto 16px" }}>
@@ -192,7 +192,7 @@ export default function ReviewAutoResponder({ listingId, listing }) {
             </div>
           </div>
         ) : (
-          <div style={{ display: "flex", alignItems: "center", gap: 12, background: "#E1F5EE", borderRadius: 16, padding: "12px 16px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, background: "#E1F5EE", borderRadius: 10, padding: "12px 16px" }}>
             <div style={{ fontSize: 24 }}>✅</div>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: "#085041" }}>Connected to Google Business Profile</div>
@@ -224,6 +224,14 @@ export default function ReviewAutoResponder({ listingId, listing }) {
             </div>
             <div style={S.ml}>Avg rating</div>
           </div>
+          {stats.avgResponseMinutes != null && (
+            <div style={S.metric}>
+              <div style={{ ...S.mv, color: "#1D9E75" }}>
+                {stats.avgResponseMinutes < 60 ? `${stats.avgResponseMinutes}m` : `${(stats.avgResponseMinutes / 60).toFixed(1)}h`}
+              </div>
+              <div style={S.ml}>⚡ Avg reply time</div>
+            </div>
+          )}
         </div>
       )}
 
@@ -320,14 +328,14 @@ export default function ReviewAutoResponder({ listingId, listing }) {
 
       {/* TAB: Settings */}
       {tab === "settings" && (
-        <ResponseSettings listingId={listingId} listing={listing} />
+        <ResponseSettings vendorId={vendorId} listing={listing} />
       )}
     </div>
   );
 }
 
 // Settings panel — tone, language, custom instructions
-function ResponseSettings({ listingId, listing }) {
+function ResponseSettings({ vendorId, listing }) {
   const [settings, setSettings] = useState({
     tone: "friendly",
     language: "english",
@@ -343,17 +351,17 @@ function ResponseSettings({ listingId, listing }) {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    if (!listingId) return;
-    getDoc(doc(db, "gbp_connections", listingId)).then(snap => {
+    if (!vendorId) return;
+    getDoc(doc(db, "gbp_connections", vendorId)).then(snap => {
       if (snap.exists() && snap.data().responseSettings) {
         setSettings(s => ({ ...s, ...snap.data().responseSettings }));
       }
     });
-  }, [listingId]);
+  }, [vendorId]);
 
   async function saveSettings() {
     setSaving(true);
-    await updateDoc(doc(db, "gbp_connections", listingId), {
+    await updateDoc(doc(db, "gbp_connections", vendorId), {
       responseSettings: settings,
       settingsUpdatedAt: new Date(),
     });
@@ -364,14 +372,14 @@ function ResponseSettings({ listingId, listing }) {
 
   const S2 = {
     label: { fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 6, display: "block" },
-    select: { width: "100%", border: "1px solid #E5E7EB", borderRadius: 14, padding: "9px 12px", fontSize: 13, background: "#fff", outline: "none", marginBottom: 14 },
-    input: { width: "100%", border: "1px solid #E5E7EB", borderRadius: 14, padding: "9px 12px", fontSize: 13, outline: "none", marginBottom: 14, boxSizing: "border-box" },
-    textarea: { width: "100%", minHeight: 80, border: "1px solid #E5E7EB", borderRadius: 14, padding: "10px 12px", fontSize: 13, resize: "vertical", outline: "none", fontFamily: "inherit", boxSizing: "border-box", marginBottom: 14 },
+    select: { width: "100%", border: "1px solid #E5E7EB", borderRadius: 8, padding: "9px 12px", fontSize: 13, background: "#fff", outline: "none", marginBottom: 14 },
+    input: { width: "100%", border: "1px solid #E5E7EB", borderRadius: 8, padding: "9px 12px", fontSize: 13, outline: "none", marginBottom: 14, boxSizing: "border-box" },
+    textarea: { width: "100%", minHeight: 80, border: "1px solid #E5E7EB", borderRadius: 8, padding: "10px 12px", fontSize: 13, resize: "vertical", outline: "none", fontFamily: "inherit", boxSizing: "border-box", marginBottom: 14 },
     checkRow: { display: "flex", alignItems: "center", gap: 8, marginBottom: 8, fontSize: 13, color: "#374151" },
   };
 
   return (
-    <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 20, padding: "1.25rem" }}>
+    <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: "1.25rem" }}>
       <div style={{ fontSize: 14, fontWeight: 600, color: "#111", marginBottom: "1rem" }}>Response Settings</div>
 
       <label style={S2.label}>Response Tone</label>
@@ -423,11 +431,11 @@ function ResponseSettings({ listingId, listing }) {
         </div>
       ))}
 
-      <button onClick={saveSettings} disabled={saving} style={{ marginTop: 16, background: saving || saved ? "#1D9E75" : "#111", border: "none", borderRadius: 14, padding: "10px 24px", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+      <button onClick={saveSettings} disabled={saving} style={{ marginTop: 16, background: saving || saved ? "#1D9E75" : "#111", border: "none", borderRadius: 8, padding: "10px 24px", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
         {saved ? "✓ Saved!" : saving ? "Saving..." : "Save Settings"}
       </button>
 
-      <div style={{ marginTop: "1.25rem", padding: "12px 14px", background: "#F9FAFB", borderRadius: 14, fontSize: 12, color: "#6B7280", lineHeight: 1.65 }}>
+      <div style={{ marginTop: "1.25rem", padding: "12px 14px", background: "#F9FAFB", borderRadius: 8, fontSize: 12, color: "#6B7280", lineHeight: 1.65 }}>
         <strong style={{ color: "#374151" }}>How AI generates responses:</strong><br />
         Uses your business name (<strong>{listing?.name}</strong>), category (<strong>{listing?.category}</strong>), and the settings above. 5★ reviews get warm thank-you responses. 3★ gets acknowledgment + improvement commitment. 1–2★ gets empathetic resolution-focused responses. All personalised with the reviewer's name.
       </div>

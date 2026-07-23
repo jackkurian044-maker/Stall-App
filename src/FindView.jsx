@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { collection, onSnapshot } from "firebase/firestore";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { collection, onSnapshot, doc, updateDoc } from "firebase/firestore";
 import { MapPin, Search, Locate, ChevronLeft, ChevronRight } from "lucide-react";
 import { db } from "./firebase";
 import { CATEGORIES, COLORS, DEFAULT_LOC } from "./constants";
@@ -8,7 +8,7 @@ import { autoRefreshStale } from "./ratingSync";
 import VendorTicket from "./VendorTicket";
 import RadarChart from "./RadarChart";
 import ReviewsModal from "./ReviewsModal";
-import CustomerLocationSearch from "./CustomerLocationSearch";
+import { watchFavorites, toggleFavorite } from "./favorites";
 
 const PAGE_SIZE = 10;
 
@@ -21,23 +21,48 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [locating, setLocating] = useState(false);
   const [selected, setSelected] = useState(null);
+  const [manualLat, setManualLat] = useState("");
+  const [manualLng, setManualLng] = useState("");
   const [reviewsVendor, setReviewsVendor] = useState(null);
   const [page, setPage] = useState(1);
+  const [favoriteIds, setFavoriteIds] = useState(new Set());
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [digest, setDigest] = useState(null);
   const refreshedRef = useRef(new Set());
+
+  useEffect(() => {
+    if (!user) {
+      setFavoriteIds(new Set());
+      setShowFavoritesOnly(false);
+      setDigest(null);
+      return;
+    }
+    const unsub = watchFavorites(db, user.uid, setFavoriteIds);
+    const unsubDigest = onSnapshot(doc(db, "digests", user.uid), (d) => {
+      setDigest(d.exists() ? { id: d.id, ...d.data() } : null);
+    });
+    return () => { unsub(); unsubDigest(); };
+  }, [user]);
+
+  const dismissDigest = () => {
+    if (!user || !digest) return;
+    updateDoc(doc(db, "digests", user.uid), { read: true });
+    setDigest(null);
+  };
+
+  const handleToggleFavorite = (vendorId, isFavorited) => {
+    if (!user) {
+      onRequestSignIn?.();
+      return;
+    }
+    toggleFavorite(db, user.uid, vendorId, isFavorited);
+  };
 
   useEffect(() => {
     const unsub = onSnapshot(
       collection(db, "vendors"),
       (snap) => {
-        // Hide direct self-registrations still awaiting admin review, and
-        // any that were rejected. Listings without a status field at all
-        // (admin-added, or anything created before this field existed)
-        // are treated as public — status is only ever set to 'pending' by
-        // register.html, so its absence means "not subject to this gate".
-        const visible = snap.docs
-          .map((d) => ({ id: d.id, ...d.data() }))
-          .filter((v) => v.status !== "pending" && v.status !== "rejected");
-        setVendors(visible);
+        setVendors(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
         setLoading(false);
       },
       () => setLoading(false)
@@ -65,33 +90,16 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
         setUserLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude });
         setLocating(false);
       },
-      () => {
-        // Permission denied, timed out, or otherwise failed — fall back
-        // to the default city rather than stranding the user on the
-        // "set your location" empty state.
-        setUserLoc(DEFAULT_LOC);
-        setLocating(false);
-      },
+      () => setLocating(false),
       { timeout: 6000 }
     );
   };
 
-  // Auto-detect on load instead of waiting for the "Use my location" click —
-  // same pattern as Swiggy/Zomato-style "near me" apps. Browsers show their
-  // own permission prompt for this automatically; if it's denied, times out,
-  // or geolocation isn't supported, locate() now falls back to DEFAULT_LOC
-  // itself, so userLoc is always set one way or another after this runs.
-  useEffect(() => {
-    locate();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Stable reference so CustomerLocationSearch's internal effect (which
-  // depends on this callback) doesn't re-run its Autocomplete setup on
-  // every FindView re-render — see review notes on the initial version.
-  const handleLocationSelect = useCallback((loc) => {
-    setUserLoc({ lat: loc.lat, lng: loc.lng });
-  }, []);
+  const useManualLoc = () => {
+    const lat = parseFloat(manualLat);
+    const lng = parseFloat(manualLng);
+    if (Number.isFinite(lat) && Number.isFinite(lng)) setUserLoc({ lat, lng });
+  };
 
   const results = useMemo(() => {
     if (!userLoc) return [];
@@ -99,6 +107,7 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
       .map((v) => ({ ...v, distance: haversineKm(userLoc, { lat: v.lat, lng: v.lng }) }))
       .filter((v) => v.distance <= radiusKm)
       .filter((v) => categoryFilter === "All" || v.category === categoryFilter)
+      .filter((v) => !showFavoritesOnly || favoriteIds.has(v.id))
       .filter((v) => {
         if (!query.trim()) return true;
         const q = query.toLowerCase();
@@ -114,7 +123,7 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
         if (br !== ar) return br - ar; // higher rating first; unrated (-1) sinks to the bottom
         return a.distance - b.distance; // tie-break (including among unrated): closer first
       });
-  }, [vendors, userLoc, radiusKm, categoryFilter, query]);
+  }, [vendors, userLoc, radiusKm, categoryFilter, query, showFavoritesOnly, favoriteIds]);
 
   const radarData = useMemo(() => {
     if (!userLoc) return [];
@@ -130,7 +139,7 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
   // page number that no longer has any results.
   useEffect(() => {
     setPage(1);
-  }, [radiusKm, categoryFilter, query, userLoc]);
+  }, [radiusKm, categoryFilter, query, userLoc, showFavoritesOnly]);
 
   const totalPages = Math.max(1, Math.ceil(results.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -147,7 +156,7 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
                 onClick={locate}
                 className="stall-btn"
                 style={{
-                  width: "100%", background: COLORS.navy, color: "#fff", border: "none", borderRadius: 999,
+                  width: "100%", background: COLORS.ink, color: "#fff", border: "none", borderRadius: 8,
                   padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "center",
                   gap: 8, fontWeight: 600, fontSize: 13, marginBottom: 10,
                 }}
@@ -155,22 +164,41 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
                 <Locate size={16} /> {locating ? "Locating…" : "Use my location"}
               </button>
               <div style={{ fontSize: 11, color: "#555", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                or search your area
+                or enter coordinates
               </div>
-              <CustomerLocationSearch onSelect={handleLocationSelect} />
+              <div style={{ display: "flex", gap: 8 }}>
+                <input
+                  placeholder="Latitude"
+                  value={manualLat}
+                  onChange={(e) => setManualLat(e.target.value)}
+                  className="font-mono"
+                  style={{ flex: 1, padding: "8px 10px", borderRadius: 6, border: `1.5px solid ${COLORS.ink}`, fontSize: 13 }}
+                />
+                <input
+                  placeholder="Longitude"
+                  value={manualLng}
+                  onChange={(e) => setManualLng(e.target.value)}
+                  className="font-mono"
+                  style={{ flex: 1, padding: "8px 10px", borderRadius: 6, border: `1.5px solid ${COLORS.ink}`, fontSize: 13 }}
+                />
+              </div>
+              <button
+                onClick={useManualLoc}
+                className="stall-btn"
+                style={{ marginTop: 8, width: "100%", background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 6, padding: "7px", fontSize: 12, fontWeight: 600 }}
+              >
+                Set location
+              </button>
             </div>
           ) : (
             <div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                <div style={{ fontSize: 12, color: COLORS.green, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
+                <div style={{ fontSize: 12, color: COLORS.teal, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
                   <MapPin size={14} /> LOCATION SET
                 </div>
                 <button onClick={locate} style={{ background: "none", border: "none", fontSize: 11, textDecoration: "underline", cursor: "pointer" }}>
                   {locating ? "…" : "refresh"}
                 </button>
-              </div>
-              <div style={{ marginBottom: 12 }}>
-                <CustomerLocationSearch onSelect={handleLocationSelect} />
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
                 <span>Search radius</span>
@@ -185,10 +213,24 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
           )}
         </div>
 
-        {userLoc && isAdmin && <RadarChart radarData={radarData} radiusKm={radiusKm} onSelect={setSelected} />}
+        {userLoc && <RadarChart radarData={radarData} radiusKm={radiusKm} onSelect={setSelected} />}
       </div>
 
       <div>
+        {digest && !digest.read && (digest.newVendors?.length > 0 || digest.activeOffers?.length > 0) && (
+          <div style={{ background: `${COLORS.teal}15`, border: `1.5px solid ${COLORS.teal}`, borderRadius: 12, padding: "12px 16px", marginBottom: 14, display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+            <div style={{ fontSize: 13 }}>
+              <strong>This week near your favorites:</strong>{" "}
+              {digest.newVendors?.length > 0 && `${digest.newVendors.length} new vendor${digest.newVendors.length === 1 ? "" : "s"}`}
+              {digest.newVendors?.length > 0 && digest.activeOffers?.length > 0 && " · "}
+              {digest.activeOffers?.length > 0 && `${digest.activeOffers.length} active offer${digest.activeOffers.length === 1 ? "" : "s"}`}
+            </div>
+            <button onClick={dismissDigest} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: COLORS.teal, fontWeight: 600, flexShrink: 0 }}>
+              Dismiss
+            </button>
+          </div>
+        )}
+
         <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
           <div style={{ flex: "1 1 220px", position: "relative" }}>
             <Search size={15} style={{ position: "absolute", left: 10, top: 11, color: "#777" }} />
@@ -196,17 +238,30 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
               placeholder="Search vendors or products…"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              style={{ width: "100%", padding: "9px 10px 9px 32px", borderRadius: 14, border: `1.5px solid ${COLORS.ink}`, fontSize: 13, background: "#fff" }}
+              style={{ width: "100%", padding: "9px 10px 9px 32px", borderRadius: 8, border: `1.5px solid ${COLORS.ink}`, fontSize: 13, background: "#fff" }}
             />
           </div>
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            style={{ padding: "9px 10px", borderRadius: 14, border: `1.5px solid ${COLORS.ink}`, fontSize: 13, background: "#fff" }}
+            style={{ padding: "9px 10px", borderRadius: 8, border: `1.5px solid ${COLORS.ink}`, fontSize: 13, background: "#fff" }}
           >
             <option>All</option>
             {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
           </select>
+          {user && (
+            <button
+              onClick={() => setShowFavoritesOnly((s) => !s)}
+              className="stall-btn"
+              style={{
+                display: "flex", alignItems: "center", gap: 6, padding: "9px 14px", borderRadius: 8,
+                border: `1.5px solid ${COLORS.ink}`, fontSize: 13, fontWeight: 600, cursor: "pointer",
+                background: showFavoritesOnly ? COLORS.ink : "#fff", color: showFavoritesOnly ? "#fff" : COLORS.ink,
+              }}
+            >
+              ♥ Favorites
+            </button>
+          )}
         </div>
 
         {!userLoc ? (
@@ -215,7 +270,11 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
           <div style={{ fontSize: 13, color: "#666" }}>Loading vendors…</div>
         ) : results.length === 0 ? (
           <EmptyState
-            text={vendors.length === 0 ? "No vendors listed yet." : "Nothing in range — try widening your search radius."}
+            text={
+              showFavoritesOnly
+                ? "No favorites in range yet — tap the heart on a listing to save it here."
+                : vendors.length === 0 ? "No vendors listed yet." : "Nothing in range — try widening your search radius."
+            }
           />
         ) : (
           <>
@@ -231,6 +290,9 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
                   highlighted={selected === v.id}
                   onClick={() => setSelected(v.id)}
                   onOpenReviews={() => setReviewsVendor(v)}
+                  user={user}
+                  isFavorited={favoriteIds.has(v.id)}
+                  onToggleFavorite={handleToggleFavorite}
                 />
               ))}
             </div>
@@ -242,7 +304,7 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
                   disabled={currentPage === 1}
                   className="stall-btn"
                   style={{
-                    background: "#fff", border: `1.5px solid ${COLORS.ink}`, borderRadius: 14, padding: "7px 10px",
+                    background: "#fff", border: `1.5px solid ${COLORS.ink}`, borderRadius: 7, padding: "7px 10px",
                     display: "flex", alignItems: "center", opacity: currentPage === 1 ? 0.4 : 1,
                     cursor: currentPage === 1 ? "default" : "pointer",
                   }}
@@ -258,7 +320,7 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
                       background: p === currentPage ? COLORS.ink : "#fff",
                       color: p === currentPage ? "#fff" : COLORS.ink,
                       border: `1.5px solid ${COLORS.ink}`,
-                      borderRadius: 14,
+                      borderRadius: 7,
                       padding: "7px 12px",
                       fontSize: 13,
                       fontWeight: 600,
@@ -273,7 +335,7 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
                   disabled={currentPage === totalPages}
                   className="stall-btn"
                   style={{
-                    background: "#fff", border: `1.5px solid ${COLORS.ink}`, borderRadius: 14, padding: "7px 10px",
+                    background: "#fff", border: `1.5px solid ${COLORS.ink}`, borderRadius: 7, padding: "7px 10px",
                     display: "flex", alignItems: "center", opacity: currentPage === totalPages ? 0.4 : 1,
                     cursor: currentPage === totalPages ? "default" : "pointer",
                   }}
@@ -301,8 +363,8 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
 
 function EmptyState({ text }) {
   return (
-    <div style={{ border: `2px dashed ${COLORS.ink}55`, borderRadius: 20, padding: "40px 20px", textAlign: "center", background: "#ffffff88" }}>
-      <MapPin size={28} color={COLORS.green} style={{ marginBottom: 10 }} />
+    <div style={{ border: `2px dashed ${COLORS.ink}55`, borderRadius: 12, padding: "40px 20px", textAlign: "center", background: "#ffffff88" }}>
+      <MapPin size={28} color={COLORS.teal} style={{ marginBottom: 10 }} />
       <div style={{ fontSize: 14, color: "#444", maxWidth: 320, margin: "0 auto" }}>{text}</div>
     </div>
   );

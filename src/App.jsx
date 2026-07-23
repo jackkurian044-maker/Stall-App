@@ -9,7 +9,7 @@ import AuthPage from "./AuthPage";
 import VendorDashboard from "./VendorDashboard";
 import AdminDashboard from "./AdminDashboard";
 import DiscoverNearby from "./DiscoverNearby";
-import Footer from "./Footer";
+import PrivacyPolicy from "./PrivacyPolicy";
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -61,11 +61,22 @@ export default function App() {
         <AdminDashboard />
       ) : mode === "bulk" && isAdmin ? (
         <DiscoverNearby />
+      ) : mode === "privacy" ? (
+        <PrivacyPolicy onBack={() => setMode("find")} />
       ) : (
         <FindView user={user} isAdmin={isAdmin} onRequestSignIn={() => setMode("auth")} />
       )}
 
-      <Footer />
+      {mode !== "privacy" && (
+        <div style={{ textAlign: "center", padding: "24px 16px", fontSize: 12.5, color: "#888" }}>
+          <button
+            onClick={() => setMode("privacy")}
+            style={{ background: "none", border: "none", color: "#888", textDecoration: "underline", cursor: "pointer", fontSize: 12.5, padding: 0 }}
+          >
+            Privacy Policy
+          </button>
+        </div>
+      )}
     </div>
   );
 }

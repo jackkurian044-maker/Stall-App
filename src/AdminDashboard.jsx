@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
-import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from "firebase/firestore";
-import { Plus, Trash2, RefreshCw, Star } from "lucide-react";
+import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, query, where } from "firebase/firestore";
+import { Plus, Trash2, RefreshCw, Star, Flag, Check, X as XIcon } from "lucide-react";
 import { db } from "./firebase";
 import { CATEGORIES, CATEGORY_COLORS, COLORS } from "./constants";
 import { uid, toDateInputValue } from "./geo";
@@ -8,6 +8,7 @@ import { autoRefreshStale, isRatingStale } from "./ratingSync";
 import LocationSearch from "./LocationSearch";
 import ImageUpload from "./ImageUpload";
 import { findDuplicateVendor } from "./duplicateCheck";
+import { resolveReport } from "./reports";
 
 const emptyForm = {
   name: "", category: CATEGORIES[0], description: "", products: "",
@@ -25,6 +26,8 @@ export default function AdminDashboard() {
   const [saving, setSaving] = useState(false);
   const [lastCode, setLastCode] = useState(null);
   const [tempId] = useState(() => uid(10));
+  const [reports, setReports] = useState([]);
+  const [reportsLoading, setReportsLoading] = useState(true);
   const refreshedRef = useRef(new Set());
 
   useEffect(() => {
@@ -35,6 +38,21 @@ export default function AdminDashboard() {
     return unsub;
   }, []);
 
+  useEffect(() => {
+    const q = query(collection(db, "reports"), where("status", "==", "open"));
+    const unsub = onSnapshot(q, (snap) => {
+      const rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      rows.sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+      setReports(rows);
+      setReportsLoading(false);
+    }, () => setReportsLoading(false));
+    return unsub;
+  }, []);
+
+  const handleResolveReport = async (reportId, status) => {
+    await resolveReport(db, reportId, status);
+  };
+
   // Same zero-click, staleness-gated refresh as the public Find page —
   // see ratingSync.js and the firestore.rules note for the cost control.
   useEffect(() => {
@@ -42,7 +60,7 @@ export default function AdminDashboard() {
   }, [vendors]);
 
   const inputStyle = {
-    width: "100%", padding: "9px 10px", borderRadius: 14,
+    width: "100%", padding: "9px 10px", borderRadius: 7,
     border: `1.5px solid ${COLORS.ink}`, fontSize: 13, background: "#fff", boxSizing: "border-box",
   };
   const field = (label, node) => (
@@ -164,7 +182,7 @@ export default function AdminDashboard() {
                   onClick={() => setForm({ ...form, preferredLink: opt.id })}
                   className="stall-btn"
                   style={{
-                    flex: 1, borderRadius: 14, padding: "8px 10px", fontSize: 12.5, fontWeight: 600,
+                    flex: 1, borderRadius: 7, padding: "8px 10px", fontSize: 12.5, fontWeight: 600,
                     border: `1.5px solid ${COLORS.ink}`,
                     background: (form.preferredLink || "mapsUrl") === opt.id ? COLORS.ink : "#fff",
                     color: (form.preferredLink || "mapsUrl") === opt.id ? "#fff" : COLORS.ink,
@@ -200,11 +218,11 @@ export default function AdminDashboard() {
           {error && <div style={{ color: COLORS.brick, fontSize: 12, marginBottom: 10 }}>{error}</div>}
 
           <div style={{ display: "flex", gap: 8 }}>
-            <button type="submit" disabled={saving} className="stall-btn" style={{ flex: 1, background: COLORS.navy, color: "#fff", border: "none", borderRadius: 999, padding: "10px", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+            <button type="submit" disabled={saving} className="stall-btn" style={{ flex: 1, background: COLORS.ink, color: "#fff", border: "none", borderRadius: 7, padding: "10px", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
               <Plus size={15} /> {saving ? "Saving…" : editingId ? "Save changes" : "Add vendor"}
             </button>
             {editingId && (
-              <button type="button" onClick={cancelEdit} className="stall-btn" style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 14, padding: "10px 14px", fontSize: 13 }}>
+              <button type="button" onClick={cancelEdit} className="stall-btn" style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 7, padding: "10px 14px", fontSize: 13 }}>
                 Cancel
               </button>
             )}
@@ -212,7 +230,7 @@ export default function AdminDashboard() {
         </form>
 
         {lastCode && (
-          <div style={{ marginTop: 14, background: `${COLORS.marigold}22`, border: `1.5px solid ${COLORS.marigold}`, borderRadius: 14, padding: 12 }}>
+          <div style={{ marginTop: 14, background: `${COLORS.marigold}22`, border: `1.5px solid ${COLORS.marigold}`, borderRadius: 8, padding: 12 }}>
             <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>Claim code for "{lastCode.name}"</div>
             <div className="font-mono" style={{ fontSize: 18, letterSpacing: "0.1em" }}>{lastCode.code}</div>
             <div style={{ fontSize: 11, color: "#666", marginTop: 4 }}>
@@ -223,17 +241,60 @@ export default function AdminDashboard() {
       </div>
 
       <div>
+        {reports.length > 0 && (
+          <div style={{ marginBottom: 28 }}>
+            <div className="font-display" style={{ fontSize: 19, fontWeight: 700, marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}>
+              <Flag size={17} color={COLORS.brick} /> Open reports
+            </div>
+            <div style={{ fontSize: 12, color: "#666", marginBottom: 12 }}>
+              {reports.length} awaiting review — private, never shown to the public
+            </div>
+            <div style={{ border: `2px solid ${COLORS.brick}`, borderRadius: 12, overflow: "hidden" }}>
+              {reports.map((r, i) => (
+                <div key={r.id} style={{ padding: "12px 16px", borderTop: i === 0 ? "none" : `1px solid ${COLORS.ink}22`, background: "#fff" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 13.5 }}>{r.vendorName || "(unnamed listing)"}</div>
+                      <div style={{ fontSize: 12.5, color: COLORS.brick, fontWeight: 600, marginTop: 2 }}>{r.reason}</div>
+                      {r.details && <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>{r.details}</div>}
+                      <div style={{ fontSize: 10.5, color: "#999", marginTop: 4 }}>
+                        {r.createdAt?.toDate?.()?.toLocaleString?.() || "just now"}
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                      <button
+                        onClick={() => handleResolveReport(r.id, "dismissed")}
+                        title="Dismiss — no action needed"
+                        style={{ background: "none", border: `1.5px solid ${COLORS.ink}33`, borderRadius: 7, padding: "6px 8px", cursor: "pointer", color: "#666" }}
+                      >
+                        <XIcon size={14} />
+                      </button>
+                      <button
+                        onClick={() => handleResolveReport(r.id, "reviewed")}
+                        title="Mark as reviewed"
+                        style={{ background: COLORS.ink, border: "none", borderRadius: 7, padding: "6px 8px", cursor: "pointer", color: "#fff" }}
+                      >
+                        <Check size={14} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="font-display" style={{ fontSize: 19, fontWeight: 700, marginBottom: 4 }}>All listings</div>
         <div style={{ fontSize: 12, color: "#666", marginBottom: 12 }}>{vendors.length} total</div>
 
         {loading ? (
           <div style={{ fontSize: 13, color: "#666" }}>Loading…</div>
         ) : vendors.length === 0 ? (
-          <div style={{ border: `2px dashed ${COLORS.ink}55`, borderRadius: 20, padding: 30, textAlign: "center", color: "#666", fontSize: 13 }}>
+          <div style={{ border: `2px dashed ${COLORS.ink}55`, borderRadius: 12, padding: 30, textAlign: "center", color: "#666", fontSize: 13 }}>
             No vendors yet.
           </div>
         ) : (
-          <div style={{ border: "1px solid rgba(15,26,36,0.08)", boxShadow: "0 8px 24px rgba(15,26,36,0.08)", borderRadius: 20, overflow: "hidden" }}>
+          <div style={{ border: `2px solid ${COLORS.ink}`, borderRadius: 12, overflow: "hidden" }}>
             {vendors.map((v, i) => (
               <div key={v.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderTop: i === 0 ? "none" : `1px solid ${COLORS.ink}22`, background: editingId === v.id ? `${COLORS.marigold}18` : "#fff" }}>
                 <div style={{ minWidth: 0 }}>
@@ -242,7 +303,7 @@ export default function AdminDashboard() {
                     <span style={{ fontSize: 10, textTransform: "uppercase", fontWeight: 700, color: "#fff", background: CATEGORY_COLORS[v.category] || COLORS.ink, padding: "2px 7px", borderRadius: 999 }}>
                       {v.category}
                     </span>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: v.ownerId ? COLORS.green : COLORS.brick }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: v.ownerId ? COLORS.teal : COLORS.brick }}>
                       {v.ownerId ? "CLAIMED" : "UNCLAIMED"}
                     </span>
                     {v.rating != null && (
@@ -267,7 +328,7 @@ export default function AdminDashboard() {
                   <button
                     onClick={() => startEdit(v)}
                     className="stall-btn"
-                    style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 14, padding: "5px 10px", fontSize: 12, fontWeight: 600 }}
+                    style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 7, padding: "5px 10px", fontSize: 12, fontWeight: 600 }}
                   >
                     Edit
                   </button>

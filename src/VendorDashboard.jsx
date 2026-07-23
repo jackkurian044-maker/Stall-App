@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
   collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc,
-  getDocs, getDoc, serverTimestamp,
+  getDocs, serverTimestamp,
 } from "firebase/firestore";
-import { Plus, Trash2, KeyRound, RefreshCw, Star, Zap, ShieldCheck, Check, X } from "lucide-react";
+import { Plus, Trash2, KeyRound, RefreshCw, Star, Zap, BarChart2, Eye, Phone, MessageCircle, Navigation } from "lucide-react";
 import { db } from "./firebase";
 import { CATEGORIES, COLORS } from "./constants";
 import LocationSearch from "./LocationSearch";
@@ -13,6 +13,7 @@ import { uid, toDateInputValue } from "./geo";
 import PremiumGate from "./PremiumGate";
 import ReviewAutoResponder from "./ReviewAutoResponder";
 import { findDuplicateVendor } from "./duplicateCheck";
+import QuickOfferModal from "./QuickOfferModal";
 
 const emptyForm = {
   name: "", category: CATEGORIES[0], description: "", products: "",
@@ -31,54 +32,25 @@ export default function VendorDashboard({ user }) {
   const [claimCode, setClaimCode] = useState("");
   const [claimMsg, setClaimMsg] = useState("");
   const [tempId] = useState(() => uid(10));
-  const [dashTab, setDashTab] = useState("listings"); // "listings" | "premium" | "pending" | "all"
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [pendingListings, setPendingListings] = useState([]);
-  const [allListings, setAllListings] = useState([]);
-  const [selectedListingId, setSelectedListingId] = useState(null);
+  const [dashTab, setDashTab] = useState("listings"); // "listings" | "insights" | "premium"
+  const [quickOfferListing, setQuickOfferListing] = useState(null);
+  const [vendorDigests, setVendorDigests] = useState({}); // vendorId -> digest doc
+
+  useEffect(() => {
+    if (listings.length === 0) return;
+    const unsubs = listings.map((l) =>
+      onSnapshot(doc(db, "vendor_digests", l.id), (d) => {
+        setVendorDigests((prev) => ({ ...prev, [l.id]: d.exists() ? d.data() : null }));
+      })
+    );
+    return () => unsubs.forEach((u) => u());
+  }, [listings]);
+
+  const dismissVendorDigest = (vendorId) => {
+    updateDoc(doc(db, "vendor_digests", vendorId), { read: true });
+    setVendorDigests((prev) => ({ ...prev, [vendorId]: null }));
+  };
   const refreshedRef = useRef(new Set());
-
-  // Open the Premium tab pre-loaded for a specific listing — used by the
-  // "Manage Premium" button on each listing row (My Listings and, for
-  // admins, All Listings) so you don't have to hunt for it afterward.
-  const manageListing = (id) => {
-    setSelectedListingId(id);
-    setDashTab("premium");
-  };
-
-  useEffect(() => {
-    getDoc(doc(db, "admins", user.uid))
-      .then((snap) => setIsAdmin(snap.exists()))
-      .catch(() => setIsAdmin(false));
-  }, [user.uid]);
-
-  useEffect(() => {
-    if (!isAdmin) { setPendingListings([]); return; }
-    const q = query(collection(db, "vendors"), where("status", "==", "pending"));
-    const unsub = onSnapshot(q, (snap) => {
-      setPendingListings(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-    });
-    return unsub;
-  }, [isAdmin]);
-
-  // Every listing in the collection, regardless of owner or status — this
-  // is the admin's full-visibility view, separate from "My Listings" (own
-  // claimed listings) and "Pending Approvals" (just the review queue).
-  useEffect(() => {
-    if (!isAdmin) { setAllListings([]); return; }
-    const unsub = onSnapshot(collection(db, "vendors"), (snap) => {
-      setAllListings(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-    });
-    return unsub;
-  }, [isAdmin]);
-
-  const reviewListing = async (id, decision) => {
-    await updateDoc(doc(db, "vendors", id), {
-      status: decision, // 'approved' or 'rejected'
-      reviewedAt: serverTimestamp(),
-      reviewedBy: user.uid,
-    });
-  };
 
   useEffect(() => {
     const q = query(collection(db, "vendors"), where("ownerId", "==", user.uid));
@@ -94,7 +66,7 @@ export default function VendorDashboard({ user }) {
   }, [listings]);
 
   const inputStyle = {
-    width: "100%", padding: "9px 10px", borderRadius: 14,
+    width: "100%", padding: "9px 10px", borderRadius: 7,
     border: `1.5px solid ${COLORS.ink}`, fontSize: 13, background: "#fff", boxSizing: "border-box",
   };
   const field = (label, node) => (
@@ -179,19 +151,6 @@ export default function VendorDashboard({ user }) {
         return;
       }
       const d = snap.docs[0];
-      const listingData = d.data();
-      // Listings self-registered via register.html carry the ownerEmail
-      // the vendor typed at signup — only that same email can claim it.
-      // Admin-added listings (no ownerEmail on file) skip this check.
-      if (listingData.ownerEmail) {
-        const signedInEmail = (user.email || "").toLowerCase();
-        if (signedInEmail !== listingData.ownerEmail.toLowerCase()) {
-          setClaimMsg(
-            `This listing is registered to a different email. Please sign in with ${listingData.ownerEmail} to claim it.`
-          );
-          return;
-        }
-      }
       await updateDoc(doc(db, "vendors", d.id), { ownerId: user.uid, claimCode: code });
       setClaimMsg(`Claimed "${d.data().name}" — it now appears below.`);
       setClaimCode("");
@@ -204,7 +163,7 @@ export default function VendorDashboard({ user }) {
     <div className="stall-grid">
       {/* ── LEFT COLUMN — unchanged ── */}
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        <div style={{ background: "#fff", border: "1px solid rgba(15,26,36,0.08)", boxShadow: "0 8px 24px rgba(15,26,36,0.08)", borderRadius: 20, padding: 18 }}>
+        <div style={{ background: "#fff", border: `2px solid ${COLORS.ink}`, borderRadius: 12, padding: 18 }}>
           <div className="font-display" style={{ fontSize: 19, fontWeight: 700, marginBottom: 4 }}>
             {editingId ? "Edit listing" : "Create a listing"}
           </div>
@@ -239,7 +198,7 @@ export default function VendorDashboard({ user }) {
                     onClick={() => setForm({ ...form, preferredLink: opt.id })}
                     className="stall-btn"
                     style={{
-                      flex: 1, borderRadius: 14, padding: "8px 10px", fontSize: 12.5, fontWeight: 600,
+                      flex: 1, borderRadius: 7, padding: "8px 10px", fontSize: 12.5, fontWeight: 600,
                       border: `1.5px solid ${COLORS.ink}`,
                       background: (form.preferredLink || "mapsUrl") === opt.id ? COLORS.ink : "#fff",
                       color: (form.preferredLink || "mapsUrl") === opt.id ? "#fff" : COLORS.ink,
@@ -273,11 +232,11 @@ export default function VendorDashboard({ user }) {
             />
             {error && <div style={{ color: COLORS.brick, fontSize: 12, marginBottom: 10 }}>{error}</div>}
             <div style={{ display: "flex", gap: 8 }}>
-              <button type="submit" disabled={saving} className="stall-btn" style={{ flex: 1, background: COLORS.navy, color: "#fff", border: "none", borderRadius: 999, padding: "10px", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+              <button type="submit" disabled={saving} className="stall-btn" style={{ flex: 1, background: COLORS.ink, color: "#fff", border: "none", borderRadius: 7, padding: "10px", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
                 <Plus size={15} /> {saving ? "Saving…" : editingId ? "Save changes" : "Add listing"}
               </button>
               {editingId && (
-                <button type="button" onClick={() => { setEditingId(null); setForm(emptyForm); }} className="stall-btn" style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 14, padding: "10px 14px", fontSize: 13 }}>
+                <button type="button" onClick={() => { setEditingId(null); setForm(emptyForm); }} className="stall-btn" style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 7, padding: "10px 14px", fontSize: 13 }}>
                   Cancel
                 </button>
               )}
@@ -285,7 +244,7 @@ export default function VendorDashboard({ user }) {
           </form>
         </div>
 
-        <div style={{ background: "#fff", border: "1px solid rgba(15,26,36,0.08)", boxShadow: "0 8px 24px rgba(15,26,36,0.08)", borderRadius: 20, padding: 18 }}>
+        <div style={{ background: "#fff", border: `2px solid ${COLORS.ink}`, borderRadius: 12, padding: 18 }}>
           <div className="font-display" style={{ fontSize: 16, fontWeight: 700, marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}>
             <KeyRound size={15} /> Claim a listing
           </div>
@@ -298,13 +257,13 @@ export default function VendorDashboard({ user }) {
               value={claimCode}
               onChange={(e) => setClaimCode(e.target.value)}
               placeholder="e.g. 7K3PQR"
-              style={{ flex: 1, padding: "8px 10px", borderRadius: 14, border: `1.5px solid ${COLORS.ink}`, fontSize: 13 }}
+              style={{ flex: 1, padding: "8px 10px", borderRadius: 7, border: `1.5px solid ${COLORS.ink}`, fontSize: 13 }}
             />
-            <button type="submit" className="stall-btn" style={{ background: COLORS.navy, color: "#fff", border: "none", borderRadius: 999, padding: "8px 14px", fontSize: 13, fontWeight: 600 }}>
+            <button type="submit" className="stall-btn" style={{ background: COLORS.ink, color: "#fff", border: "none", borderRadius: 7, padding: "8px 14px", fontSize: 13, fontWeight: 600 }}>
               Claim
             </button>
           </form>
-          {claimMsg && <div style={{ fontSize: 12, color: COLORS.green, marginTop: 8 }}>{claimMsg}</div>}
+          {claimMsg && <div style={{ fontSize: 12, color: COLORS.teal, marginTop: 8 }}>{claimMsg}</div>}
         </div>
       </div>
 
@@ -316,7 +275,7 @@ export default function VendorDashboard({ user }) {
             onClick={() => setDashTab("listings")}
             className="stall-btn"
             style={{
-              padding: "7px 16px", borderRadius: 14, fontSize: 13, fontWeight: 600,
+              padding: "7px 16px", borderRadius: 7, fontSize: 13, fontWeight: 600,
               border: `1.5px solid ${COLORS.ink}`,
               background: dashTab === "listings" ? COLORS.ink : "#fff",
               color: dashTab === "listings" ? "#fff" : COLORS.ink,
@@ -326,10 +285,24 @@ export default function VendorDashboard({ user }) {
             My Listings ({listings.length})
           </button>
           <button
+            onClick={() => setDashTab("insights")}
+            className="stall-btn"
+            style={{
+              padding: "7px 16px", borderRadius: 7, fontSize: 13, fontWeight: 600,
+              border: `1.5px solid ${COLORS.ink}`,
+              background: dashTab === "insights" ? COLORS.ink : "#fff",
+              color: dashTab === "insights" ? "#fff" : COLORS.ink,
+              cursor: "pointer",
+              display: "flex", alignItems: "center", gap: 6,
+            }}
+          >
+            <BarChart2 size={13} /> Insights
+          </button>
+          <button
             onClick={() => setDashTab("premium")}
             className="stall-btn"
             style={{
-              padding: "7px 16px", borderRadius: 14, fontSize: 13, fontWeight: 600,
+              padding: "7px 16px", borderRadius: 7, fontSize: 13, fontWeight: 600,
               border: `1.5px solid ${COLORS.ink}`,
               background: dashTab === "premium" ? COLORS.ink : "#fff",
               color: dashTab === "premium" ? "#fff" : COLORS.ink,
@@ -339,37 +312,6 @@ export default function VendorDashboard({ user }) {
           >
             <Zap size={13} /> Premium
           </button>
-          {isAdmin && (
-            <button
-              onClick={() => setDashTab("all")}
-              className="stall-btn"
-              style={{
-                padding: "7px 16px", borderRadius: 14, fontSize: 13, fontWeight: 600,
-                border: `1.5px solid ${COLORS.ink}`,
-                background: dashTab === "all" ? COLORS.ink : "#fff",
-                color: dashTab === "all" ? "#fff" : COLORS.ink,
-                cursor: "pointer",
-              }}
-            >
-              All Listings ({allListings.length})
-            </button>
-          )}
-          {isAdmin && (
-            <button
-              onClick={() => setDashTab("pending")}
-              className="stall-btn"
-              style={{
-                padding: "7px 16px", borderRadius: 14, fontSize: 13, fontWeight: 600,
-                border: `1.5px solid ${COLORS.ink}`,
-                background: dashTab === "pending" ? COLORS.ink : "#fff",
-                color: dashTab === "pending" ? "#fff" : COLORS.ink,
-                cursor: "pointer",
-                display: "flex", alignItems: "center", gap: 6,
-              }}
-            >
-              <ShieldCheck size={13} /> Pending Approvals ({pendingListings.length})
-            </button>
-          )}
         </div>
 
         {/* ── LISTINGS TAB ── */}
@@ -379,18 +321,18 @@ export default function VendorDashboard({ user }) {
             {loading ? (
               <div style={{ fontSize: 13, color: "#666" }}>Loading…</div>
             ) : listings.length === 0 ? (
-              <div style={{ border: `2px dashed ${COLORS.ink}55`, borderRadius: 20, padding: 30, textAlign: "center", color: "#666", fontSize: 13 }}>
+              <div style={{ border: `2px dashed ${COLORS.ink}55`, borderRadius: 12, padding: 30, textAlign: "center", color: "#666", fontSize: 13 }}>
                 Nothing yet — create your first listing on the left, or claim one an admin already added.
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {listings.map((l) => (
-                  <div key={l.id} style={{ background: "#fff", border: "1px solid rgba(15,26,36,0.08)", boxShadow: "0 8px 24px rgba(15,26,36,0.08)", borderRadius: 20, padding: 14, display: "flex", justifyContent: "space-between", gap: 12 }}>
+                  <div key={l.id} style={{ background: "#fff", border: `2px solid ${COLORS.ink}`, borderRadius: 12, padding: 14, display: "flex", justifyContent: "space-between", gap: 12 }}>
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center", gap: 6 }}>
                         {l.name}
                         {l.isPremium && (
-                          <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 16, background: COLORS.ink, color: "#fff", fontWeight: 600 }}>
+                          <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: COLORS.ink, color: "#fff", fontWeight: 600 }}>
                             ✦ Premium
                           </span>
                         )}
@@ -410,10 +352,15 @@ export default function VendorDashboard({ user }) {
                           <RefreshCw size={13} />
                         </span>
                       )}
-                      <button onClick={() => manageListing(l.id)} className="stall-btn" style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 14, padding: "6px 10px", fontSize: 12, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
-                        <Zap size={12} /> Premium
+                      <button
+                        onClick={() => setQuickOfferListing(l)}
+                        className="stall-btn"
+                        title="Post a quick offer"
+                        style={{ background: COLORS.marigold, border: "none", borderRadius: 7, padding: "6px 10px", fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", gap: 5, color: COLORS.ink }}
+                      >
+                        <Zap size={12} /> Offer
                       </button>
-                      <button onClick={() => startEdit(l)} className="stall-btn" style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 14, padding: "6px 10px", fontSize: 12, fontWeight: 600 }}>
+                      <button onClick={() => startEdit(l)} className="stall-btn" style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 7, padding: "6px 10px", fontSize: 12, fontWeight: 600 }}>
                         Edit
                       </button>
                       <button onClick={() => remove(l.id)} style={{ background: "none", border: "none", cursor: "pointer", color: COLORS.brick, padding: 6 }} title="Delete">
@@ -427,166 +374,80 @@ export default function VendorDashboard({ user }) {
           </div>
         )}
 
-        {/* ── PREMIUM TAB ── */}
-        {dashTab === "premium" && (() => {
-          // Admins can manage any listing (claimed or not); vendors can
-          // only manage listings they've claimed themselves.
-          const pickable = isAdmin ? allListings : listings;
-          const selected = pickable.find(l => l.id === selectedListingId) || null;
-
-          return (
-            <div>
-              <div style={{ background: "#fff", border: "1px solid rgba(15,26,36,0.08)", boxShadow: "0 8px 24px rgba(15,26,36,0.08)", borderRadius: 20, padding: 14, marginBottom: 16 }}>
-                <label style={{ display: "block", fontSize: 11, textTransform: "uppercase", fontWeight: 700, marginBottom: 6, color: "#666" }}>
-                  {isAdmin ? "Select a listing to manage" : "Select one of your listings"}
-                </label>
-                <select
-                  value={selectedListingId || ""}
-                  onChange={(e) => setSelectedListingId(e.target.value || null)}
-                  style={{ width: "100%", padding: "9px 10px", borderRadius: 14, border: `1.5px solid ${COLORS.ink}`, fontSize: 13, background: "#fff", boxSizing: "border-box" }}
-                >
-                  <option value="">— Choose a listing —</option>
-                  {pickable.map(l => (
-                    <option key={l.id} value={l.id}>
-                      {l.name}{!l.ownerId ? " (unclaimed)" : ""}{l.isPremium ? " ✦" : ""}
-                    </option>
-                  ))}
-                </select>
-                {pickable.length === 0 && (
-                  <div style={{ fontSize: 12, color: "#999", marginTop: 8 }}>
-                    {isAdmin ? "No listings in the database yet." : "You don't have any claimed listings yet — create or claim one first."}
-                  </div>
-                )}
-              </div>
-
-              {selected && (
-                <div>
-                  <PremiumGate user={user} listingId={selected.id} listing={selected} />
-                  <ReviewAutoResponder listingId={selected.id} listing={selected} />
-                </div>
-              )}
-            </div>
-          );
-        })()}
-
-        {/* ── ALL LISTINGS TAB (admin only) ── */}
-        {/* Every listing regardless of owner or status — full admin visibility,
-            distinct from "My Listings" (own claimed) and "Pending Approvals"
-            (just the review queue). */}
-        {dashTab === "all" && isAdmin && (
+        {/* ── INSIGHTS TAB ── */}
+        {dashTab === "insights" && (
           <div>
-            <div style={{ fontSize: 12, color: "#666", marginBottom: 12 }}>
-              {allListings.length} total across every vendor, owner, and status.
+            <div style={{ fontSize: 12, color: "#666", marginBottom: 16 }}>
+              Real numbers, not vague reach — this is what customers actually did with your listing.
             </div>
-            {allListings.length === 0 ? (
-              <div style={{ border: `2px dashed ${COLORS.ink}55`, borderRadius: 20, padding: 30, textAlign: "center", color: "#666", fontSize: 13 }}>
-                No listings in the database yet.
+            {listings.length === 0 ? (
+              <div style={{ border: `2px dashed ${COLORS.ink}55`, borderRadius: 12, padding: 30, textAlign: "center", color: "#666", fontSize: 13 }}>
+                Create a listing first to start seeing insights.
               </div>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {allListings.map((l) => {
-                  const statusColor =
-                    l.status === "approved" ? COLORS.green :
-                    l.status === "rejected" ? COLORS.brick :
-                    l.status === "pending" ? COLORS.marigold : "#999";
-                  const statusLabel = l.status ? l.status : "no status (legacy/admin-added)";
-                  return (
-                    <div key={l.id} style={{ background: "#fff", border: "1px solid rgba(15,26,36,0.08)", boxShadow: "0 8px 24px rgba(15,26,36,0.08)", borderRadius: 20, padding: 14 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
-                        <div style={{ minWidth: 0 }}>
-                          <div style={{ fontWeight: 700, fontSize: 14 }}>{l.name}</div>
-                          <div style={{ fontSize: 11.5, color: "#777", marginTop: 2 }}>{l.category} · {l.address}</div>
-                          {l.phone && <div style={{ fontSize: 11.5, color: "#777" }}>{l.phone}</div>}
-                          {l.ownerEmail && <div style={{ fontSize: 11.5, color: "#777" }}>{l.ownerEmail}</div>}
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                {listings.map((l) => (
+                  <div key={l.id} style={{ background: "#fff", border: `2px solid ${COLORS.ink}`, borderRadius: 12, padding: 16 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14.5, marginBottom: 12 }}>{l.name}</div>
+                    {vendorDigests[l.id] && !vendorDigests[l.id].read && (
+                      <div style={{ background: `${COLORS.teal}15`, border: `1.5px solid ${COLORS.teal}`, borderRadius: 10, padding: "10px 12px", marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+                        <div style={{ fontSize: 12.5 }}>
+                          <strong>This week:</strong> {vendorDigests[l.id].views || 0} views, {vendorDigests[l.id].calls || 0} calls, {vendorDigests[l.id].whatsapp || 0} WhatsApp, {vendorDigests[l.id].directions || 0} directions
                         </div>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-end", flexShrink: 0 }}>
-                          <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 16, background: statusColor, color: "#fff", fontWeight: 600, whiteSpace: "nowrap" }}>
-                            {statusLabel}
-                          </span>
-                          <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 16, background: l.ownerId ? COLORS.ink : "#ddd", color: l.ownerId ? "#fff" : "#555", fontWeight: 600, whiteSpace: "nowrap" }}>
-                            {l.ownerId ? "claimed" : "unclaimed"}
-                          </span>
-                          {l.source && (
-                            <span style={{ fontSize: 10, color: "#999" }}>{l.source}</span>
-                          )}
-                        </div>
-                      </div>
-                      <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
-                        <button onClick={() => manageListing(l.id)} className="stall-btn" style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 14, padding: "6px 10px", fontSize: 12, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
-                          <Zap size={12} /> Premium
-                        </button>
-                        <button onClick={() => startEdit(l)} className="stall-btn" style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 14, padding: "6px 10px", fontSize: 12, fontWeight: 600 }}>
-                          Edit
-                        </button>
-                        {l.status !== "approved" && (
-                          <button onClick={() => reviewListing(l.id, "approved")} className="stall-btn" style={{ background: COLORS.green, color: "#fff", border: "none", borderRadius: 14, padding: "6px 10px", fontSize: 12, fontWeight: 600 }}>
-                            Approve
-                          </button>
-                        )}
-                        {l.status !== "rejected" && (
-                          <button onClick={() => reviewListing(l.id, "rejected")} className="stall-btn" style={{ background: "transparent", color: COLORS.brick, border: `1.5px solid ${COLORS.brick}`, borderRadius: 14, padding: "6px 10px", fontSize: 12, fontWeight: 600 }}>
-                            Reject
-                          </button>
-                        )}
-                        {l.status !== "pending" && l.status && (
-                          <button onClick={() => reviewListing(l.id, "pending")} className="stall-btn" style={{ background: "transparent", color: "#777", border: "1.5px solid #ccc", borderRadius: 14, padding: "6px 10px", fontSize: 12, fontWeight: 600 }}>
-                            Reset to pending
-                          </button>
-                        )}
-                        <button onClick={() => remove(l.id)} style={{ background: "none", border: "none", cursor: "pointer", color: COLORS.brick, padding: 6 }} title="Delete">
-                          <Trash2 size={16} />
+                        <button onClick={() => dismissVendorDigest(l.id)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11.5, color: COLORS.teal, fontWeight: 600, flexShrink: 0 }}>
+                          Dismiss
                         </button>
                       </div>
+                    )}
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
+                      <InsightTile icon={<Eye size={15} />} value={l.viewCount || 0} label="Views" color={COLORS.teal} />
+                      <InsightTile icon={<Phone size={15} />} value={l.callCount || 0} label="Calls" color={COLORS.ink} />
+                      <InsightTile icon={<MessageCircle size={15} />} value={l.whatsappCount || 0} label="WhatsApp" color="#25D366" />
+                      <InsightTile icon={<Navigation size={15} />} value={l.directionsCount || 0} label="Directions" color={COLORS.brick} />
                     </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ── PENDING APPROVALS TAB (admin only) ── */}
-        {dashTab === "pending" && isAdmin && (
-          <div>
-            <div style={{ fontSize: 12, color: "#666", marginBottom: 12 }}>
-              {pendingListings.length} awaiting review — direct self-registrations only stay hidden from the public Find page until approved here.
-            </div>
-            {pendingListings.length === 0 ? (
-              <div style={{ border: `2px dashed ${COLORS.ink}55`, borderRadius: 20, padding: 30, textAlign: "center", color: "#666", fontSize: 13 }}>
-                Nothing waiting on you right now.
-              </div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {pendingListings.map((l) => (
-                  <div key={l.id} style={{ background: "#fff", border: "1px solid rgba(15,26,36,0.08)", boxShadow: "0 8px 24px rgba(15,26,36,0.08)", borderRadius: 20, padding: 14 }}>
-                    <div style={{ fontWeight: 700, fontSize: 14 }}>{l.name}</div>
-                    <div style={{ fontSize: 11.5, color: "#777", marginTop: 2 }}>{l.category} · {l.address}</div>
-                    {l.phone && <div style={{ fontSize: 11.5, color: "#777" }}>{l.phone}</div>}
-                    {l.ownerEmail && <div style={{ fontSize: 11.5, color: "#777" }}>{l.ownerEmail}</div>}
-                    {l.description && <div style={{ fontSize: 12.5, color: "#444", marginTop: 6 }}>{l.description}</div>}
-                    <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                      <button
-                        onClick={() => reviewListing(l.id, "approved")}
-                        className="stall-btn"
-                        style={{ background: COLORS.green, color: "#fff", border: "none", borderRadius: 14, padding: "7px 14px", fontSize: 12.5, fontWeight: 700, display: "flex", alignItems: "center", gap: 5 }}
-                      >
-                        <Check size={14} /> Approve
-                      </button>
-                      <button
-                        onClick={() => reviewListing(l.id, "rejected")}
-                        className="stall-btn"
-                        style={{ background: "transparent", color: COLORS.brick, border: `1.5px solid ${COLORS.brick}`, borderRadius: 14, padding: "7px 14px", fontSize: 12.5, fontWeight: 700, display: "flex", alignItems: "center", gap: 5 }}
-                      >
-                        <X size={14} /> Reject
-                      </button>
-                    </div>
+                    {(l.callCount || 0) + (l.whatsappCount || 0) === 0 && (l.viewCount || 0) > 5 && (
+                      <div style={{ fontSize: 11.5, color: "#8a6b3e", marginTop: 12, background: "#FEF3E2", padding: "8px 10px", borderRadius: 8 }}>
+                        You're getting views but no calls yet — try adding a current offer or a clearer photo to encourage people to reach out.
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
             )}
           </div>
         )}
+
+        {/* ── PREMIUM TAB ── */}
+        {dashTab === "premium" && (
+          <div>
+            <div style={{ marginBottom: 18 }}>
+              <div className="font-display" style={{ fontSize: 19, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
+                🤖 AI Review Responder
+              </div>
+              <div style={{ fontSize: 12.5, color: "#666", marginTop: 2 }}>
+                Your flagship Premium feature — every review gets a thoughtful reply, fast, without you lifting a finger.
+              </div>
+            </div>
+            <ReviewAutoResponder listing={listings[0]} />
+            <div style={{ height: 24 }} />
+            <PremiumGate user={user} listing={listings[0]} />
+          </div>
+        )}
       </div>
+
+      {quickOfferListing && (
+        <QuickOfferModal listing={quickOfferListing} onClose={() => setQuickOfferListing(null)} />
+      )}
+    </div>
+  );
+}
+
+function InsightTile({ icon, value, label, color }) {
+  return (
+    <div style={{ textAlign: "center", padding: "10px 6px", background: "#F7F6F2", borderRadius: 10 }}>
+      <div style={{ color, display: "flex", justifyContent: "center", marginBottom: 4 }}>{icon}</div>
+      <div style={{ fontSize: 18, fontWeight: 700 }}>{value}</div>
+      <div style={{ fontSize: 10.5, color: "#777", textTransform: "uppercase", letterSpacing: "0.04em" }}>{label}</div>
     </div>
   );
 }
