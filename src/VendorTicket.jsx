@@ -65,7 +65,6 @@ export default function VendorTicket({ vendor, highlighted, onClick, onOpenRevie
   });
 
   const handleFavorite = stop(() => {
-    if (!user) return; // caller (FindView) should route to sign-in if no user
     onToggleFavorite?.(vendor.id, isFavorited);
   });
 
