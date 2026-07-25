@@ -28,6 +28,7 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
   const [favoriteIds, setFavoriteIds] = useState(new Set());
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [digest, setDigest] = useState(null);
+  const [locateError, setLocateError] = useState("");
   const refreshedRef = useRef(new Set());
 
   useEffect(() => {
@@ -80,7 +81,9 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
 
   const locate = () => {
     setLocating(true);
+    setLocateError("");
     if (!navigator.geolocation) {
+      setLocateError("Your browser doesn't support location — enter coordinates below instead.");
       setUserLoc(DEFAULT_LOC);
       setLocating(false);
       return;
@@ -90,8 +93,17 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
         setUserLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude });
         setLocating(false);
       },
-      () => setLocating(false),
-      { timeout: 6000 }
+      (err) => {
+        setLocating(false);
+        if (err.code === err.PERMISSION_DENIED) {
+          setLocateError("Location access was denied — check your browser/site settings, or enter coordinates below.");
+        } else if (err.code === err.TIMEOUT) {
+          setLocateError("Location took too long to find — try again, or enter coordinates below.");
+        } else {
+          setLocateError("Couldn't get your location — try again, or enter coordinates below.");
+        }
+      },
+      { timeout: 12000, enableHighAccuracy: true, maximumAge: 0 }
     );
   };
 
@@ -172,6 +184,9 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
               >
                 <Locate size={16} /> {locating ? "Locating…" : "Use my location"}
               </button>
+              {locateError && (
+                <div style={{ fontSize: 11.5, color: COLORS.brick, marginBottom: 10 }}>{locateError}</div>
+              )}
               <div style={{ fontSize: 11, color: "#555", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>
                 or enter coordinates
               </div>
