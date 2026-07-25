@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { MapPin, Pencil } from "lucide-react";
-import { COLORS, DEFAULT_LOC, DEFAULT_STATE } from "./constants";
+import { COLORS, DEFAULT_LOC } from "./constants";
 import MapPicker from "./MapPicker";
-import { searchPlaces, debounce } from "./nominatim";
+import { searchPlaces, resolveState, debounce } from "./nominatim";
 
 // Bias search results toward the local area (±0.5° ~ 55km) so a nearby
 // branch surfaces first — same spirit as the old Google `bounds` option.
@@ -17,6 +17,9 @@ const LOCAL_BOUNDS = {
  * Address / business search box.
  * Uses free OpenStreetMap/Nominatim search-as-you-type so people can
  * search by business name or address without any billing account.
+ * Results are hard-filtered to whichever state DEFAULT_LOC falls in
+ * (resolved dynamically via reverse geocoding, not a hardcoded name) —
+ * so a search never surfaces a same-named place from another state.
  * Calls onChange({ address, lat, lng, website, mapsUrl, placeId, rating,
  * ratingsCount }) once a suggestion is picked, and shows a free
  * OpenStreetMap-based draggable pin map to fine-tune the exact spot
@@ -31,6 +34,7 @@ export default function LocationSearch({ address, lat, lng, website, mapsUrl, pl
   const [showDropdown, setShowDropdown] = useState(false);
   const [searching, setSearching] = useState(false);
   const [searchFailed, setSearchFailed] = useState(false);
+  const [activeState, setActiveState] = useState(null);
   const boxRef = useRef(null);
 
   const hasLocation =
@@ -40,6 +44,19 @@ export default function LocationSearch({ address, lat, lng, website, mapsUrl, pl
   useEffect(() => {
     setQuery(address || "");
   }, [address]);
+
+  // Figure out which state Stall is actually centered in (reverse
+  // geocoded from DEFAULT_LOC, cached after the first call) so results
+  // can be scoped to it without a hardcoded state name anywhere.
+  useEffect(() => {
+    let cancelled = false;
+    resolveState(DEFAULT_LOC.lat, DEFAULT_LOC.lng).then((s) => {
+      if (!cancelled) setActiveState(s);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Close the dropdown on outside click.
   useEffect(() => {
@@ -51,11 +68,11 @@ export default function LocationSearch({ address, lat, lng, website, mapsUrl, pl
   }, []);
 
   const runSearch = useCallback(
-    debounce(async (q) => {
+    debounce(async (q, state) => {
       setSearching(true);
       setSearchFailed(false);
       try {
-        const results = await searchPlaces(q, { bounds: LOCAL_BOUNDS, state: DEFAULT_STATE });
+        const results = await searchPlaces(q, { bounds: LOCAL_BOUNDS, state });
         setSuggestions(results);
         setShowDropdown(true);
       } catch {
@@ -85,7 +102,7 @@ export default function LocationSearch({ address, lat, lng, website, mapsUrl, pl
       onChange({ address: val, lat: "", lng: "", website: null, mapsUrl: null, placeId: null, rating: null, ratingsCount: null });
     }
     if (val.trim().length >= 2) {
-      runSearch(val.trim());
+      runSearch(val.trim(), activeState);
     } else {
       setSuggestions([]);
       setShowDropdown(false);
@@ -236,7 +253,7 @@ export default function LocationSearch({ address, lat, lng, website, mapsUrl, pl
         </div>
       ) : query.trim().length >= 2 && !showDropdown && !searching ? (
         <div style={{ fontSize: 11, color: COLORS.brick, marginTop: 4 }}>
-          No matches — try a shorter search, or switch to "enter manually".
+          No matches{activeState ? ` in ${activeState}` : ""} — try a shorter search, or switch to "enter manually".
         </div>
       ) : null}
 

@@ -15,19 +15,53 @@
 //    fields simply come back null/unset now instead of auto-filled.
 
 const NOMINATIM_URL = "https://nominatim.openstreetmap.org/search";
+const NOMINATIM_REVERSE_URL = "https://nominatim.openstreetmap.org/reverse";
 
 function normalize(s) {
   return (s || "").trim().toLowerCase();
+}
+
+// Caches state lookups by (rounded) coordinate so the same center point
+// (e.g. DEFAULT_LOC, asked for on every mount of the search box) only
+// triggers one reverse-geocode call, not one per component/page load.
+const stateCache = new Map();
+
+/**
+ * Reverse-geocodes { lat, lng } to find which state/province it falls in
+ * (e.g. "Karnataka") — used to dynamically scope address search to
+ * wherever Stall is actually centered, instead of a hardcoded state
+ * name. Returns null if the lookup fails; callers should treat that as
+ * "don't filter" rather than an error.
+ */
+export async function resolveState(lat, lng) {
+  const key = `${lat.toFixed(2)},${lng.toFixed(2)}`;
+  if (stateCache.has(key)) return stateCache.get(key);
+
+  try {
+    const params = new URLSearchParams({ lat: String(lat), lon: String(lng), format: "jsonv2" });
+    const res = await fetch(`${NOMINATIM_REVERSE_URL}?${params.toString()}`, {
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) throw new Error("Nominatim reverse geocode failed");
+    const data = await res.json();
+    const state = data.address?.state || null;
+    stateCache.set(key, state);
+    return state;
+  } catch {
+    stateCache.set(key, null);
+    return null;
+  }
 }
 
 /**
  * Search for places/addresses matching `query`.
  * `bounds` (optional) = { north, south, east, west } — only *biases*
  * ranking toward that area, doesn't exclude anything outside it.
- * `state` (optional) — a state/province name (e.g. "Karnataka"). When
- * given, this is a hard filter: any result whose address.state doesn't
- * match (case-insensitive) is dropped entirely, so a search never returns
- * a result from a neighbouring state just because it ranked well.
+ * `state` (optional) — a state/province name (e.g. "Karnataka", from
+ * resolveState()). When given, this is a hard filter: any result whose
+ * address.state doesn't match (case-insensitive) is dropped entirely, so
+ * a search never returns a result from a neighbouring state just because
+ * it ranked well.
  * Returns [{ label, lat, lng, osmId }].
  */
 export async function searchPlaces(query, { bounds, state, limit = 8, countrycodes = "in" } = {}) {

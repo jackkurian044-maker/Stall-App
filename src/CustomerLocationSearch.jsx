@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Search } from "lucide-react";
-import { COLORS, DEFAULT_LOC, DEFAULT_STATE } from "./constants";
-import { searchPlaces, debounce } from "./nominatim";
+import { COLORS, DEFAULT_LOC } from "./constants";
+import { searchPlaces, resolveState, debounce } from "./nominatim";
 
 const LOCAL_BOUNDS = {
   north: DEFAULT_LOC.lat + 0.5,
@@ -13,9 +13,11 @@ const LOCAL_BOUNDS = {
 /**
  * Lightweight "where am I" search box for customers browsing FindView.
  * Uses free OpenStreetMap/Nominatim search-as-you-type — no billing
- * account needed. Unlike LocationSearch (used for vendor listing address
- * entry), this captures nothing beyond what's needed to center the
- * search: { address, lat, lng }.
+ * account needed. Results are hard-filtered to whichever state
+ * DEFAULT_LOC falls in (resolved dynamically via reverse geocoding, not
+ * a hardcoded name). Unlike LocationSearch (used for vendor listing
+ * address entry), this captures nothing beyond what's needed to center
+ * the search: { address, lat, lng }.
  *
  * Calls onSelect({ address, lat, lng }) once a suggestion is chosen from
  * the dropdown.
@@ -26,7 +28,18 @@ export default function CustomerLocationSearch({ onSelect, placeholder }) {
   const [showDropdown, setShowDropdown] = useState(false);
   const [searching, setSearching] = useState(false);
   const [searchFailed, setSearchFailed] = useState(false);
+  const [activeState, setActiveState] = useState(null);
   const boxRef = useRef(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    resolveState(DEFAULT_LOC.lat, DEFAULT_LOC.lng).then((s) => {
+      if (!cancelled) setActiveState(s);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     const onDocClick = (e) => {
@@ -37,11 +50,11 @@ export default function CustomerLocationSearch({ onSelect, placeholder }) {
   }, []);
 
   const runSearch = useRef(
-    debounce(async (q, setSuggestions, setShowDropdown, setSearching, setSearchFailed) => {
+    debounce(async (q, state, setSuggestions, setShowDropdown, setSearching, setSearchFailed) => {
       setSearching(true);
       setSearchFailed(false);
       try {
-        const results = await searchPlaces(q, { bounds: LOCAL_BOUNDS, state: DEFAULT_STATE });
+        const results = await searchPlaces(q, { bounds: LOCAL_BOUNDS, state });
         setSuggestions(results);
         setShowDropdown(true);
       } catch {
@@ -56,7 +69,7 @@ export default function CustomerLocationSearch({ onSelect, placeholder }) {
   const handleTypedChange = (val) => {
     setQuery(val);
     if (val.trim().length >= 2) {
-      runSearch(val.trim(), setSuggestions, setShowDropdown, setSearching, setSearchFailed);
+      runSearch(val.trim(), activeState, setSuggestions, setShowDropdown, setSearching, setSearchFailed);
     } else {
       setSuggestions([]);
       setShowDropdown(false);
