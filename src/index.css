@@ -119,6 +119,13 @@ input:focus, select:focus, textarea:focus, button:focus-visible {
   .stall-grid { grid-template-columns: 1fr !important; padding: 16px; }
 }
 
+.stall-page {
+  padding: 24px;
+}
+@media (max-width: 480px) {
+  .stall-page { padding: 16px; }
+}
+
 .stall-insights-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);

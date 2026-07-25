@@ -200,7 +200,7 @@ export default function DiscoverNearby() {
 
   if (importResults) {
     return (
-      <div style={{ padding: 24, maxWidth: 640 }}>
+      <div className="stall-page" style={{ maxWidth: 640 }}>
         <div className="font-display" style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>
           Added {importResults.length} vendor{importResults.length === 1 ? "" : "s"}
         </div>
@@ -235,7 +235,7 @@ export default function DiscoverNearby() {
   }
 
   return (
-    <div style={{ padding: 24, maxWidth: 900 }}>
+    <div className="stall-page" style={{ maxWidth: 900 }}>
       <div className="font-display" style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>Discover nearby vendors</div>
       <div style={{ fontSize: 12.5, color: "#666", marginBottom: 16, lineHeight: 1.5 }}>
         Set a center point, search a category (e.g. "medical store", "bakery"),
@@ -253,10 +253,10 @@ export default function DiscoverNearby() {
               <Locate size={16} /> {locating ? "Locating…" : "Use my location"}
             </button>
             <div style={{ fontSize: 11, color: "#555", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>or enter coordinates</div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <input placeholder="Latitude" value={manualLat} onChange={(e) => setManualLat(e.target.value)} className="font-mono" style={{ ...inputStyle, flex: 1 }} />
-              <input placeholder="Longitude" value={manualLng} onChange={(e) => setManualLng(e.target.value)} className="font-mono" style={{ ...inputStyle, flex: 1 }} />
-              <button onClick={useManualLoc} className="stall-btn" style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 14, padding: "0 14px", fontSize: 12.5, fontWeight: 600 }}>Set</button>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <input placeholder="Latitude" value={manualLat} onChange={(e) => setManualLat(e.target.value)} className="font-mono" style={{ ...inputStyle, flex: "1 1 120px" }} />
+              <input placeholder="Longitude" value={manualLng} onChange={(e) => setManualLng(e.target.value)} className="font-mono" style={{ ...inputStyle, flex: "1 1 120px" }} />
+              <button onClick={useManualLoc} className="stall-btn" style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 14, padding: "0 14px", fontSize: 12.5, fontWeight: 600, flexShrink: 0 }}>Set</button>
             </div>
           </div>
         ) : (
