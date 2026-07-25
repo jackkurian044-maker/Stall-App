@@ -177,7 +177,7 @@ export default function VendorTicket({ vendor, highlighted, onClick, onOpenRevie
         />
       )}
       <div style={{ minWidth: 0, flex: 1 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 5, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 5, flexWrap: "wrap", paddingRight: 80 }}>
           <span className="font-display" style={{ fontSize: 22, fontWeight: 700 }}>
             {vendor.name}
           </span>
