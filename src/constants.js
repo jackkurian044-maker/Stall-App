@@ -30,6 +30,7 @@ export const COLORS = {
 };
 
 export const DEFAULT_LOC = { lat: 12.9716, lng: 77.5946 }; // Bengaluru
+export const DEFAULT_STATE = "Karnataka"; // used to hard-filter address search results
 
 // How long a Google-sourced rating/phone snapshot is trusted before it's
 // treated as stale and worth re-fetching. This is the main cost lever for
