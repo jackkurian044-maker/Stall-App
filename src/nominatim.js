@@ -16,21 +16,31 @@
 
 const NOMINATIM_URL = "https://nominatim.openstreetmap.org/search";
 
+function normalize(s) {
+  return (s || "").trim().toLowerCase();
+}
+
 /**
  * Search for places/addresses matching `query`.
- * `bounds` (optional) = { north, south, east, west } used to bias (not
- * hard-restrict) results toward a local area, same spirit as the Google
- * Autocomplete `bounds` option this replaces.
+ * `bounds` (optional) = { north, south, east, west } — only *biases*
+ * ranking toward that area, doesn't exclude anything outside it.
+ * `state` (optional) — a state/province name (e.g. "Karnataka"). When
+ * given, this is a hard filter: any result whose address.state doesn't
+ * match (case-insensitive) is dropped entirely, so a search never returns
+ * a result from a neighbouring state just because it ranked well.
  * Returns [{ label, lat, lng, osmId }].
  */
-export async function searchPlaces(query, { bounds, limit = 5, countrycodes = "in" } = {}) {
+export async function searchPlaces(query, { bounds, state, limit = 8, countrycodes = "in" } = {}) {
   if (!query || query.trim().length < 2) return [];
 
   const params = new URLSearchParams({
     q: query,
     format: "jsonv2",
     addressdetails: "1",
-    limit: String(limit),
+    // Ask for more than we'll show — the state filter below can drop a
+    // chunk of these, so over-fetching keeps the final list from being
+    // thinner than it needs to be.
+    limit: String(state ? Math.max(limit * 2, 10) : limit),
     countrycodes,
   });
   if (bounds) {
@@ -45,12 +55,17 @@ export async function searchPlaces(query, { bounds, limit = 5, countrycodes = "i
   if (!res.ok) throw new Error("Nominatim search failed");
 
   const data = await res.json();
-  return data.map((p) => ({
-    label: p.display_name,
-    lat: parseFloat(p.lat),
-    lng: parseFloat(p.lon),
-    osmId: p.osm_type && p.osm_id ? `${p.osm_type}/${p.osm_id}` : null,
-  }));
+  const targetState = normalize(state);
+
+  return data
+    .filter((p) => !targetState || normalize(p.address?.state) === targetState)
+    .slice(0, limit)
+    .map((p) => ({
+      label: p.display_name,
+      lat: parseFloat(p.lat),
+      lng: parseFloat(p.lon),
+      osmId: p.osm_type && p.osm_id ? `${p.osm_type}/${p.osm_id}` : null,
+    }));
 }
 
 // Simple debounce so typing doesn't fire a request per keystroke — also

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { MapPin, Pencil } from "lucide-react";
-import { COLORS, DEFAULT_LOC } from "./constants";
+import { COLORS, DEFAULT_LOC, DEFAULT_STATE } from "./constants";
 import MapPicker from "./MapPicker";
 import { searchPlaces, debounce } from "./nominatim";
 
@@ -55,7 +55,7 @@ export default function LocationSearch({ address, lat, lng, website, mapsUrl, pl
       setSearching(true);
       setSearchFailed(false);
       try {
-        const results = await searchPlaces(q, { bounds: LOCAL_BOUNDS });
+        const results = await searchPlaces(q, { bounds: LOCAL_BOUNDS, state: DEFAULT_STATE });
         setSuggestions(results);
         setShowDropdown(true);
       } catch {

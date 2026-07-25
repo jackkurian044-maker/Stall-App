@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Search } from "lucide-react";
-import { COLORS, DEFAULT_LOC } from "./constants";
+import { COLORS, DEFAULT_LOC, DEFAULT_STATE } from "./constants";
 import { searchPlaces, debounce } from "./nominatim";
 
 const LOCAL_BOUNDS = {
@@ -41,7 +41,7 @@ export default function CustomerLocationSearch({ onSelect, placeholder }) {
       setSearching(true);
       setSearchFailed(false);
       try {
-        const results = await searchPlaces(q, { bounds: LOCAL_BOUNDS });
+        const results = await searchPlaces(q, { bounds: LOCAL_BOUNDS, state: DEFAULT_STATE });
         setSuggestions(results);
         setShowDropdown(true);
       } catch {
