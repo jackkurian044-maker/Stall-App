@@ -2,28 +2,36 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import { MapPin, Pencil } from "lucide-react";
 import { COLORS, DEFAULT_LOC } from "./constants";
 import MapPicker from "./MapPicker";
-import { loadGoogleMaps } from "./googleMaps";
+import { searchPlaces, debounce } from "./nominatim";
 
-const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_PLACES_API_KEY;
+// Bias search results toward the local area (±0.5° ~ 55km) so a nearby
+// branch surfaces first — same spirit as the old Google `bounds` option.
+const LOCAL_BOUNDS = {
+  north: DEFAULT_LOC.lat + 0.5,
+  south: DEFAULT_LOC.lat - 0.5,
+  east: DEFAULT_LOC.lng + 0.5,
+  west: DEFAULT_LOC.lng - 0.5,
+};
 
 /**
  * Address / business search box.
- * Uses Google Places Autocomplete so people can search by business name
- * (e.g. "Cut N Cute Studio, Kodihalli") and not just street address.
+ * Uses free OpenStreetMap/Nominatim search-as-you-type so people can
+ * search by business name or address without any billing account.
  * Calls onChange({ address, lat, lng, website, mapsUrl, placeId, rating,
- * ratingsCount }) once a place is selected, and shows a free
+ * ratingsCount }) once a suggestion is picked, and shows a free
  * OpenStreetMap-based draggable pin map to fine-tune the exact spot
- * afterward. `website`/`mapsUrl` let listings link out to the business's
- * own site or Google Business profile; `rating`/`ratingsCount` are a
- * snapshot of Google's rating at the moment the place was picked (not
- * live-updating — see the "refresh rating" action in the dashboards).
+ * afterward. Nominatim results don't carry a website, phone, hours, or
+ * rating (unlike the old Google source) — those stay null/unset and can
+ * still be filled in manually elsewhere in the form.
  */
 export default function LocationSearch({ address, lat, lng, website, mapsUrl, placeId, rating, ratingsCount, onChange }) {
   const [manualMode, setManualMode] = useState(false);
   const [query, setQuery] = useState(address || "");
-  const [ready, setReady] = useState(false);
-  const [loadError, setLoadError] = useState(false);
-  const inputRef = useRef(null);
+  const [suggestions, setSuggestions] = useState([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [searchFailed, setSearchFailed] = useState(false);
+  const boxRef = useRef(null);
 
   const hasLocation =
     lat !== "" && lng !== "" && lat != null && lng != null &&
@@ -33,59 +41,32 @@ export default function LocationSearch({ address, lat, lng, website, mapsUrl, pl
     setQuery(address || "");
   }, [address]);
 
+  // Close the dropdown on outside click.
   useEffect(() => {
-    if (manualMode) return;
-    if (!GOOGLE_API_KEY) {
-      setLoadError(true);
-      return;
-    }
-    let cancelled = false;
-
-    loadGoogleMaps(GOOGLE_API_KEY)
-      .then(() => {
-        if (cancelled || !inputRef.current) return;
-        // Bias results toward the local area (and keep results within
-        // India) so a chain's *nearby* branch surfaces first and is easy
-        // to tell apart from same-named branches elsewhere. This only
-        // biases ranking — it doesn't hide farther-away results entirely.
-        const bounds = new window.google.maps.LatLngBounds(
-          { lat: DEFAULT_LOC.lat - 0.5, lng: DEFAULT_LOC.lng - 0.5 },
-          { lat: DEFAULT_LOC.lat + 0.5, lng: DEFAULT_LOC.lng + 0.5 }
-        );
-        const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
-          fields: ["formatted_address", "geometry", "name", "website", "url", "place_id", "rating", "user_ratings_total", "formatted_phone_number", "opening_hours"],
-          bounds,
-          componentRestrictions: { country: "in" },
-        });
-        autocomplete.addListener("place_changed", () => {
-          const place = autocomplete.getPlace();
-          if (!place.geometry || !place.geometry.location) return;
-          const label = place.name && place.formatted_address
-            ? `${place.name}, ${place.formatted_address}`
-            : place.formatted_address || place.name || inputRef.current.value;
-          setQuery(label);
-          onChange({
-            address: label,
-            lat: place.geometry.location.lat(),
-            lng: place.geometry.location.lng(),
-            website: place.website || null,
-            mapsUrl: place.url || null,
-            placeId: place.place_id || null,
-            rating: typeof place.rating === "number" ? place.rating : null,
-            ratingsCount: typeof place.user_ratings_total === "number" ? place.user_ratings_total : null,
-            ...(place.formatted_phone_number ? { phone: place.formatted_phone_number } : {}),
-            hours: place.opening_hours?.weekday_text?.length ? place.opening_hours.weekday_text.join("\n") : null,
-          });
-        });
-        setReady(true);
-      })
-      .catch(() => setLoadError(true));
-
-    return () => {
-      cancelled = true;
+    const onDocClick = (e) => {
+      if (boxRef.current && !boxRef.current.contains(e.target)) setShowDropdown(false);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [manualMode]);
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, []);
+
+  const runSearch = useCallback(
+    debounce(async (q) => {
+      setSearching(true);
+      setSearchFailed(false);
+      try {
+        const results = await searchPlaces(q, { bounds: LOCAL_BOUNDS });
+        setSuggestions(results);
+        setShowDropdown(true);
+      } catch {
+        setSearchFailed(true);
+        setSuggestions([]);
+      } finally {
+        setSearching(false);
+      }
+    }, 450),
+    []
+  );
 
   const handlePinMove = useCallback(
     ({ lat: newLat, lng: newLng }) => {
@@ -103,6 +84,28 @@ export default function LocationSearch({ address, lat, lng, website, mapsUrl, pl
     if (hasLocation) {
       onChange({ address: val, lat: "", lng: "", website: null, mapsUrl: null, placeId: null, rating: null, ratingsCount: null });
     }
+    if (val.trim().length >= 2) {
+      runSearch(val.trim());
+    } else {
+      setSuggestions([]);
+      setShowDropdown(false);
+    }
+  };
+
+  const handleSelect = (s) => {
+    setQuery(s.label);
+    setShowDropdown(false);
+    setSuggestions([]);
+    onChange({
+      address: s.label,
+      lat: s.lat,
+      lng: s.lng,
+      website: null,
+      mapsUrl: null,
+      placeId: null,
+      rating: null,
+      ratingsCount: null,
+    });
   };
 
   const preventFormSubmitOnEnter = (e) => {
@@ -175,17 +178,41 @@ export default function LocationSearch({ address, lat, lng, website, mapsUrl, pl
           <Pencil size={11} /> enter manually
         </button>
       </div>
-      <div style={{ position: "relative" }}>
+      <div ref={boxRef} style={{ position: "relative" }}>
         <MapPin size={15} style={{ position: "absolute", left: 10, top: 11, color: "#777" }} />
         <input
-          ref={inputRef}
           style={{ ...inputStyle, paddingLeft: 32 }}
           value={query}
           onChange={(e) => handleTypedChange(e.target.value)}
+          onFocus={() => suggestions.length > 0 && setShowDropdown(true)}
           onKeyDown={preventFormSubmitOnEnter}
-          placeholder={loadError ? "Address search unavailable" : ready ? "Search business name or address…" : "Loading address search…"}
-          disabled={loadError}
+          placeholder={searching ? "Searching…" : "Search business name or address…"}
         />
+
+        {showDropdown && suggestions.length > 0 && (
+          <div
+            style={{
+              position: "absolute", top: "100%", left: 0, right: 0, zIndex: 20,
+              background: "#fff", border: `1.5px solid ${COLORS.ink}`, borderRadius: 14,
+              marginTop: 4, maxHeight: 220, overflowY: "auto",
+              boxShadow: "0 8px 24px rgba(15,26,36,0.15)",
+            }}
+          >
+            {suggestions.map((s, i) => (
+              <div
+                key={s.osmId || i}
+                onClick={() => handleSelect(s)}
+                style={{
+                  padding: "9px 12px", fontSize: 12.5, cursor: "pointer",
+                  borderTop: i === 0 ? "none" : `1px solid ${COLORS.ink}12`,
+                }}
+                onMouseDown={(e) => e.preventDefault()} // keep input focus, avoid blur-before-click
+              >
+                {s.label}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {hasLocation ? (
@@ -195,7 +222,7 @@ export default function LocationSearch({ address, lat, lng, website, mapsUrl, pl
           </div>
           {rating != null && (
             <div style={{ fontSize: 11, color: "#666", marginBottom: 8 }}>
-              ★ {rating.toFixed(1)} Google rating{ratingsCount != null ? ` (${ratingsCount} reviews)` : ""} — captured now, not live-updating
+              ★ {rating.toFixed(1)} rating{ratingsCount != null ? ` (${ratingsCount} reviews)` : ""} — captured previously, not live-updating
             </div>
           )}
           <MapPicker lat={Number(lat)} lng={Number(lng)} onMove={handlePinMove} />
@@ -203,18 +230,18 @@ export default function LocationSearch({ address, lat, lng, website, mapsUrl, pl
             Drag the pin if it's not exactly on the storefront.
           </div>
         </>
-      ) : loadError ? (
+      ) : searchFailed ? (
         <div style={{ fontSize: 11, color: COLORS.brick, marginTop: 4 }}>
-          Address search isn't configured (missing API key) — switch to "enter manually" for now.
+          Address search failed — try again, or switch to "enter manually".
         </div>
-      ) : query.trim().length >= 2 ? (
+      ) : query.trim().length >= 2 && !showDropdown && !searching ? (
         <div style={{ fontSize: 11, color: COLORS.brick, marginTop: 4 }}>
-          Pick a suggestion from the dropdown to confirm the exact location.
+          No matches — try a shorter search, or switch to "enter manually".
         </div>
       ) : null}
 
       <div style={{ fontSize: 10, color: "#999", marginTop: 4 }}>
-        Business search powered by Google · pin map by OpenStreetMap contributors
+        Business search & pin map powered by OpenStreetMap contributors
       </div>
     </div>
   );
