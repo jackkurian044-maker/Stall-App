@@ -95,6 +95,15 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
     );
   };
 
+  // Ask for location automatically on load — no need to make people tap
+  // a button first. If they deny/dismiss the browser prompt, `locate`
+  // just leaves userLoc unset and the manual "Use my location" button /
+  // coordinate entry below still works as a fallback.
+  useEffect(() => {
+    locate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const useManualLoc = () => {
     const lat = parseFloat(manualLat);
     const lng = parseFloat(manualLng);
