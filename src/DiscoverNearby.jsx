@@ -40,10 +40,13 @@ export default function DiscoverNearby() {
   const [adding, setAdding] = useState(false);
   const [importResults, setImportResults] = useState(null);
   const [importError, setImportError] = useState("");
+  const [locateError, setLocateError] = useState("");
 
   const locate = () => {
     setLocating(true);
+    setLocateError("");
     if (!navigator.geolocation) {
+      setLocateError("Your browser doesn't support location — enter coordinates below instead.");
       setCenterLoc(DEFAULT_LOC);
       setLocating(false);
       return;
@@ -53,8 +56,17 @@ export default function DiscoverNearby() {
         setCenterLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude });
         setLocating(false);
       },
-      () => setLocating(false),
-      { timeout: 6000 }
+      (err) => {
+        setLocating(false);
+        if (err.code === err.PERMISSION_DENIED) {
+          setLocateError("Location access was denied — check your browser/site settings, or enter coordinates below.");
+        } else if (err.code === err.TIMEOUT) {
+          setLocateError("Location took too long to find — try again, or enter coordinates below.");
+        } else {
+          setLocateError("Couldn't get your location — try again, or enter coordinates below.");
+        }
+      },
+      { timeout: 12000, enableHighAccuracy: true, maximumAge: 0 }
     );
   };
 
@@ -252,6 +264,9 @@ export default function DiscoverNearby() {
             <button onClick={locate} className="stall-btn" style={{ background: COLORS.navy, color: "#fff", border: "none", borderRadius: 999, padding: "10px 14px", display: "flex", alignItems: "center", gap: 8, fontWeight: 600, fontSize: 13, marginBottom: 10 }}>
               <Locate size={16} /> {locating ? "Locating…" : "Use my location"}
             </button>
+            {locateError && (
+              <div style={{ fontSize: 11.5, color: COLORS.brick, marginBottom: 10 }}>{locateError}</div>
+            )}
             <div style={{ fontSize: 11, color: "#555", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>or enter coordinates</div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <input placeholder="Latitude" value={manualLat} onChange={(e) => setManualLat(e.target.value)} className="font-mono" style={{ ...inputStyle, flex: "1 1 120px" }} />
