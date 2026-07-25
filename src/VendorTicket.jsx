@@ -168,7 +168,7 @@ export default function VendorTicket({ vendor, highlighted, onClick, onOpenRevie
         </button>
       </div>
 
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 22, paddingTop: offerActive ? 36 : 20 }}>
+      <div className="vendor-ticket-row" style={{ paddingTop: offerActive ? 36 : 20 }}>
       {thumbnail && (
         <img
           src={thumbnail}
@@ -177,7 +177,7 @@ export default function VendorTicket({ vendor, highlighted, onClick, onOpenRevie
         />
       )}
       <div style={{ minWidth: 0, flex: 1 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 5, flexWrap: "wrap", paddingRight: 80 }}>
+        <div className="vendor-ticket-name-row" style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 5, flexWrap: "wrap" }}>
           <span className="font-display" style={{ fontSize: 22, fontWeight: 700 }}>
             {vendor.name}
           </span>
@@ -297,16 +297,7 @@ export default function VendorTicket({ vendor, highlighted, onClick, onOpenRevie
           </button>
         </div>
       </div>
-      <div
-        style={{
-          textAlign: "right",
-          flexShrink: 0,
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "space-between",
-          alignItems: "flex-end",
-        }}
-      >
+      <div className="vendor-ticket-meta">
         <div
           className="font-mono"
           style={{
