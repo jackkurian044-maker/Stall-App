@@ -1,29 +1,39 @@
 import React from "react";
+import stallLogo from "./stall-logo.png";
 import { COLORS } from "./constants";
-import stallLogo from "./stall-logo-v2.png";
 
-export default function Footer() {
+export default function Footer({ onNavigatePrivacy }) {
   return (
     <div
       style={{
-        marginTop: 40,
-        padding: "36px 24px 28px",
-        background: COLORS.navy,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        gap: 14,
         textAlign: "center",
+        padding: "36px 16px 28px",
+        borderTop: `1px solid ${COLORS.navy}15`,
+        marginTop: 40,
       }}
     >
       <img
         src={stallLogo}
-        alt="Stall"
-        style={{ height: 72, width: "auto" }}
+        alt="Stall — That's All"
+        style={{ height: 64, width: "auto", margin: "0 auto 14px" }}
       />
-      <div style={{ fontSize: 13, color: "#c7ccd1" }}>
-        © {new Date().getFullYear()} Stall App · your neighbourhood · Built for local commerce, everywhere
+      <div style={{ fontSize: 12.5, color: "#5f6974", marginBottom: 10 }}>
+        © 2026 Stall App · Built for neighbourhood commerce, everywhere
       </div>
+      <button
+        onClick={onNavigatePrivacy}
+        style={{
+          background: "none",
+          border: "none",
+          color: "#5f6974",
+          textDecoration: "underline",
+          cursor: "pointer",
+          fontSize: 12.5,
+          padding: 0,
+        }}
+      >
+        Privacy Policy
+      </button>
     </div>
   );
 }
