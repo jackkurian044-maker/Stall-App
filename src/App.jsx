@@ -47,26 +47,28 @@ export default function App() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: COLORS.paper }}>
+    <div style={{ minHeight: "100vh", background: COLORS.paper, display: "flex", flexDirection: "column" }}>
       <Header mode={mode} setMode={setMode} user={user} isAdmin={isAdmin} onSignOut={handleSignOut} />
 
-      {authLoading ? (
-        <div style={{ padding: 40, textAlign: "center", color: "#666", fontSize: 14 }}>Loading…</div>
-      ) : mode === "find" ? (
-        <FindView user={user} isAdmin={isAdmin} onRequestSignIn={() => setMode("auth")} />
-      ) : mode === "auth" ? (
-        <AuthPage onSignedIn={() => setMode("mine")} />
-      ) : mode === "mine" && user ? (
-        <VendorDashboard user={user} />
-      ) : mode === "admin" && isAdmin ? (
-        <AdminDashboard />
-      ) : mode === "bulk" && isAdmin ? (
-        <DiscoverNearby />
-      ) : mode === "privacy" ? (
-        <PrivacyPolicy onBack={() => setMode("find")} />
-      ) : (
-        <FindView user={user} isAdmin={isAdmin} onRequestSignIn={() => setMode("auth")} />
-      )}
+      <div style={{ flex: 1 }}>
+        {authLoading ? (
+          <div style={{ padding: 40, textAlign: "center", color: "#666", fontSize: 14 }}>Loading…</div>
+        ) : mode === "find" ? (
+          <FindView user={user} isAdmin={isAdmin} onRequestSignIn={() => setMode("auth")} />
+        ) : mode === "auth" ? (
+          <AuthPage onSignedIn={() => setMode("mine")} />
+        ) : mode === "mine" && user ? (
+          <VendorDashboard user={user} />
+        ) : mode === "admin" && isAdmin ? (
+          <AdminDashboard />
+        ) : mode === "bulk" && isAdmin ? (
+          <DiscoverNearby />
+        ) : mode === "privacy" ? (
+          <PrivacyPolicy onBack={() => setMode("find")} />
+        ) : (
+          <FindView user={user} isAdmin={isAdmin} onRequestSignIn={() => setMode("auth")} />
+        )}
+      </div>
 
       {mode !== "privacy" && <Footer onNavigatePrivacy={() => setMode("privacy")} />}
     </div>
