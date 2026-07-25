@@ -138,7 +138,6 @@ export default function ReviewAutoResponder({ listing }) {
     card: { background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: "1.25rem", marginBottom: "1rem" },
     heading: { fontSize: 18, fontWeight: 700, color: "#111", marginBottom: 4 },
     sub: { fontSize: 13, color: "#6B7280", marginBottom: "1.25rem" },
-    metricGrid: { display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: "1.25rem" },
     metric: { background: "#F9FAFB", borderRadius: 10, padding: "1rem", textAlign: "center", border: "1px solid #E5E7EB" },
     mv: { fontSize: 26, fontWeight: 700, color: "#111" },
     ml: { fontSize: 12, color: "#6B7280", marginTop: 3 },
@@ -209,7 +208,7 @@ export default function ReviewAutoResponder({ listing }) {
 
       {/* Stats */}
       {reviews.length > 0 && (
-        <div style={S.metricGrid}>
+        <div className="stall-metric-grid">
           <div style={S.metric}>
             <div style={S.mv}>{stats.total}</div>
             <div style={S.ml}>Reviews received</div>

@@ -399,7 +399,7 @@ export default function VendorDashboard({ user }) {
                         </button>
                       </div>
                     )}
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
+                    <div className="stall-insights-grid">
                       <InsightTile icon={<Eye size={15} />} value={l.viewCount || 0} label="Views" color={COLORS.teal} />
                       <InsightTile icon={<Phone size={15} />} value={l.callCount || 0} label="Calls" color={COLORS.ink} />
                       <InsightTile icon={<MessageCircle size={15} />} value={l.whatsappCount || 0} label="WhatsApp" color="#25D366" />
