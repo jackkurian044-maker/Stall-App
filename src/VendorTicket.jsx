@@ -168,7 +168,7 @@ export default function VendorTicket({ vendor, highlighted, onClick, onOpenRevie
         </button>
       </div>
 
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 22 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 22, paddingTop: offerActive ? 0 : 20 }}>
       {thumbnail && (
         <img
           src={thumbnail}
