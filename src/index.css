@@ -126,6 +126,40 @@ input:focus, select:focus, textarea:focus, button:focus-visible {
   .stall-page { padding: 16px; }
 }
 
+.vendor-ticket-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 22px;
+}
+@media (max-width: 480px) {
+  .vendor-ticket-row { flex-wrap: wrap; gap: 14px; }
+}
+
+.vendor-ticket-name-row {
+  padding-right: 80px;
+}
+@media (max-width: 480px) {
+  .vendor-ticket-name-row { padding-right: 0; }
+}
+
+.vendor-ticket-meta {
+  text-align: right;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+@media (max-width: 480px) {
+  .vendor-ticket-meta {
+    flex-direction: row;
+    align-items: center;
+    width: 100%;
+    justify-content: space-between;
+    margin-top: 4px;
+  }
+}
+
 .stall-insights-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
