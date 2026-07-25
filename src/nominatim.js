@@ -13,12 +13,25 @@
 //    remains the fallback for anything not found.
 //  - Results have no website, phone, opening hours, or rating — those
 //    fields simply come back null/unset now instead of auto-filled.
+//  - Like any shared free service, it can occasionally be slow — requests
+//    time out after FETCH_TIMEOUT_MS below rather than hanging silently.
 
 const NOMINATIM_URL = "https://nominatim.openstreetmap.org/search";
 const NOMINATIM_REVERSE_URL = "https://nominatim.openstreetmap.org/reverse";
+const FETCH_TIMEOUT_MS = 8000;
 
 function normalize(s) {
   return (s || "").trim().toLowerCase();
+}
+
+async function fetchWithTimeout(url, ms) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  try {
+    return await fetch(url, { headers: { Accept: "application/json" }, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 // Caches state lookups by (rounded) coordinate so the same center point
@@ -39,9 +52,7 @@ export async function resolveState(lat, lng) {
 
   try {
     const params = new URLSearchParams({ lat: String(lat), lon: String(lng), format: "jsonv2" });
-    const res = await fetch(`${NOMINATIM_REVERSE_URL}?${params.toString()}`, {
-      headers: { Accept: "application/json" },
-    });
+    const res = await fetchWithTimeout(`${NOMINATIM_REVERSE_URL}?${params.toString()}`, FETCH_TIMEOUT_MS);
     if (!res.ok) throw new Error("Nominatim reverse geocode failed");
     const data = await res.json();
     const state = data.address?.state || null;
@@ -83,9 +94,7 @@ export async function searchPlaces(query, { bounds, state, limit = 8, countrycod
     params.set("bounded", "0"); // bias only, don't hard-exclude everything outside
   }
 
-  const res = await fetch(`${NOMINATIM_URL}?${params.toString()}`, {
-    headers: { Accept: "application/json" },
-  });
+  const res = await fetchWithTimeout(`${NOMINATIM_URL}?${params.toString()}`, FETCH_TIMEOUT_MS);
   if (!res.ok) throw new Error("Nominatim search failed");
 
   const data = await res.json();

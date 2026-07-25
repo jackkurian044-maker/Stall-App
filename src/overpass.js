@@ -11,11 +11,19 @@
 //    separate "get details" round-trip is needed (Google needed one).
 //  - Unnamed POIs are skipped entirely — nothing useful to show an admin
 //    if there's no name to display.
-//  - The public Overpass instance (overpass-api.de) is shared and can be
-//    slow under load or during peak hours; if it starts timing out a lot,
-//    a paid/self-hosted Overpass mirror is the documented next step.
+//  - The main public Overpass instance (overpass-api.de) is shared and
+//    can be slow under load. Rather than fail outright when that
+//    happens, this tries a couple of independent free mirrors in turn —
+//    see OVERPASS_ENDPOINTS below.
 
-const OVERPASS_URL = "https://overpass-api.de/api/interpreter";
+const OVERPASS_ENDPOINTS = [
+  "https://overpass-api.de/api/interpreter",
+  "https://overpass.private.coffee/api/interpreter",
+];
+
+// How long to wait on one endpoint before giving up and trying the next,
+// rather than sitting through the full server-side timeout in the query.
+const FETCH_TIMEOUT_MS = 12000;
 
 // Best-effort mapping from OSM shop/amenity/office/craft tag values to
 // Stall's own categories. Admins can always override per-result before adding.
@@ -86,6 +94,43 @@ function matchesKeyword(tags, name, keyword) {
   return false;
 }
 
+async function fetchWithTimeout(url, options, ms) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * POSTs `query` to each Overpass endpoint in turn, returning the first
+ * successful JSON response. Throws only if every endpoint fails.
+ */
+async function queryOverpass(query) {
+  let lastError = null;
+  for (const endpoint of OVERPASS_ENDPOINTS) {
+    try {
+      const res = await fetchWithTimeout(
+        endpoint,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: `data=${encodeURIComponent(query)}`,
+        },
+        FETCH_TIMEOUT_MS
+      );
+      if (!res.ok) throw new Error(`Overpass endpoint ${endpoint} returned ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      lastError = err;
+      // try the next endpoint
+    }
+  }
+  throw lastError || new Error("All Overpass endpoints failed");
+}
+
 /**
  * Search for shops/amenities/offices/crafts within `radiusKm` of
  * { lat, lng }, optionally filtered by a freeform `keyword`.
@@ -96,7 +141,7 @@ function matchesKeyword(tags, name, keyword) {
 export async function searchNearby({ lat, lng }, radiusKm, keyword = "") {
   const radiusM = Math.max(100, Math.round(radiusKm * 1000));
   const query = `
-[out:json][timeout:25];
+[out:json][timeout:20];
 (
   nwr["shop"](around:${radiusM},${lat},${lng});
   nwr["amenity"](around:${radiusM},${lat},${lng});
@@ -106,13 +151,7 @@ export async function searchNearby({ lat, lng }, radiusKm, keyword = "") {
 out center tags 200;
 `.trim();
 
-  const res = await fetch(OVERPASS_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: `data=${encodeURIComponent(query)}`,
-  });
-  if (!res.ok) throw new Error("Overpass search failed");
-  const data = await res.json();
+  const data = await queryOverpass(query);
 
   const seen = new Set();
   const results = [];
