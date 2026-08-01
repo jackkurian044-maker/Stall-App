@@ -196,12 +196,20 @@ export default function AdminDashboard() {
       );
       if (!ok) return;
     }
-    await setDoc(doc(db, "premium_vendors", v.ownerId), {
-      isPremium: !currentlyPremium,
-      status: !currentlyPremium ? "admin_granted" : "admin_revoked",
-      updatedBy: auth.currentUser?.uid || null,
-      updatedAt: serverTimestamp(),
-    }, { merge: true });
+    try {
+      await setDoc(doc(db, "premium_vendors", v.ownerId), {
+        isPremium: !currentlyPremium,
+        status: !currentlyPremium ? "admin_granted" : "admin_revoked",
+        updatedBy: auth.currentUser?.uid || null,
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+    } catch (err) {
+      console.error("togglePremium failed:", err);
+      alert(
+        `Couldn't update premium status for "${v.name}": ${err.message}\n\n` +
+        `If this says "permission-denied," the Firestore rules allowing admin writes to premium_vendors haven't been deployed yet — run:\nfirebase deploy --only firestore:rules`
+      );
+    }
   };
 
   return (
