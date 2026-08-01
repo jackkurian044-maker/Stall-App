@@ -117,14 +117,20 @@ service cloud.firestore {
       allow create, delete: if false;
     }
 
-    // Premium subscription status. Written only by Cloud Functions
-    // (createSubscription / verifySubscription / razorpayWebhook) via the
-    // Admin SDK — no client write path exists for this collection at all,
-    // so it's read-only here. Owner reads their own status to gate
-    // premium features in the UI; admins can read any vendor's status.
+    // Premium subscription status. Normally written only by Cloud
+    // Functions (createSubscription / verifySubscription / razorpayWebhook)
+    // via the Admin SDK. Admins can ALSO write directly from the admin
+    // panel to manually grant/revoke premium (comps, pilots, support
+    // fixes) — everyone else still has no write path at all.
+    //
+    // Caution baked into the admin UI, not the rule itself: revoking a
+    // vendor who has an actual live Razorpay subscription just flips
+    // isPremium off locally — it doesn't cancel their subscription, so
+    // the next successful webhook charge will silently turn it back on.
+    // Manual revokes are meant for admin-granted premium, not real payers.
     match /premium_vendors/{uid} {
       allow read: if request.auth != null && (request.auth.uid == uid || isAdmin());
-      allow write: if false;
+      allow write: if isAdmin();
     }
 
     // Google Business Profile connection. Most fields (accessToken,
