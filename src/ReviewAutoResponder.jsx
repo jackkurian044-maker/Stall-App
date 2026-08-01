@@ -42,6 +42,7 @@ export default function ReviewAutoResponder({ listing }) {
   const [connection, setConnection] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [loadingConnect, setLoadingConnect] = useState(false);
+  const [showSteps, setShowSteps] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editText, setEditText] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
@@ -179,16 +180,48 @@ export default function ReviewAutoResponder({ listing }) {
         {!connection?.connected ? (
           <div style={{ background: "#F9FAFB", borderRadius: 10, padding: "1.25rem", textAlign: "center", border: "1px dashed #D1D5DB" }}>
             <div style={{ fontSize: 32, marginBottom: 10 }}>🔗</div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: "#111", marginBottom: 6 }}>Connect your Google Business Profile</div>
-            <div style={{ fontSize: 12, color: "#6B7280", marginBottom: 16, maxWidth: 380, margin: "0 auto 16px" }}>
-              Grant Stall App permission to read your reviews and post responses on your behalf. You can disconnect anytime.
+            <div style={{ fontSize: 14, fontWeight: 600, color: "#111", marginBottom: 6 }}>Let Stall reply to your Google reviews automatically</div>
+            <div style={{ fontSize: 12, color: "#6B7280", marginBottom: 14, maxWidth: 400, margin: "0 auto 14px", lineHeight: 1.6 }}>
+              You'll tap the button below, sign in to your own Google account on Google's site, and approve access. Stall never sees or stores your Google password — Google itself handles the sign-in and just tells us "yes, this business approved it."
             </div>
+
             <button onClick={connectGBP} disabled={loadingConnect} style={S.btn("#1D9E75")}>
-              {loadingConnect ? "Redirecting to Google..." : "🔑 Connect Google Business Profile"}
+              {loadingConnect ? "Redirecting to Google..." : "🔑 Connect with Google"}
             </button>
-            <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 10 }}>
-              You'll be redirected to Google to approve access. We only request permission to read reviews and post responses.
+
+            <div style={{ marginTop: 14 }}>
+              <button
+                onClick={() => setShowSteps((s) => !s)}
+                style={{ background: "none", border: "none", color: "#1D9E75", fontSize: 12, fontWeight: 600, cursor: "pointer", padding: 0 }}
+              >
+                {showSteps ? "Hide what happens ▲" : "See what happens, step by step ▼"}
+              </button>
             </div>
+
+            {showSteps && (
+              <div style={{ textAlign: "left", maxWidth: 400, margin: "14px auto 0", background: "#fff", border: "1px solid #E5E7EB", borderRadius: 8, padding: "14px 16px" }}>
+                {[
+                  ["1", "You tap \"Connect with Google\" above."],
+                  ["2", "Google opens its own sign-in page — this is Google's website, not Stall's. You log in the same way you always do (your usual password, plus your phone if you use 2-step verification)."],
+                  ["3", "Google shows you a screen asking if it's okay for Stall to read your reviews and post replies. You tap \"Allow.\""],
+                  ["4", "You're brought back to Stall, already connected — no password ever passed through Stall's app."],
+                ].map(([n, text]) => (
+                  <div key={n} style={{ display: "flex", gap: 10, marginBottom: n === "4" ? 0 : 10 }}>
+                    <div style={{
+                      flexShrink: 0, width: 20, height: 20, borderRadius: "50%",
+                      background: "#1D9E75", color: "#fff", fontSize: 11, fontWeight: 700,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                    }}>
+                      {n}
+                    </div>
+                    <div style={{ fontSize: 12, color: "#374151", lineHeight: 1.6 }}>{text}</div>
+                  </div>
+                ))}
+                <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 12, paddingTop: 10, borderTop: "1px solid #F3F4F6" }}>
+                  You can revoke this anytime — either with the "Disconnect" button here, or directly from your Google Account's "Third-party access" settings.
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div style={{ display: "flex", alignItems: "center", gap: 12, background: "#E1F5EE", borderRadius: 10, padding: "12px 16px" }}>
