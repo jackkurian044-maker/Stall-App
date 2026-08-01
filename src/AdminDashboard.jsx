@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
-import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, query, where } from "firebase/firestore";
-import { Plus, Trash2, RefreshCw, Star, Flag, Check, X as XIcon, Sparkles } from "lucide-react";
-import { db } from "./firebase";
+import { collection, onSnapshot, addDoc, updateDoc, setDoc, deleteDoc, doc, serverTimestamp, query, where } from "firebase/firestore";
+import { Plus, Trash2, RefreshCw, Star, Flag, Check, X as XIcon, Sparkles, Crown } from "lucide-react";
+import { db, auth } from "./firebase";
 import { CATEGORIES, CATEGORY_COLORS, COLORS } from "./constants";
 import { uid, toDateInputValue } from "./geo";
 import { autoRefreshStale, isRatingStale } from "./ratingSync";
@@ -179,6 +179,29 @@ export default function AdminDashboard() {
   const remove = async (id) => {
     await deleteDoc(doc(db, "vendors", id));
     if (editingId === id) cancelEdit();
+  };
+
+  // Manually grant/revoke premium from the admin panel — for comps, pilots,
+  // or unblocking a vendor outside the normal Razorpay flow. Granting needs
+  // no confirmation; revoking does, since revoking a vendor who actually
+  // has a live Razorpay subscription only flips this flag locally — it
+  // doesn't touch their subscription, so the next successful charge
+  // webhook will silently turn isPremium back on.
+  const togglePremium = async (v) => {
+    if (!v.ownerId) return; // no vendor account to key this to yet
+    const currentlyPremium = !!premiumMap[v.ownerId];
+    if (currentlyPremium) {
+      const ok = confirm(
+        `Remove premium from "${v.name}"?\n\nOnly do this for admin-granted premium. If this vendor has a real Razorpay subscription, this won't cancel it — their next successful payment will silently turn premium back on.`
+      );
+      if (!ok) return;
+    }
+    await setDoc(doc(db, "premium_vendors", v.ownerId), {
+      isPremium: !currentlyPremium,
+      status: !currentlyPremium ? "admin_granted" : "admin_revoked",
+      updatedBy: auth.currentUser?.uid || null,
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
   };
 
   return (
@@ -384,6 +407,22 @@ export default function AdminDashboard() {
                     <span title="Rating/phone will sync from Google automatically" style={{ color: "#bbb", padding: 6, display: "flex" }}>
                       <RefreshCw size={14} />
                     </span>
+                  )}
+                  {v.ownerId && (
+                    <button
+                      onClick={() => togglePremium(v)}
+                      title={premiumMap[v.ownerId] ? "Remove premium access" : "Manually grant premium access"}
+                      className="stall-btn"
+                      style={{
+                        display: "flex", alignItems: "center", gap: 4,
+                        background: premiumMap[v.ownerId] ? COLORS.marigold : "transparent",
+                        border: `1.5px solid ${COLORS.marigold}`,
+                        color: premiumMap[v.ownerId] ? COLORS.ink : COLORS.marigold,
+                        borderRadius: 7, padding: "5px 9px", fontSize: 11, fontWeight: 700, cursor: "pointer",
+                      }}
+                    >
+                      <Crown size={12} /> {premiumMap[v.ownerId] ? "Premium" : "Grant"}
+                    </button>
                   )}
                   <button
                     onClick={() => startEdit(v)}
