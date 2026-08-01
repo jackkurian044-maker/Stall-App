@@ -10,6 +10,9 @@ service cloud.firestore {
 
     // Vendor listings: anyone can read (public search).
     // Any signed-in user can create a listing (it becomes theirs).
+    // Unauthenticated visitors can also create a listing ONLY through the
+    // public register.html self-registration flow — see the third
+    // create branch below.
     // A listing can be edited/deleted by its owner, by an admin,
     // or claimed by a signed-in user who supplies the correct claimCode
     // on a currently-unclaimed (ownerId == null) listing.
@@ -19,6 +22,23 @@ service cloud.firestore {
       allow create: if request.auth != null && (
         request.resource.data.ownerId == request.auth.uid ||
         (isAdmin() && request.resource.data.ownerId == null)
+      ) || (
+        // Public self-registration from register.html — no auth required,
+        // since that form doesn't have a sign-in step. Tightly scoped: must
+        // look exactly like a fresh, unclaimed, direct-registration doc —
+        // not just "ownerId == null" (that alone would also cover
+        // admin-added listings and let anyone forge those).
+        request.resource.data.ownerId == null &&
+        request.resource.data.source == 'direct-registration' &&
+        request.resource.data.claimCode is string &&
+        request.resource.data.claimCode.size() == 6 &&
+        request.resource.data.name is string &&
+        request.resource.data.name.size() > 0 &&
+        request.resource.data.name.size() < 200 &&
+        request.resource.data.lat is number &&
+        request.resource.data.lng is number &&
+        request.resource.data.status == 'pending' &&
+        request.resource.data.createdAt == request.time
       );
 
       allow update: if request.auth != null && (
@@ -27,7 +47,16 @@ service cloud.firestore {
         (
           resource.data.ownerId == null &&
           request.resource.data.ownerId == request.auth.uid &&
-          request.resource.data.claimCode == resource.data.claimCode
+          request.resource.data.claimCode == resource.data.claimCode &&
+          // If this listing came with an ownerEmail (i.e. it was
+          // self-registered via register.html), only the matching Gmail/
+          // email account may claim it — not just anyone with the code.
+          // Listings without an ownerEmail (e.g. admin-added) skip this
+          // check, since there's nothing on file to match against.
+          (
+            !('ownerEmail' in resource.data) ||
+            request.auth.token.email.lower() == resource.data.ownerEmail.lower()
+          )
         )
       ) || (
         // Anyone — including anonymous browsers — can bump interaction
@@ -38,6 +67,25 @@ service cloud.firestore {
         // counter fields and nothing else on the listing.
         request.resource.data.diff(resource.data).affectedKeys()
           .hasOnly(['viewCount', 'callCount', 'whatsappCount', 'directionsCount'])
+      ) || (
+        // Public rating/phone auto-refresh (see src/ratingSync.js). This
+        // is intentionally allowed for ANYONE, signed in or not, since
+        // it runs from the public Find page — but only these four
+        // fields can change, only within sane value ranges, and only
+        // when the stored ratingUpdatedAt is missing or actually stale.
+        // That staleness check is the real cost control: it caps writes
+        // (and the Google API call behind them) to once per listing per
+        // window, no matter how many visitors hit the page — keep the
+        // 24h figure here in sync with RATING_STALE_HOURS in constants.js.
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rating', 'ratingsCount', 'phone', 'ratingUpdatedAt']) &&
+        (request.resource.data.rating == null ||
+          (request.resource.data.rating is number && request.resource.data.rating >= 0 && request.resource.data.rating <= 5)) &&
+        (request.resource.data.ratingsCount == null ||
+          (request.resource.data.ratingsCount is number && request.resource.data.ratingsCount >= 0)) &&
+        (
+          !('ratingUpdatedAt' in resource.data) ||
+          request.time > resource.data.ratingUpdatedAt + duration.value(24, 'h')
+        )
       );
 
       allow delete: if request.auth != null &&
