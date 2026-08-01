@@ -123,5 +123,18 @@ service cloud.firestore {
     match /vendor_counter_snapshots/{vendorId} {
       allow read, write: if false;
     }
+
+    // Vendor Boost health score + checklist. Written only by the
+    // runBoostScan Cloud Function via the Admin SDK, which bypasses
+    // these rules — "write: if false" here just blocks a client from
+    // forging its own score. Only the listing's owner (or an admin)
+    // can read it, same pattern as vendor_digests above.
+    match /vendors/{vendorId}/boost/{docId} {
+      allow read: if request.auth != null && (
+        get(/databases/$(database)/documents/vendors/$(vendorId)).data.ownerId == request.auth.uid ||
+        isAdmin()
+      );
+      allow write: if false;
+    }
   }
 }
