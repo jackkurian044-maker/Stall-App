@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, query, where } from "firebase/firestore";
-import { Plus, Trash2, RefreshCw, Star, Flag, Check, X as XIcon } from "lucide-react";
+import { Plus, Trash2, RefreshCw, Star, Flag, Check, X as XIcon, Sparkles } from "lucide-react";
 import { db } from "./firebase";
 import { CATEGORIES, CATEGORY_COLORS, COLORS } from "./constants";
 import { uid, toDateInputValue } from "./geo";
@@ -28,6 +28,9 @@ export default function AdminDashboard() {
   const [tempId] = useState(() => uid(10));
   const [reports, setReports] = useState([]);
   const [reportsLoading, setReportsLoading] = useState(true);
+  const [premiumMap, setPremiumMap] = useState({});   // ownerId -> isPremium
+  const [gbpMap, setGbpMap] = useState({});             // ownerId -> connected
+  const [boostMap, setBoostMap] = useState({});          // vendor doc id -> boost/latest data
   const refreshedRef = useRef(new Set());
 
   useEffect(() => {
@@ -48,6 +51,41 @@ export default function AdminDashboard() {
     }, () => setReportsLoading(false));
     return unsub;
   }, []);
+
+  // Premium status and GBP connection status are keyed by ownerId (the
+  // vendor's auth uid), same collections the vendor-side Boost tab reads —
+  // just loaded here in bulk for every vendor at once.
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "premium_vendors"), (snap) => {
+      const map = {};
+      snap.docs.forEach((d) => { map[d.id] = d.data().isPremium || false; });
+      setPremiumMap(map);
+    }, () => {});
+    return unsub;
+  }, []);
+
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "gbp_connections"), (snap) => {
+      const map = {};
+      snap.docs.forEach((d) => { map[d.id] = d.data().connected || false; });
+      setGbpMap(map);
+    }, () => {});
+    return unsub;
+  }, []);
+
+  // Boost scores live in a subcollection per listing (vendors/{id}/boost/latest),
+  // so there's no single collection to listen to — subscribe to each claimed
+  // listing individually and keep the subscriptions in sync as the vendor
+  // list changes (new claims added, listings removed).
+  useEffect(() => {
+    const claimedIds = vendors.filter((v) => v.ownerId).map((v) => v.id);
+    const unsubs = claimedIds.map((id) =>
+      onSnapshot(doc(db, "vendors", id, "boost", "latest"), (snap) => {
+        setBoostMap((prev) => ({ ...prev, [id]: snap.exists() ? snap.data() : null }));
+      }, () => {})
+    );
+    return () => unsubs.forEach((u) => u());
+  }, [vendors]);
 
   const handleResolveReport = async (reportId, status) => {
     await resolveReport(db, reportId, status);
@@ -306,6 +344,28 @@ export default function AdminDashboard() {
                     <span style={{ fontSize: 10, fontWeight: 700, color: v.ownerId ? COLORS.teal : COLORS.brick }}>
                       {v.ownerId ? "CLAIMED" : "UNCLAIMED"}
                     </span>
+                    {v.ownerId && (() => {
+                      const isPremium = premiumMap[v.ownerId];
+                      const gbpConnected = gbpMap[v.ownerId];
+                      const boost = boostMap[v.id];
+                      if (!isPremium) return null; // non-premium vendors have no Boost state to show
+                      const bandColors = {
+                        strong: COLORS.green,
+                        needs_work: COLORS.marigold,
+                        at_risk: COLORS.brick,
+                      };
+                      const label = !gbpConnected
+                        ? "Boost: not connected"
+                        : !boost
+                        ? "Boost: not scanned"
+                        : `Boost: ${boost.score} (${boost.band?.replace("_", " ")})`;
+                      const color = !gbpConnected || !boost ? COLORS.muted : (bandColors[boost.band] || COLORS.muted);
+                      return (
+                        <span style={{ fontSize: 10, fontWeight: 700, color, display: "flex", alignItems: "center", gap: 3 }}>
+                          <Sparkles size={10} /> {label}
+                        </span>
+                      );
+                    })()}
                     {v.rating != null && (
                       <span style={{ fontSize: 11, color: "#666", display: "flex", alignItems: "center", gap: 3 }}>
                         <Star size={11} fill={COLORS.marigold} color={COLORS.marigold} />
