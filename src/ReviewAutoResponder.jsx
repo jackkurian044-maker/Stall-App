@@ -11,7 +11,8 @@ import {
 
 const STAR_COLORS = { 1: "#E24B4A", 2: "#EF9F27", 3: "#EF9F27", 4: "#1D9E75", 5: "#1D9E75" };
 const STAR_LABELS = { 1: "Critical", 2: "Poor", 3: "Average", 4: "Good", 5: "Excellent" };
-
+import ReviewAutoResponder from "./ReviewAutoResponder";
+import BoostTab from "./BoostTab";
 function StarDisplay({ rating }) {
   return (
     <span style={{ color: STAR_COLORS[rating] || "#888", fontSize: 14 }}>
