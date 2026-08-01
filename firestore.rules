@@ -117,6 +117,35 @@ service cloud.firestore {
       allow create, delete: if false;
     }
 
+    // Premium subscription status. Written only by Cloud Functions
+    // (createSubscription / verifySubscription / razorpayWebhook) via the
+    // Admin SDK — no client write path exists for this collection at all,
+    // so it's read-only here. Owner reads their own status to gate
+    // premium features in the UI; admins can read any vendor's status.
+    match /premium_vendors/{uid} {
+      allow read: if request.auth != null && (request.auth.uid == uid || isAdmin());
+      allow write: if false;
+    }
+
+    // Google Business Profile connection. Most fields (accessToken,
+    // refreshToken, tokenExpiresAt, accountName, locationName, locationId,
+    // connected, connectedAt, lastPolled) are written only by the
+    // oauthCallback Cloud Function via the Admin SDK — these must never
+    // be client-writable since they include OAuth tokens.
+    //
+    // Two client-side actions are legitimate though (see
+    // ReviewAutoResponder.jsx): disconnecting (sets connected: false +
+    // disconnectedAt) and saving response settings (responseSettings +
+    // settingsUpdatedAt). affectedKeys().hasOnly(...) restricts the owner
+    // to exactly those fields — trying to write anything else (like
+    // forging their own accessToken) is denied.
+    match /gbp_connections/{uid} {
+      allow read: if request.auth != null && (request.auth.uid == uid || isAdmin());
+      allow write: if request.auth != null && request.auth.uid == uid &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['connected', 'disconnectedAt', 'responseSettings', 'settingsUpdatedAt']);
+    }
+
     // Internal bookkeeping for weeklyVendorDigest's week-over-week
     // comparison — never read by any client, only by the Cloud Function
     // itself (Admin SDK, bypasses rules).
