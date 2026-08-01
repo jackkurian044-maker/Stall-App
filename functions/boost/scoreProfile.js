@@ -2,24 +2,34 @@
  * scoreProfile.js
  *
  * Pure scoring logic for the "Vendor Boost" GBP health score.
- * No network calls here on purpose — feed it a plain `profile` object
- * (already fetched from the Google Business Profile APIs) and it
- * returns a score + itemized checklist. Keeping this pure makes it
- * trivial to unit test and to retune weights without touching the
- * Cloud Function or API auth code.
+ * No network calls — feed it a `profile` object already mapped from the
+ * GMB API response and it returns a score + itemized checklist.
  *
- * Expected `profile` shape (map your GMB API response into this before
- * calling scoreProfile — see mapGbpResponse() at the bottom):
+ * v2 fix: the first version compared Stall's own `category` field
+ * (a broad enum: "Food & Produce", "Services", etc. — see
+ * src/constants.js CATEGORIES) directly against GBP's specific
+ * primaryCategory ("Hair Salon", "Coffee Shop"). Those never match by
+ * design — they're different taxonomies for different purposes — so
+ * that check is now "does GBP have a specific category set at all"
+ * instead of a cross-comparison.
  *
+ * Same fix for hours: Stall's `vendors.hours` is a free-text string
+ * (see VendorDashboard.jsx — a <textarea>, not structured data), while
+ * GBP's regularHours is a structured periods object. Comparing them
+ * directly was never going to produce a meaningful signal, so this
+ * check is now "does GBP have hours set at all," not a cross-check
+ * against Stall's text field.
+ *
+ * Expected `profile` shape (see mapGbpResponse() at the bottom):
  * {
  *   photoCount: number,
  *   lastPhotoDaysAgo: number | null,
- *   categoryMatchesVertical: boolean,   // e.g. "Hair Salon" vs generic "Beauty Salon"
+ *   hasSpecificCategory: boolean,   // GBP primaryCategory is set and non-generic
  *   descriptionHasKeywords: boolean,
  *   totalReviews: number,
  *   unrepliedReviews: number,
  *   avgReplyLatencyDays: number | null,
- *   hoursAccurate: boolean,             // cross-checked against vendor's Stall listing hours
+ *   hoursSetOnGoogle: boolean,      // GBP regularHours exist
  *   postsLast30Days: number,
  *   qaOpenCount: number,
  * }
@@ -52,7 +62,7 @@ function scorePhotos(p) {
 }
 
 function scoreCategory(p) {
-  return p.categoryMatchesVertical ? WEIGHTS.category : 0;
+  return p.hasSpecificCategory ? WEIGHTS.category : 0;
 }
 
 function scoreDescription(p) {
@@ -72,7 +82,7 @@ function scoreReviewReplies(p) {
 }
 
 function scoreHours(p) {
-  return p.hoursAccurate ? WEIGHTS.hours : 0;
+  return p.hoursSetOnGoogle ? WEIGHTS.hours : 0;
 }
 
 function scorePosts(p) {
@@ -103,10 +113,10 @@ function scoreProfile(profile) {
     },
     {
       key: "category",
-      label: "Set the most specific business category",
+      label: "Set a specific Google Business category",
       points: scoreCategory(profile),
       max: WEIGHTS.category,
-      done: profile.categoryMatchesVertical,
+      done: profile.hasSpecificCategory,
       cta: "fix_category",
     },
     {
@@ -128,10 +138,10 @@ function scoreProfile(profile) {
     },
     {
       key: "hours",
-      label: "Fix business hours",
+      label: "Set your business hours on Google",
       points: scoreHours(profile),
       max: WEIGHTS.hours,
-      done: profile.hoursAccurate,
+      done: profile.hoursSetOnGoogle,
       cta: "fix_hours",
     },
     {
@@ -169,12 +179,14 @@ function scoreProfile(profile) {
 
 /**
  * Maps a raw Google Business Profile API response into the flat
- * `profile` shape scoreProfile() expects. Fill this in against your
- * actual GMB API + Business Profile Performance API response shapes —
- * you already have auth wired up for the review auto-responder, so
- * this should mostly be field mapping, not new API integration work.
+ * `profile` shape scoreProfile() expects.
+ *
+ * `stallListing` is only used for display context now (vendor name for
+ * the Claude copy prompt) — it's no longer cross-checked against GBP
+ * fields, since Stall's category/hours aren't in a comparable shape to
+ * GBP's (see notes at the top of this file).
  */
-function mapGbpResponse({ locationData, reviews, posts, questions, stallListing }) {
+function mapGbpResponse({ locationData, reviews, posts, questions }) {
   const unreplied = reviews.filter((r) => !r.reviewReply).length;
   const repliedReviews = reviews.filter((r) => r.reviewReply);
   const avgReplyLatencyDays = repliedReviews.length
@@ -188,17 +200,25 @@ function mapGbpResponse({ locationData, reviews, posts, questions, stallListing 
   const photos = locationData.mediaItems || [];
   const lastPhoto = photos.sort((a, b) => new Date(b.createTime) - new Date(a.createTime))[0];
 
+  // GBP returns categories as { primaryCategory: { displayName, categoryId } }.
+  // "specific" here just means something is actually set — Google itself
+  // treats an unset/default category as a ranking gap, independent of
+  // whatever broad category Stall's own listing uses.
+  const hasSpecificCategory = Boolean(locationData.categories?.primaryCategory?.displayName);
+
+  const periods = locationData.regularHours?.periods || [];
+
   return {
     photoCount: photos.length,
     lastPhotoDaysAgo: lastPhoto
       ? Math.round((Date.now() - new Date(lastPhoto.createTime)) / (1000 * 60 * 60 * 24))
       : null,
-    categoryMatchesVertical: locationData.primaryCategory?.displayName === stallListing.vertical,
+    hasSpecificCategory,
     descriptionHasKeywords: (locationData.profile?.description || "").length > 50,
     totalReviews: reviews.length,
     unrepliedReviews: unreplied,
     avgReplyLatencyDays,
-    hoursAccurate: JSON.stringify(locationData.regularHours) === JSON.stringify(stallListing.hours),
+    hoursSetOnGoogle: periods.length > 0,
     postsLast30Days: posts.filter(
       (p) => (Date.now() - new Date(p.createTime)) / (1000 * 60 * 60 * 24) <= 30
     ).length,
