@@ -430,8 +430,12 @@ export default function VendorDashboard({ user }) {
             </div>
             <ReviewAutoResponder listing={listings[0]} />
             <div style={{ height: 24 }} />
+            <ReviewAutoResponder listing={listings[0]} />
+<PremiumGate user={user} listing={listings[0]} />
+<BoostTab user={user} listing={listings[0]} />
             <PremiumGate user={user} listing={listings[0]} />
           </div>
+      
         )}
       </div>
 
