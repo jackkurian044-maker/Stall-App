@@ -8,6 +8,7 @@ import {
   doc, getDoc, setDoc, collection,
   query, where, orderBy, onSnapshot, updateDoc
 } from "firebase/firestore";
+import { getFunctions, httpsCallable } from "firebase/functions";
 
 const STAR_COLORS = { 1: "#E24B4A", 2: "#EF9F27", 3: "#EF9F27", 4: "#1D9E75", 5: "#1D9E75" };
 const STAR_LABELS = { 1: "Critical", 2: "Poor", 3: "Average", 4: "Good", 5: "Excellent" };
@@ -94,22 +95,34 @@ export default function ReviewAutoResponder({ listing }) {
     return unsub;
   }, [vendorId]);
 
-  // Initiate Google OAuth — opens Google consent screen
-  function connectGBP() {
+  // Initiate Google OAuth — opens Google consent screen.
+  // Gets a one-time state nonce from the server first (tied server-side
+  // to this vendor's uid) instead of passing the raw uid as `state` —
+  // see beginGbpOauth in functions/index.js for why.
+  async function connectGBP() {
     setLoadingConnect(true);
-    const params = new URLSearchParams({
-      client_id: import.meta.env.VITE_GOOGLE_OAUTH_CLIENT_ID,
-      redirect_uri: import.meta.env.VITE_GOOGLE_OAUTH_REDIRECT_URI,
-      response_type: "code",
-      scope: [
-        "https://www.googleapis.com/auth/business.manage",
-        "https://www.googleapis.com/auth/plus.business.manage"
-      ].join(" "),
-      access_type: "offline",
-      prompt: "consent",
-      state: vendorId, // pass vendorId so callback knows who this is
-    });
-    window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
+    try {
+      const functions = getFunctions();
+      const beginGbpOauth = httpsCallable(functions, "beginGbpOauth");
+      const { data } = await beginGbpOauth();
+
+      const params = new URLSearchParams({
+        client_id: import.meta.env.VITE_GOOGLE_OAUTH_CLIENT_ID,
+        redirect_uri: import.meta.env.VITE_GOOGLE_OAUTH_REDIRECT_URI,
+        response_type: "code",
+        scope: [
+          "https://www.googleapis.com/auth/business.manage",
+          "https://www.googleapis.com/auth/plus.business.manage"
+        ].join(" "),
+        access_type: "offline",
+        prompt: "consent",
+        state: data.state,
+      });
+      window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
+    } catch (err) {
+      console.error("Failed to start GBP connection:", err);
+      setLoadingConnect(false);
+    }
   }
 
   // Disconnect GBP

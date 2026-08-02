@@ -2,17 +2,30 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // Vendor listing photos. Any signed-in user can upload (the app's own
-    // UI only exposes this to the listing's owner or an admin, but Storage
-    // rules alone can't easily verify "owns this specific vendor doc"
-    // without extra complexity, so this is enforced at the app level, not
-    // the rules level — acceptable for a small local directory, worth
-    // revisiting if abuse ever becomes a concern).
-    match /vendor-photos/{allPaths=**} {
+    // Vendor listing photos, stored under vendor-photos/{vendorId}/...
+    // (vendorId is either an existing listing's Firestore doc ID, or a
+    // client-generated tempId used before the listing doc exists yet —
+    // see VendorDashboard.jsx / ImageUpload.jsx).
+    //
+    // Write is scoped to whoever actually owns that listing, using the
+    // same admin.firestore cross-service lookup Firestore rules use:
+    //   - if a vendors/{vendorId} doc exists, only its ownerId or an
+    //     admin may write into that folder — this is what stops any
+    //     signed-in user from overwriting another vendor's live photos.
+    //   - if no such doc exists yet (a brand-new listing's tempId),
+    //     any signed-in user may write — there's nothing to check
+    //     ownership against yet, and tempIds aren't guessable/targetable
+    //     the way a real listing's ID is.
+    match /vendor-photos/{vendorId}/{fileName} {
       allow read: if true;
       allow write: if request.auth != null
         && request.resource.size < 5 * 1024 * 1024
-        && request.resource.contentType.matches('image/.*');
+        && request.resource.contentType.matches('image/.*')
+        && (
+          !firestore.exists(/databases/(default)/documents/vendors/$(vendorId)) ||
+          firestore.get(/databases/(default)/documents/vendors/$(vendorId)).data.ownerId == request.auth.uid ||
+          firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid))
+        );
     }
   }
 }

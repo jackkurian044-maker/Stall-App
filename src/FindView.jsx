@@ -197,7 +197,7 @@ useEffect(() => {
                 onClick={locate}
                 className="stall-btn"
                 style={{
-                  width: "100%", background: COLORS.ink, color: "#fff", border: "none", borderRadius: 8,
+                  width: "100%", background: "#f0b429", color: "#0a0a0a", border: "none", borderRadius: 8,
                   padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "center",
                   gap: 8, fontWeight: 600, fontSize: 13, marginBottom: 10,
                 }}
@@ -207,7 +207,7 @@ useEffect(() => {
               {locateError && (
                 <div style={{ fontSize: 11.5, color: COLORS.brick, marginBottom: 10 }}>{locateError}</div>
               )}
-              <div style={{ fontSize: 11, color: "#555", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+              <div style={{ fontSize: 11, color: "#9c9c9c", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>
                 or enter coordinates
               </div>
               <div style={{ display: "flex", gap: 8 }}>
@@ -216,20 +216,20 @@ useEffect(() => {
                   value={manualLat}
                   onChange={(e) => setManualLat(e.target.value)}
                   className="font-mono"
-                  style={{ flex: 1, padding: "8px 10px", borderRadius: 6, border: `1.5px solid ${COLORS.ink}`, fontSize: 13 }}
+                  style={{ flex: 1, padding: "8px 10px", borderRadius: 6, border: `1.5px solid #2a2a2a`, fontSize: 13 }}
                 />
                 <input
                   placeholder="Longitude"
                   value={manualLng}
                   onChange={(e) => setManualLng(e.target.value)}
                   className="font-mono"
-                  style={{ flex: 1, padding: "8px 10px", borderRadius: 6, border: `1.5px solid ${COLORS.ink}`, fontSize: 13 }}
+                  style={{ flex: 1, padding: "8px 10px", borderRadius: 6, border: `1.5px solid #2a2a2a`, fontSize: 13 }}
                 />
               </div>
               <button
                 onClick={useManualLoc}
                 className="stall-btn"
-                style={{ marginTop: 8, width: "100%", background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 6, padding: "7px", fontSize: 12, fontWeight: 600 }}
+                style={{ marginTop: 8, width: "100%", background: "transparent", border: `1.5px solid #2a2a2a`, borderRadius: 6, padding: "7px", fontSize: 12, fontWeight: 600 }}
               >
                 Set location
               </button>
@@ -237,7 +237,7 @@ useEffect(() => {
           ) : (
             <div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                <div style={{ fontSize: 12, color: COLORS.teal, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
+                <div style={{ fontSize: 12, color: "#6bab9d", fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
                   <MapPin size={14} /> LOCATION SET
                 </div>
                 <button onClick={locate} style={{ background: "none", border: "none", fontSize: 11, textDecoration: "underline", cursor: "pointer" }}>
@@ -269,7 +269,7 @@ useEffect(() => {
               {digest.newVendors?.length > 0 && digest.activeOffers?.length > 0 && " · "}
               {digest.activeOffers?.length > 0 && `${digest.activeOffers.length} active offer${digest.activeOffers.length === 1 ? "" : "s"}`}
             </div>
-            <button onClick={dismissDigest} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: COLORS.teal, fontWeight: 600, flexShrink: 0 }}>
+            <button onClick={dismissDigest} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#6bab9d", fontWeight: 600, flexShrink: 0 }}>
               Dismiss
             </button>
           </div>
@@ -277,18 +277,18 @@ useEffect(() => {
 
         <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
           <div style={{ flex: "1 1 220px", position: "relative" }}>
-            <Search size={15} style={{ position: "absolute", left: 10, top: 11, color: "#777" }} />
+            <Search size={15} style={{ position: "absolute", left: 10, top: 11, color: "#9c9c9c" }} />
             <input
               placeholder="Search vendors or products…"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              style={{ width: "100%", padding: "9px 10px 9px 32px", borderRadius: 8, border: `1.5px solid ${COLORS.ink}`, fontSize: 13, background: "#fff" }}
+              style={{ width: "100%", padding: "9px 10px 9px 32px", borderRadius: 8, border: `1.5px solid #2a2a2a`, fontSize: 13, background: "#161616", color: "#fff" }}
             />
           </div>
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            style={{ padding: "9px 10px", borderRadius: 8, border: `1.5px solid ${COLORS.ink}`, fontSize: 13, background: "#fff" }}
+            style={{ padding: "9px 10px", borderRadius: 8, border: `1.5px solid #2a2a2a`, fontSize: 13, background: "#161616", color: "#fff" }}
           >
             <option>All</option>
             {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
@@ -299,8 +299,8 @@ useEffect(() => {
               className="stall-btn"
               style={{
                 display: "flex", alignItems: "center", gap: 6, padding: "9px 14px", borderRadius: 8,
-                border: `1.5px solid ${COLORS.ink}`, fontSize: 13, fontWeight: 600, cursor: "pointer",
-                background: showFavoritesOnly ? COLORS.ink : "#fff", color: showFavoritesOnly ? "#fff" : COLORS.ink,
+                border: `1.5px solid #2a2a2a`, fontSize: 13, fontWeight: 600, cursor: "pointer",
+                background: showFavoritesOnly ? "#f0b429" : "#161616", color: showFavoritesOnly ? "#0a0a0a" : "#fff",
               }}
             >
               ♥ Favorites
@@ -311,7 +311,7 @@ useEffect(() => {
         {!userLoc ? (
           <EmptyState text="Set your location on the left to start finding vendors nearby." />
         ) : loading ? (
-          <div style={{ fontSize: 13, color: "#666" }}>Loading vendors…</div>
+          <div style={{ fontSize: 13, color: "#9c9c9c" }}>Loading vendors…</div>
         ) : results.length === 0 ? (
           <EmptyState
             text={
@@ -322,7 +322,7 @@ useEffect(() => {
           />
         ) : (
           <>
-            <div style={{ fontSize: 12, color: "#777", marginBottom: 10 }}>
+            <div style={{ fontSize: 12, color: "#9c9c9c", marginBottom: 10 }}>
               {results.length} result{results.length === 1 ? "" : "s"}
               {totalPages > 1 ? ` · page ${currentPage} of ${totalPages}` : ""}
             </div>
@@ -348,7 +348,7 @@ useEffect(() => {
                   disabled={currentPage === 1}
                   className="stall-btn"
                   style={{
-                    background: "#fff", border: `1.5px solid ${COLORS.ink}`, borderRadius: 7, padding: "7px 10px",
+                    background: "#161616", border: `1.5px solid #2a2a2a`, borderRadius: 7, padding: "7px 10px",
                     display: "flex", alignItems: "center", opacity: currentPage === 1 ? 0.4 : 1,
                     cursor: currentPage === 1 ? "default" : "pointer",
                   }}
@@ -361,9 +361,9 @@ useEffect(() => {
                     onClick={() => setPage(p)}
                     className="stall-btn"
                     style={{
-                      background: p === currentPage ? COLORS.ink : "#fff",
-                      color: p === currentPage ? "#fff" : COLORS.ink,
-                      border: `1.5px solid ${COLORS.ink}`,
+                      background: p === currentPage ? "#f0b429" : "#161616",
+                      color: p === currentPage ? "#0a0a0a" : "#fff",
+                      border: `1.5px solid #2a2a2a`,
                       borderRadius: 7,
                       padding: "7px 12px",
                       fontSize: 13,
@@ -379,7 +379,7 @@ useEffect(() => {
                   disabled={currentPage === totalPages}
                   className="stall-btn"
                   style={{
-                    background: "#fff", border: `1.5px solid ${COLORS.ink}`, borderRadius: 7, padding: "7px 10px",
+                    background: "#161616", border: `1.5px solid #2a2a2a`, borderRadius: 7, padding: "7px 10px",
                     display: "flex", alignItems: "center", opacity: currentPage === totalPages ? 0.4 : 1,
                     cursor: currentPage === totalPages ? "default" : "pointer",
                   }}
@@ -407,9 +407,9 @@ useEffect(() => {
 
 function EmptyState({ text }) {
   return (
-    <div style={{ border: `2px dashed ${COLORS.ink}55`, borderRadius: 12, padding: "40px 20px", textAlign: "center", background: "#ffffff88" }}>
+    <div style={{ border: `2px dashed #6f6f6f55`, borderRadius: 12, padding: "40px 20px", textAlign: "center", background: "#16161680" }}>
       <MapPin size={28} color={COLORS.teal} style={{ marginBottom: 10 }} />
-      <div style={{ fontSize: 14, color: "#444", maxWidth: 320, margin: "0 auto" }}>{text}</div>
+      <div style={{ fontSize: 14, color: "#cccccc", maxWidth: 320, margin: "0 auto" }}>{text}</div>
     </div>
   );
 }
