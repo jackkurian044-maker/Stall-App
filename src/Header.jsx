@@ -1,5 +1,5 @@
 import React from "react";
-import stallLogo from "./stall-logo.png";
+import stallLogoMark from "./logo-cropped.png";
 
 export default function Header({ mode, setMode, user, isAdmin, onSignOut }) {
   const tabs = [
@@ -28,22 +28,39 @@ export default function Header({ mode, setMode, user, isAdmin, onSignOut }) {
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <img
-          src={stallLogo}
-          alt="Stall"
-          style={{ height: 56, width: "auto", flexShrink: 0 }}
-        />
-        <div
-          style={{
-            fontSize: 11,
-            letterSpacing: "0.04em",
-            color: "#9c9c9c",
-            fontWeight: 600,
-          }}
-        >
-          what's around the corner
-        </div>
-      </div>
+  <img
+    src={stallLogoMark}
+    alt="Stall"
+    style={{ width: 40, height: "auto", flexShrink: 0 }}
+  />
+  <div style={{ display: "flex", flexDirection: "column", lineHeight: 1 }}>
+    <div style={{ fontWeight: 700, fontSize: "1.28rem", color: "#fff" }}>
+      all
+    </div>
+    <div
+      style={{
+        fontSize: "0.55rem",
+        letterSpacing: "0.22em",
+        color: "#9c9c9c",
+        fontWeight: 600,
+        marginTop: 2,
+      }}
+    >
+      THAT'S ALL
+    </div>
+  </div>
+  <div
+    style={{
+      fontSize: 11,
+      letterSpacing: "0.04em",
+      color: "#9c9c9c",
+      fontWeight: 600,
+      marginLeft: 10,
+    }}
+  >
+    what's around the corner
+  </div>
+</div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <div
