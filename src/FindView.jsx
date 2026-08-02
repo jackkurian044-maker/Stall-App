@@ -69,6 +69,17 @@ useEffect(() => {
     }
   }, []);
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get("q");
+    if (q) {
+      setQuery(q);
+      params.delete("q");
+      const rest = params.toString();
+      window.history.replaceState({}, "", window.location.pathname + (rest ? `?${rest}` : ""));
+    }
+  }, []);
+
+  useEffect(() => {
     const unsub = onSnapshot(
       collection(db, "vendors"),
       (snap) => {
