@@ -178,7 +178,7 @@ export default function VendorTicket({ vendor, highlighted, onClick, onOpenRevie
       )}
       <div style={{ minWidth: 0, flex: 1 }}>
         <div className="vendor-ticket-name-row" style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 5, flexWrap: "wrap" }}>
-          <span className="font-display" style={{ fontSize: 22, fontWeight: 700 }}>
+          <span className="font-display" style={{ fontSize: 22, fontWeight: 700, color: COLORS.ink }}>
             {vendor.name}
           </span>
           <span

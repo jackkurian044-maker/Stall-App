@@ -330,7 +330,7 @@ export default function VendorDashboard({ user }) {
                 {listings.map((l) => (
                   <div key={l.id} style={{ background: "#fff", border: `2px solid ${COLORS.ink}`, borderRadius: 12, padding: 14, display: "flex", justifyContent: "space-between", gap: 12 }}>
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center", gap: 6 }}>
+                      <div style={{ fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center", gap: 6, color: COLORS.ink }}>
                         {l.name}
                         {l.isPremium && (
                           <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: COLORS.ink, color: "#fff", fontWeight: 600 }}>
