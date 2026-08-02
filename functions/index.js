@@ -341,15 +341,57 @@ exports.getSubscriptionStatus = functions.https.onCall(async (data, context) => 
 // ═══════════════════════════════════════════════════════════════
 
 // ─────────────────────────────────────────────────────────────
+// 2A-i. BEGIN OAUTH
+// Called from ReviewAutoResponder.jsx right before redirecting to
+// Google. Issues a random one-time state value tied to the calling
+// vendor's uid, so oauthCallback can verify the person who completes
+// Google's consent screen is the same vendor who started the flow —
+// without this, a signed-in attacker could swap `state` for a
+// different vendor's uid and hijack their GBP connection.
+// ─────────────────────────────────────────────────────────────
+exports.beginGbpOauth = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError("unauthenticated", "Login required");
+  }
+
+  const vendorId = context.auth.uid;
+  const state = crypto.randomBytes(24).toString("hex");
+
+  await db.collection("oauth_states").doc(state).set({
+    vendorId,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes to complete consent
+  });
+
+  return { state };
+});
+
+// ─────────────────────────────────────────────────────────────
 // 2A. OAUTH CALLBACK
 // Google redirects here after vendor grants permission
 // URL: https://<region>-stall-app-1aab7.cloudfunctions.net/oauthCallback
 // ─────────────────────────────────────────────────────────────
 exports.oauthCallback = functions.https.onRequest(async (req, res) => {
-  const { code, state: vendorId } = req.query;
-  if (!code || !vendorId) return res.status(400).send("Missing code or state");
+  const { code, state } = req.query;
+  if (!code || !state) return res.status(400).send("Missing code or state");
 
   try {
+    // Resolve + burn the one-time state issued by beginGbpOauth. This is
+    // what ties this callback back to the vendor who actually clicked
+    // "Connect" — state is no longer a bare, guessable/forgeable uid.
+    const stateRef = db.collection("oauth_states").doc(state);
+    const stateDoc = await stateRef.get();
+    if (!stateDoc.exists) {
+      return res.status(400).send("Invalid or expired connection request. Please try connecting again.");
+    }
+
+    const { vendorId, expiresAt } = stateDoc.data();
+    await stateRef.delete(); // one-time use — never valid again, replay or not
+
+    if (!expiresAt || expiresAt.toDate() < new Date()) {
+      return res.status(400).send("This connection request expired. Please try connecting again.");
+    }
+
     const cfg = { client_id: process.env.GOOGLE_CLIENT_ID, client_secret: process.env.GOOGLE_CLIENT_SECRET, redirect_uri: process.env.GOOGLE_REDIRECT_URI };
 
     // Exchange auth code for tokens
