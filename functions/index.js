@@ -350,7 +350,7 @@ exports.oauthCallback = functions.https.onRequest(async (req, res) => {
   if (!code || !vendorId) return res.status(400).send("Missing code or state");
 
   try {
-    const cfg = functions.config().google;
+    const cfg = { client_id: process.env.GOOGLE_CLIENT_ID, client_secret: process.env.GOOGLE_CLIENT_SECRET, redirect_uri: process.env.GOOGLE_REDIRECT_URI };
 
     // Exchange auth code for tokens
     const tokenRes = await axios.post("https://oauth2.googleapis.com/token", {
@@ -407,7 +407,7 @@ exports.oauthCallback = functions.https.onRequest(async (req, res) => {
 // 2B. TOKEN HELPERS
 // ─────────────────────────────────────────────────────────────
 async function refreshAccessToken(vendorId, connectionData) {
-  const cfg = functions.config().google;
+  const cfg = { client_id: process.env.GOOGLE_CLIENT_ID, client_secret: process.env.GOOGLE_CLIENT_SECRET, redirect_uri: process.env.GOOGLE_REDIRECT_URI };
   const res = await axios.post("https://oauth2.googleapis.com/token", {
     refresh_token: connectionData.refreshToken,
     client_id: cfg.client_id,
