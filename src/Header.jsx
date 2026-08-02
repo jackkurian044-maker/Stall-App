@@ -1,5 +1,4 @@
 import React from "react";
-import { COLORS } from "./constants";
 import stallLogo from "./stall-logo.png";
 
 export default function Header({ mode, setMode, user, isAdmin, onSignOut }) {
@@ -17,8 +16,9 @@ export default function Header({ mode, setMode, user, isAdmin, onSignOut }) {
         position: "sticky",
         top: 0,
         zIndex: 20,
-        background: "#fff",
-        boxShadow: "0 2px 14px rgba(0,0,0,0.12)",
+        background: "#161616",
+        borderBottom: "1px solid #2a2a2a",
+        boxShadow: "0 2px 14px rgba(0,0,0,0.35)",
         padding: "14px 24px",
         display: "flex",
         alignItems: "center",
@@ -37,7 +37,7 @@ export default function Header({ mode, setMode, user, isAdmin, onSignOut }) {
           style={{
             fontSize: 11,
             letterSpacing: "0.04em",
-            color: "#6b7580",
+            color: "#9c9c9c",
             fontWeight: 600,
           }}
         >
@@ -49,7 +49,7 @@ export default function Header({ mode, setMode, user, isAdmin, onSignOut }) {
         <div
           style={{
             display: "flex",
-            background: "#f4f2ec",
+            background: "#111111",
             borderRadius: 999,
             padding: 4,
             gap: 2,
@@ -68,8 +68,8 @@ export default function Header({ mode, setMode, user, isAdmin, onSignOut }) {
                 border: "none",
                 cursor: "pointer",
                 transition: "background .12s ease, color .12s ease",
-                background: mode === t.id ? COLORS.navy : "transparent",
-                color: mode === t.id ? "#fff" : COLORS.navy,
+                background: mode === t.id ? "#f0b429" : "transparent",
+                color: mode === t.id ? "#0a0a0a" : "#e0e0e0",
               }}
             >
               {t.label}

@@ -16,7 +16,8 @@ export default function Footer({ onNavigatePrivacy }) {
         textAlign: "center",
         padding: "40px 16px 32px",
         marginTop: 40,
-        background: COLORS.navy,
+        background: "#111111",
+        borderTop: "1px solid #2a2a2a",
       }}
     >
       <img

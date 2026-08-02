@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "./firebase";
-import { COLORS } from "./constants";
 import Header from "./Header";
 import FindView from "./FindView";
 import AuthPage from "./AuthPage";
@@ -47,12 +46,12 @@ export default function App() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: COLORS.paper, display: "flex", flexDirection: "column" }}>
+    <div style={{ minHeight: "100vh", background: "#0a0a0a", display: "flex", flexDirection: "column" }}>
       <Header mode={mode} setMode={setMode} user={user} isAdmin={isAdmin} onSignOut={handleSignOut} />
 
       <div style={{ flex: 1 }}>
         {authLoading ? (
-          <div style={{ padding: 40, textAlign: "center", color: "#666", fontSize: 14 }}>Loading…</div>
+          <div style={{ padding: 40, textAlign: "center", color: "#9c9c9c", fontSize: 14 }}>Loading…</div>
         ) : mode === "find" ? (
           <FindView user={user} isAdmin={isAdmin} onRequestSignIn={() => setMode("auth")} />
         ) : mode === "auth" ? (
