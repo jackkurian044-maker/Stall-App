@@ -29,6 +29,7 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [digest, setDigest] = useState(null);
   const [locateError, setLocateError] = useState("");
+  const [cityFilter, setCityFilter] = useState("");
   const refreshedRef = useRef(new Set());
   const locFromUrlRef = useRef(false);
 
@@ -59,21 +60,30 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
     }
     toggleFavorite(db, user.uid, vendorId, isFavorited);
   };
-  // Picks up ?q= (search box) and ?lat=&lng= (the landing page's location
-  // chips) so a visitor arriving from stall.cutncutestudio.in doesn't have
-  // to re-type their search or re-grant location access here.
+  // Picks up ?q= (search box), ?lat=&lng= (the landing page's "Use Current
+  // Location" button), ?city= (auto-detected nearest city, or the fallback
+  // default when geolocation fails), and ?approx=1 (set only for that
+  // fallback, since it's a city-center guess rather than a real GPS fix —
+  // real fixes keep the tight default radius even when auto-labeled with a
+  // nearby city name).
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const q = params.get("q");
+    const city = params.get("city");
+    const approx = params.get("approx") === "1";
     const lat = parseFloat(params.get("lat"));
     const lng = parseFloat(params.get("lng"));
     if (q) setQuery(q);
     if (Number.isFinite(lat) && Number.isFinite(lng)) {
       setUserLoc({ lat, lng });
       locFromUrlRef.current = true;
+      if (approx) setRadiusKm(25);
     }
-    if (q || (params.has("lat") && params.has("lng"))) {
+    if (city) setCityFilter(city);
+    if (q || city || approx || (params.has("lat") && params.has("lng"))) {
       params.delete("q");
+      params.delete("city");
+      params.delete("approx");
       params.delete("lat");
       params.delete("lng");
       const rest = params.toString();
@@ -104,6 +114,7 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
   const locate = () => {
     setLocating(true);
     setLocateError("");
+    setCityFilter("");
     if (!navigator.geolocation) {
       setLocateError("Your browser doesn't support location — enter coordinates below instead.");
       setUserLoc(DEFAULT_LOC);
@@ -144,7 +155,10 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
   const useManualLoc = () => {
     const lat = parseFloat(manualLat);
     const lng = parseFloat(manualLng);
-    if (Number.isFinite(lat) && Number.isFinite(lng)) setUserLoc({ lat, lng });
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      setUserLoc({ lat, lng });
+      setCityFilter("");
+    }
   };
 
   const results = useMemo(() => {
@@ -243,11 +257,20 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
             <div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                 <div style={{ fontSize: 12, color: "#6bab9d", fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
-                  <MapPin size={14} /> LOCATION SET
+                  <MapPin size={14} /> {cityFilter ? `LOCATION SET — ${cityFilter}` : "LOCATION SET"}
                 </div>
-                <button onClick={locate} style={{ background: "none", border: "none", fontSize: 11, textDecoration: "underline", cursor: "pointer" }}>
-                  {locating ? "…" : "refresh"}
-                </button>
+                {cityFilter ? (
+                  <button
+                    onClick={() => { setCityFilter(""); setRadiusKm(5); locate(); }}
+                    style={{ background: "none", border: "none", fontSize: 11, textDecoration: "underline", cursor: "pointer" }}
+                  >
+                    use my location instead
+                  </button>
+                ) : (
+                  <button onClick={locate} style={{ background: "none", border: "none", fontSize: 11, textDecoration: "underline", cursor: "pointer" }}>
+                    {locating ? "…" : "refresh"}
+                  </button>
+                )}
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
                 <span>Search radius</span>
