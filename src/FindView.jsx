@@ -30,6 +30,7 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
   const [digest, setDigest] = useState(null);
   const [locateError, setLocateError] = useState("");
   const refreshedRef = useRef(new Set());
+  const locFromUrlRef = useRef(false);
 
   useEffect(() => {
     if (!user) {
@@ -58,22 +59,23 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
     }
     toggleFavorite(db, user.uid, vendorId, isFavorited);
   };
-useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const q = params.get("q");
-    if (q) {
-      setQuery(q);
-      params.delete("q");
-      const rest = params.toString();
-      window.history.replaceState({}, "", window.location.pathname + (rest ? `?${rest}` : ""));
-    }
-  }, []);
+  // Picks up ?q= (search box) and ?lat=&lng= (the landing page's location
+  // chips) so a visitor arriving from stall.cutncutestudio.in doesn't have
+  // to re-type their search or re-grant location access here.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const q = params.get("q");
-    if (q) {
-      setQuery(q);
+    const lat = parseFloat(params.get("lat"));
+    const lng = parseFloat(params.get("lng"));
+    if (q) setQuery(q);
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      setUserLoc({ lat, lng });
+      locFromUrlRef.current = true;
+    }
+    if (q || (params.has("lat") && params.has("lng"))) {
       params.delete("q");
+      params.delete("lat");
+      params.delete("lng");
       const rest = params.toString();
       window.history.replaceState({}, "", window.location.pathname + (rest ? `?${rest}` : ""));
     }
@@ -130,8 +132,11 @@ useEffect(() => {
   // Ask for location automatically on load — no need to make people tap
   // a button first. If they deny/dismiss the browser prompt, `locate`
   // just leaves userLoc unset and the manual "Use my location" button /
-  // coordinate entry below still works as a fallback.
+  // coordinate entry below still works as a fallback. Skipped when the
+  // landing page's location chips already passed lat/lng in the URL —
+  // no need to prompt again for a location we already have.
   useEffect(() => {
+    if (locFromUrlRef.current) return;
     locate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
