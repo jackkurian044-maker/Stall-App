@@ -1,14 +1,12 @@
 import React from "react";
 import stallLogoMark from "./logo-cropped.png";
 
-export default function Header({ mode, setMode, user, isAdmin, isAgent, onSignOut }) {
+export default function Header({ mode, setMode, user, isAdmin, onSignOut }) {
   const tabs = [
     { id: "find", label: "Find" },
     ...(user ? [{ id: "mine", label: "My Listings" }] : []),
     ...(isAdmin ? [{ id: "admin", label: "Admin" }] : []),
     ...(isAdmin ? [{ id: "bulk", label: "Discover Nearby" }] : []),
-    ...(isAdmin ? [{ id: "agents", label: "Agents" }] : []),
-    ...(isAgent ? [{ id: "agent", label: "My Dashboard" }] : []),
     ...(user ? [] : [{ id: "auth", label: "Sign in" }]),
   ];
 

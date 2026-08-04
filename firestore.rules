@@ -207,6 +207,15 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // One-time OAuth state nonces (see beginGbpOauth / oauthCallback in
+    // functions/index.js). Written and immediately deleted by Cloud
+    // Functions via the Admin SDK only — no client should ever read,
+    // create, or guess these, since possessing one would let someone
+    // complete oauthCallback on another vendor's behalf.
+    match /oauth_states/{stateId} {
+      allow read, write: if false;
+    }
+
     // Vendor Boost health score + checklist. Written only by the
     // runBoostScan Cloud Function via the Admin SDK, which bypasses
     // these rules — "write: if false" here just blocks a client from

@@ -8,15 +8,12 @@ import AuthPage from "./AuthPage";
 import VendorDashboard from "./VendorDashboard";
 import AdminDashboard from "./AdminDashboard";
 import DiscoverNearby from "./DiscoverNearby";
-import AgentDashboard from "./AgentDashboard";
-import AdminAgents from "./AdminAgents";
 import PrivacyPolicy from "./PrivacyPolicy";
 import Footer from "./Footer";
 
 export default function App() {
   const [user, setUser] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [agent, setAgent] = useState(null); // agents/{uid} doc data, or null if not an agent
   const [authLoading, setAuthLoading] = useState(true);
   const [mode, setMode] = useState("find");
 
@@ -25,20 +22,13 @@ export default function App() {
       setUser(u);
       if (u) {
         try {
-          const adminSnap = await getDoc(doc(db, "admins", u.uid));
-          setIsAdmin(adminSnap.exists());
+          const snap = await getDoc(doc(db, "admins", u.uid));
+          setIsAdmin(snap.exists());
         } catch {
           setIsAdmin(false);
         }
-        try {
-          const agentSnap = await getDoc(doc(db, "agents", u.uid));
-          setAgent(agentSnap.exists() ? agentSnap.data() : null);
-        } catch {
-          setAgent(null);
-        }
       } else {
         setIsAdmin(false);
-        setAgent(null);
       }
       setAuthLoading(false);
     });
@@ -46,16 +36,9 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!user) {
-      if (["mine", "admin", "bulk", "agent", "agents"].includes(mode)) setMode("find");
-      return;
-    }
-    if (!isAdmin && ["admin", "bulk", "agents"].includes(mode)) setMode("find");
-    if (!agent && mode === "agent") setMode("find");
-    // Right after sign-in, route agents straight to their dashboard instead
-    // of the (likely empty) vendor "My Listings" view.
-    if (agent && (mode === "auth" || mode === "mine")) setMode("agent");
-  }, [user, isAdmin, agent, mode]);
+    if (!user && (mode === "mine" || mode === "admin" || mode === "bulk")) setMode("find");
+    if (user && !isAdmin && (mode === "admin" || mode === "bulk")) setMode("find");
+  }, [user, isAdmin, mode]);
 
   const handleSignOut = async () => {
     await signOut(auth);
@@ -64,7 +47,7 @@ export default function App() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#0a0a0a", display: "flex", flexDirection: "column" }}>
-      <Header mode={mode} setMode={setMode} user={user} isAdmin={isAdmin} isAgent={!!agent} onSignOut={handleSignOut} />
+      <Header mode={mode} setMode={setMode} user={user} isAdmin={isAdmin} onSignOut={handleSignOut} />
 
       <div style={{ flex: 1 }}>
         {authLoading ? (
@@ -75,14 +58,10 @@ export default function App() {
           <AuthPage onSignedIn={() => setMode("mine")} />
         ) : mode === "mine" && user ? (
           <VendorDashboard user={user} />
-        ) : mode === "agent" && user && agent ? (
-          <AgentDashboard user={user} agent={agent} />
         ) : mode === "admin" && isAdmin ? (
           <AdminDashboard />
         ) : mode === "bulk" && isAdmin ? (
           <DiscoverNearby />
-        ) : mode === "agents" && isAdmin ? (
-          <AdminAgents />
         ) : mode === "privacy" ? (
           <PrivacyPolicy onBack={() => setMode("find")} />
         ) : (

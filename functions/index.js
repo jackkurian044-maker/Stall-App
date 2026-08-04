@@ -984,3 +984,5 @@ exports.runBoostScan = functions.https.onCall(async (data, context) => {
 
   return { ...result, scannedAt: new Date().toISOString() };
 });
+// Sales agent commission triggers + agent account management
+Object.assign(exports, require("./agentCommissions"));
