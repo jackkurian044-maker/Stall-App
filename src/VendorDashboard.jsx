@@ -450,8 +450,8 @@ function InsightTile({ icon, value, label, color }) {
   return (
     <div style={{ textAlign: "center", padding: "10px 6px", background: "#F7F6F2", borderRadius: 10 }}>
       <div style={{ color, display: "flex", justifyContent: "center", marginBottom: 4 }}>{icon}</div>
-      <div style={{ fontSize: 18, fontWeight: 700 }}>{value}</div>
-      <div style={{ fontSize: 10.5, color: "#777", textTransform: "uppercase", letterSpacing: "0.04em" }}>{label}</div>
+      <div style={{ fontSize: 18, fontWeight: 700, color: COLORS.ink }}>{value}</div>
+      <div style={{ fontSize: 10.5, color: "#555", textTransform: "uppercase", letterSpacing: "0.04em" }}>{label}</div>
     </div>
   );
 }
