@@ -66,6 +66,7 @@ export default function LocationSearch({ address, lat, lng, website, mapsUrl, pl
           setQuery(label);
           onChange({
             address: label,
+            name: place.name || null,
             lat: place.geometry.location.lat(),
             lng: place.geometry.location.lng(),
             website: place.website || null,

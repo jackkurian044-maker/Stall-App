@@ -31,7 +31,14 @@ const OSM_CATEGORY_MAP = [
   [["restaurant", "cafe", "fast_food", "food_court", "bakery", "supermarket", "convenience", "greengrocer", "butcher", "marketplace", "deli"], "Food & Produce"],
   [["clothes", "shoes", "jewelry", "boutique", "bag", "fashion"], "Clothing & Accessories"],
   [["hardware", "doityourself", "furniture", "houseware", "electrical", "florist", "garden_centre", "paint"], "Home & Garden"],
-  [["hairdresser", "beauty", "spa", "laundry", "doctors", "dentist", "pharmacy", "fitness_centre", "veterinary", "clinic", "hospital", "massage"], "Services"],
+  [["electrician"], "Electricians"],
+  [["plumber"], "Plumbers"],
+  [["hairdresser", "beauty", "spa"], "Salons"],
+  [["car_repair"], "Mechanics"],
+  [["pharmacy", "chemist"], "Pharmacies"],
+  [["school", "language_school", "driving_school"], "Tuition"],
+  [["laundry", "locksmith", "removals"], "Home Services"],
+  [["doctors", "dentist", "fitness_centre", "veterinary", "clinic", "hospital", "massage"], "Services"],
   [["gift", "stationery", "books", "art", "craft", "photo", "toys"], "Crafts & Goods"],
 ];
 

@@ -222,6 +222,7 @@ export default function VendorDashboard({ user }) {
               onChange={(patch) => setForm((f) => ({
                 ...f,
                 ...patch,
+                name: f.name.trim() ? f.name : (patch.name ?? f.name),
                 hours: f.hours ? f.hours : (patch.hours ?? f.hours),
               }))}
             />

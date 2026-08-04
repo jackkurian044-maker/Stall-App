@@ -4,3 +4,5 @@ dist
 .env
 .DS_Store
 functions/.env
+firebase-debug.log
+*.patch

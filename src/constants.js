@@ -1,18 +1,34 @@
 export const CATEGORIES = [
   "Food & Produce",
   "Crafts & Goods",
-  "Services",
   "Clothing & Accessories",
   "Home & Garden",
+  "Tailors",
+  "Salons",
+  "Electricians",
+  "Plumbers",
+  "Mechanics",
+  "Pharmacies",
+  "Tuition",
+  "Home Services",
+  "Services",
   "Other",
 ];
 
 export const CATEGORY_COLORS = {
   "Food & Produce": "#B4472A",
   "Crafts & Goods": "#3F6D64",
-  "Services": "#8B6D2F",
   "Clothing & Accessories": "#6E4B6E",
   "Home & Garden": "#2F6B3A",
+  "Tailors": "#A6763D",
+  "Salons": "#9C4F6B",
+  "Electricians": "#C08A2E",
+  "Plumbers": "#3A6EA5",
+  "Mechanics": "#4A5568",
+  "Pharmacies": "#2E6B72",
+  "Tuition": "#5B4B8A",
+  "Home Services": "#6B5B3F",
+  "Services": "#8B6D2F",
   "Other": "#55524B",
 };
 

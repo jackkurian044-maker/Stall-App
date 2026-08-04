@@ -14,8 +14,15 @@ const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_PLACES_API_KEY;
 const TYPE_CATEGORY_MAP = [
   [["restaurant", "food", "bakery", "grocery_or_supermarket", "meal_takeaway", "meal_delivery", "cafe"], "Food & Produce"],
   [["clothing_store", "shoe_store", "jewelry_store"], "Clothing & Accessories"],
-  [["hardware_store", "home_goods_store", "furniture_store", "electrician", "plumber"], "Home & Garden"],
-  [["hair_care", "beauty_salon", "spa", "laundry", "doctor", "dentist", "pharmacy", "gym", "physiotherapist", "veterinary_care"], "Services"],
+  [["hardware_store", "home_goods_store", "furniture_store"], "Home & Garden"],
+  [["electrician"], "Electricians"],
+  [["plumber"], "Plumbers"],
+  [["hair_care", "beauty_salon", "spa"], "Salons"],
+  [["car_repair"], "Mechanics"],
+  [["pharmacy", "drugstore"], "Pharmacies"],
+  [["school", "primary_school", "secondary_school"], "Tuition"],
+  [["laundry", "locksmith", "moving_company", "roofing_contractor", "general_contractor"], "Home Services"],
+  [["doctor", "dentist", "gym", "physiotherapist", "veterinary_care"], "Services"],
   [["store"], "Crafts & Goods"],
 ];
 
