@@ -390,7 +390,7 @@ export default function VendorDashboard({ user }) {
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                 {listings.map((l) => (
                   <div key={l.id} style={{ background: "#fff", border: `2px solid ${COLORS.ink}`, borderRadius: 12, padding: 16 }}>
-                    <div style={{ fontWeight: 700, fontSize: 14.5, marginBottom: 12 }}>{l.name}</div>
+                    <div style={{ fontWeight: 700, fontSize: 14.5, marginBottom: 12, color: COLORS.ink }}>{l.name}</div>
                     {vendorDigests[l.id] && !vendorDigests[l.id].read && (
                       <div style={{ background: `${COLORS.teal}15`, border: `1.5px solid ${COLORS.teal}`, borderRadius: 10, padding: "10px 12px", marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
                         <div style={{ fontSize: 12.5 }}>
