@@ -1,12 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { collection, doc, addDoc, onSnapshot, query, where, serverTimestamp } from "firebase/firestore";
-import { MapPin, Locate, Search, Copy, Loader2, Target, IndianRupee, Store, Plus } from "lucide-react";
+import { collection, doc, onSnapshot, query, where } from "firebase/firestore";
+import { MapPin, Locate, Search, Target, IndianRupee, Store } from "lucide-react";
 import { db } from "./firebase";
-import { CATEGORIES, COLORS, DEFAULT_LOC } from "./constants";
-import { uid, haversineKm } from "./geo";
+import { COLORS, DEFAULT_LOC } from "./constants";
+import { haversineKm } from "./geo";
 import { loadGoogleMaps } from "./googleMaps";
-import { findExistingPlaceIds, findDuplicateVendor } from "./duplicateCheck";
-import LocationSearch from "./LocationSearch";
+import { findExistingPlaceIds } from "./duplicateCheck";
 
 const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_PLACES_API_KEY;
 
@@ -40,16 +39,10 @@ const COMMISSION_LABEL = { pending: "pending", paid: "paid", clawed_back: "clawe
 const COMMISSION_COLOR = { pending: COLORS.goldDark, paid: COLORS.green, clawed_back: COLORS.brick };
 const COMMISSION_BG = { pending: `${COLORS.marigold}22`, paid: `${COLORS.green}22`, clawed_back: `${COLORS.brick}22` };
 
-const emptyAgentForm = {
-  name: "", category: CATEGORIES[0], phone: "",
-  address: "", lat: "", lng: "", website: null, mapsUrl: null, placeId: null,
-  rating: null, ratingsCount: null, hours: "",
-};
-
 export default function AgentDashboard({ user, agent }) {
   const [myVendors, setMyVendors] = useState([]);
   const [commissions, setCommissions] = useState([]);
-  const [tab, setTab] = useState("overview"); // "overview" | "discover" | "add"
+  const [tab, setTab] = useState("overview"); // "overview" | "discover"
 
   // ── Discover Nearby (view-only search) ──
   const [centerLoc, setCenterLoc] = useState(null);
@@ -62,12 +55,6 @@ export default function AgentDashboard({ user, agent }) {
   const [searchError, setSearchError] = useState("");
   const [results, setResults] = useState([]);
   const [locateError, setLocateError] = useState("");
-
-  // ── Add a store (manual entry) ──
-  const [form, setForm] = useState(emptyAgentForm);
-  const [saving, setSaving] = useState(false);
-  const [formError, setFormError] = useState("");
-  const [addedCode, setAddedCode] = useState(null); // { name, code }
 
   useEffect(() => {
     const q = query(collection(db, "vendors"), where("addedByAgentId", "==", user.uid));
@@ -158,54 +145,8 @@ export default function AgentDashboard({ user, agent }) {
     }
   };
 
-  // ── manual add-a-store form (mirrors VendorDashboard's "Create a listing") ──
   const inputStyle = { width: "100%", padding: "9px 10px", borderRadius: 14, border: `1.5px solid ${COLORS.ink}`, fontSize: 13, background: "#fff", boxSizing: "border-box" };
   const cardStyle = { background: "#fff", border: "1px solid rgba(15,26,36,0.08)", boxShadow: "0 8px 24px rgba(15,26,36,0.08)", borderRadius: 20, padding: 18, marginBottom: 16 };
-  const field = (label, node) => (
-    <div style={{ marginBottom: 12 }}>
-      <label style={{ display: "block", fontSize: 11, textTransform: "uppercase", fontWeight: 700, marginBottom: 5 }}>{label}</label>
-      {node}
-    </div>
-  );
-
-  const submitListing = async (e) => {
-    e.preventDefault();
-    setFormError("");
-    const lat = parseFloat(form.lat);
-    const lng = parseFloat(form.lng);
-    if (!form.name.trim()) return setFormError("Name is required.");
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-      return setFormError('Please select an address from the suggestions dropdown (or switch to "enter manually" and type coordinates).');
-    }
-    setSaving(true);
-    try {
-      const dup = await findDuplicateVendor(db, { placeId: form.placeId, name: form.name.trim(), lat, lng });
-      if (dup) {
-        setSaving(false);
-        return setFormError("This business is already on Stall — check Discover Nearby instead of adding a duplicate.");
-      }
-      const code = uid(6);
-      await addDoc(collection(db, "vendors"), {
-        name: form.name.trim(), category: form.category, description: "", products: "",
-        address: form.address.trim(), phone: form.phone.trim(), lat, lng,
-        website: form.website || null, mapsUrl: form.mapsUrl || null, placeId: form.placeId || null,
-        rating: form.rating ?? null, ratingsCount: form.ratingsCount ?? null,
-        hours: form.hours.trim(), photos: [], ownerId: null, claimCode: code,
-        addedByAgentId: user.uid, addedByAgentName: agent.name || "",
-        createdAt: serverTimestamp(), ratingUpdatedAt: form.placeId ? serverTimestamp() : null,
-      });
-      setAddedCode({ name: form.name.trim(), code });
-      setForm(emptyAgentForm);
-    } catch (err) {
-      setFormError("Couldn't add — try again.");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const copyCode = () => {
-    if (addedCode) navigator.clipboard?.writeText(`${addedCode.name}: ${addedCode.code}`);
-  };
 
   return (
     <div className="stall-page" style={{ maxWidth: 900 }}>
@@ -218,13 +159,13 @@ export default function AgentDashboard({ user, agent }) {
       </div>
 
       <div style={{ display: "flex", gap: 4, marginBottom: 16, flexWrap: "wrap" }}>
-        {["overview", "discover", "add"].map((t) => (
+        {["overview", "discover"].map((t) => (
           <button key={t} onClick={() => setTab(t)} className="stall-btn" style={{
             padding: "8px 16px", borderRadius: 14, fontSize: 13, fontWeight: 600,
             border: `1.5px solid ${COLORS.ink}`,
             background: tab === t ? COLORS.ink : "#fff", color: tab === t ? "#fff" : COLORS.ink,
           }}>
-            {t === "overview" ? "Overview" : t === "discover" ? "Discover Nearby" : "+ Add a store"}
+            {t === "overview" ? "Overview" : "Discover Nearby"}
           </button>
         ))}
       </div>
@@ -266,7 +207,7 @@ export default function AgentDashboard({ user, agent }) {
           <div className="font-display" style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>Stores you've added</div>
           {myVendors.length === 0 ? (
             <div style={{ border: `2px dashed ${COLORS.ink}55`, borderRadius: 12, padding: 24, textAlign: "center", color: "#666", fontSize: 13 }}>
-              You haven't added any stores yet — use the "+ Add a store" tab.
+              You haven't added any stores yet.
             </div>
           ) : (
             <div style={{ border: "1px solid rgba(15,26,36,0.08)", boxShadow: "0 8px 24px rgba(15,26,36,0.08)", borderRadius: 20, overflow: "hidden" }}>
@@ -345,7 +286,7 @@ export default function AgentDashboard({ user, agent }) {
               <div style={{ fontSize: 12.5, color: "#666", marginBottom: 8 }}>
                 {results.length} result{results.length === 1 ? "" : "s"}
                 {results.some((r) => r.alreadyListed) && ` · ${results.filter((r) => r.alreadyListed).length} already on Stall`}
-                {" "}· found one worth adding? Switch to "+ Add a store" and search its address there.
+
               </div>
               <div style={{ border: "1px solid rgba(15,26,36,0.08)", boxShadow: "0 8px 24px rgba(15,26,36,0.08)", borderRadius: 20, overflow: "hidden", marginBottom: 16 }}>
                 {results.map((r, i) => {
@@ -371,64 +312,6 @@ export default function AgentDashboard({ user, agent }) {
         </>
       )}
 
-      {tab === "add" && (
-        <div style={cardStyle}>
-          <div className="font-display" style={{ fontSize: 19, fontWeight: 700, marginBottom: 4 }}>
-            Add a store
-          </div>
-          <div style={{ fontSize: 12, color: "#666", marginBottom: 14 }}>
-            You'll get a claim code to share with the shop owner so they can take over the listing.
-          </div>
-          <form onSubmit={submitListing}>
-            {field("Name", <input style={inputStyle} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Amma's Pickle Stand" />)}
-            {field("Category", (
-              <select style={inputStyle} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
-                {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
-              </select>
-            ))}
-            {field("Phone (optional)", <input style={inputStyle} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />)}
-            <LocationSearch
-              address={form.address}
-              lat={form.lat}
-              lng={form.lng}
-              website={form.website}
-              mapsUrl={form.mapsUrl}
-              placeId={form.placeId}
-              rating={form.rating}
-              ratingsCount={form.ratingsCount}
-              onChange={(patch) => setForm((f) => ({
-                ...f,
-                ...patch,
-                name: f.name.trim() ? f.name : (patch.name ?? f.name),
-                hours: f.hours ? f.hours : (patch.hours ?? f.hours),
-              }))}
-            />
-            {field("Hours", <textarea style={{ ...inputStyle, resize: "vertical", minHeight: 56, fontFamily: "'IBM Plex Mono', monospace", fontSize: 12.5 }} value={form.hours} onChange={(e) => setForm({ ...form, hours: e.target.value })} placeholder={"Auto-filled from Google when available, or type your own, e.g.\nMon–Sat: 9:00 AM – 8:00 PM\nSun: Closed"} />)}
-            {formError && <div style={{ color: COLORS.brick, fontSize: 12, marginBottom: 10 }}>{formError}</div>}
-            <button type="submit" disabled={saving} className="stall-btn" style={{ background: COLORS.brick, color: "#fff", border: "none", borderRadius: 14, padding: "10px 16px", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
-              {saving && <Loader2 size={14} className="spin" />}
-              <Plus size={15} /> {saving ? "Adding…" : "Add store"}
-            </button>
-          </form>
-
-          {addedCode && (
-            <div style={{ ...cardStyle, background: `${COLORS.marigold}18`, border: `1.5px solid ${COLORS.marigold}`, marginTop: 16, marginBottom: 0 }}>
-              <div className="font-display" style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>
-                Added "{addedCode.name}"
-              </div>
-              <div style={{ fontSize: 12, color: "#666", marginBottom: 10 }}>
-                Share this claim code with the shop owner so they can take over their listing.
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", fontSize: 13 }}>
-                <span>{addedCode.name}</span><span className="font-mono" style={{ fontWeight: 700 }}>{addedCode.code}</span>
-              </div>
-              <button onClick={copyCode} className="stall-btn" style={{ marginTop: 10, background: COLORS.navy, color: "#fff", border: "none", borderRadius: 999, padding: "8px 14px", fontSize: 12.5, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
-                <Copy size={13} /> Copy
-              </button>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }
