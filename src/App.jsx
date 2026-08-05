@@ -54,7 +54,7 @@ export default function App() {
     if (!agent && mode === "agent") setMode("find");
     // Right after sign-in, route agents straight to their dashboard instead
     // of the (likely empty) vendor "My Listings" view.
-    if (agent && (mode === "auth" || mode === "mine")) setMode("agent");
+    if (agent && mode === "auth") setMode("agent");
   }, [user, isAdmin, agent, mode]);
 
   const handleSignOut = async () => {
