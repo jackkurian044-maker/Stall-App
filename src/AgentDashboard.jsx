@@ -42,7 +42,11 @@ const COMMISSION_BG = { pending: `${COLORS.marigold}22`, paid: `${COLORS.green}2
 export default function AgentDashboard({ user, agent }) {
   const [myVendors, setMyVendors] = useState([]);
   const [commissions, setCommissions] = useState([]);
-  const [tab, setTab] = useState("overview"); // "overview" | "discover"
+  const [tab, setTab] = useState("overview"); // "overview" | "listings" | "discover"
+
+  // ── My Listings (search/filter over myVendors) ──
+  const [listingSearch, setListingSearch] = useState("");
+  const [listingFilter, setListingFilter] = useState("all"); // "all" | "claimed" | "unclaimed"
 
   // ── Discover Nearby (view-only search) ──
   const [centerLoc, setCenterLoc] = useState(null);
@@ -82,6 +86,17 @@ export default function AgentDashboard({ user, agent }) {
   const paidTotal = commissions.filter((c) => c.status === "paid").reduce((s, c) => s + (c.amount || 0), 0);
   const clawedBackCount = commissions.filter((c) => c.status === "clawed_back").length;
   const conversionCount = commissions.length; // every store that ever converted, including ones later clawed back
+
+  const filteredListings = useMemo(() => {
+    return myVendors
+      .filter((v) => {
+        if (listingFilter === "claimed") return !!v.ownerId;
+        if (listingFilter === "unclaimed") return !v.ownerId;
+        return true;
+      })
+      .filter((v) => v.name?.toLowerCase().includes(listingSearch.trim().toLowerCase()))
+      .sort((a, b) => (b.createdAt?.toDate?.() || 0) - (a.createdAt?.toDate?.() || 0));
+  }, [myVendors, listingFilter, listingSearch]);
 
   // ── location + search (view-only — no add-from-results) ──
   const locate = () => {
@@ -159,13 +174,13 @@ export default function AgentDashboard({ user, agent }) {
       </div>
 
       <div style={{ display: "flex", gap: 4, marginBottom: 16, flexWrap: "wrap" }}>
-        {["overview", "discover"].map((t) => (
+        {["overview", "listings", "discover"].map((t) => (
           <button key={t} onClick={() => setTab(t)} className="stall-btn" style={{
             padding: "8px 16px", borderRadius: 14, fontSize: 13, fontWeight: 600,
             border: `1.5px solid ${COLORS.ink}`,
             background: tab === t ? COLORS.ink : "#fff", color: tab === t ? "#fff" : COLORS.ink,
           }}>
-            {t === "overview" ? "Overview" : "Discover Nearby"}
+            {t === "overview" ? "Overview" : t === "listings" ? "My Listings" : "Discover Nearby"}
           </button>
         ))}
       </div>
@@ -204,20 +219,88 @@ export default function AgentDashboard({ user, agent }) {
             </div>
           </div>
 
-          <div className="font-display" style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>Stores you've added</div>
+          <div className="font-display" style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>Recent activity</div>
           {myVendors.length === 0 ? (
             <div style={{ border: `2px dashed ${COLORS.ink}55`, borderRadius: 12, padding: 24, textAlign: "center", color: "#666", fontSize: 13 }}>
               You haven't added any stores yet.
             </div>
           ) : (
+            <>
+              <div style={{ border: "1px solid rgba(15,26,36,0.08)", boxShadow: "0 8px 24px rgba(15,26,36,0.08)", borderRadius: 20, overflow: "hidden" }}>
+                {myVendors.slice(0, 3).map((v, i) => {
+                  const commission = commissions.find((c) => c.vendorId === v.id);
+                  return (
+                    <div key={v.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderTop: i === 0 ? "none" : `1px solid ${COLORS.ink}15` }}>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, fontSize: 13.5, color: COLORS.ink }}>{v.name}</div>
+                        <div style={{ fontSize: 11.5, color: "#777" }}>{v.address}</div>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: v.ownerId ? COLORS.teal : COLORS.brick }}>{v.ownerId ? "CLAIMED" : "UNCLAIMED"}</span>
+                        {commission && (
+                          <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 20, background: COMMISSION_BG[commission.status], color: COMMISSION_COLOR[commission.status] }}>
+                            ₹{commission.amount} {COMMISSION_LABEL[commission.status]}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <button onClick={() => setTab("listings")} style={{ background: "none", border: "none", color: COLORS.navy, fontSize: 12.5, fontWeight: 600, textDecoration: "underline", cursor: "pointer", marginTop: 8, padding: 0 }}>
+                View all {myVendors.length} stores →
+              </button>
+            </>
+          )}
+        </>
+      )}
+
+      {tab === "listings" && (
+        <>
+          <div style={cardStyle}>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+              <input
+                placeholder="Search your stores…"
+                value={listingSearch}
+                onChange={(e) => setListingSearch(e.target.value)}
+                style={{ ...inputStyle, flex: "1 1 200px" }}
+              />
+              {["all", "claimed", "unclaimed"].map((f) => (
+                <button key={f} onClick={() => setListingFilter(f)} style={{
+                  padding: "7px 12px", borderRadius: 12, fontSize: 12, fontWeight: 600,
+                  border: `1.5px solid ${COLORS.ink}`,
+                  background: listingFilter === f ? COLORS.ink : "#fff",
+                  color: listingFilter === f ? "#fff" : COLORS.ink,
+                }}>
+                  {f === "all" ? "All" : f === "claimed" ? "Claimed" : "Unclaimed"}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ fontSize: 12, color: "#666", marginBottom: 8 }}>
+            {filteredListings.length} of {myVendors.length} stores
+          </div>
+
+          {filteredListings.length === 0 ? (
+            <div style={{ border: `2px dashed ${COLORS.ink}55`, borderRadius: 12, padding: 24, textAlign: "center", color: "#666", fontSize: 13 }}>
+              No stores match.
+            </div>
+          ) : (
             <div style={{ border: "1px solid rgba(15,26,36,0.08)", boxShadow: "0 8px 24px rgba(15,26,36,0.08)", borderRadius: 20, overflow: "hidden" }}>
-              {myVendors.map((v, i) => {
+              {filteredListings.map((v, i) => {
                 const commission = commissions.find((c) => c.vendorId === v.id);
+                const addedDate = v.createdAt?.toDate?.();
                 return (
                   <div key={v.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderTop: i === 0 ? "none" : `1px solid ${COLORS.ink}15` }}>
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontWeight: 700, fontSize: 13.5, color: COLORS.ink }}>{v.name}</div>
                       <div style={{ fontSize: 11.5, color: "#777" }}>{v.address}</div>
+                      {addedDate && (
+                        <div style={{ fontSize: 10.5, color: "#999", marginTop: 2 }}>
+                          Added {addedDate.toLocaleDateString()}
+                        </div>
+                      )}
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
                       <span style={{ fontSize: 10, fontWeight: 700, color: v.ownerId ? COLORS.teal : COLORS.brick }}>{v.ownerId ? "CLAIMED" : "UNCLAIMED"}</span>
