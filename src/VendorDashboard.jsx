@@ -23,7 +23,7 @@ const emptyForm = {
   offer: "", offerExpiresAt: "",
 };
 
-export default function VendorDashboard({ user }) {
+export default function VendorDashboard({ user, agent }) {
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState(emptyForm);
@@ -121,7 +121,8 @@ export default function VendorDashboard({ user }) {
         await updateDoc(doc(db, "vendors", editingId), payload);
       } else {
         await addDoc(collection(db, "vendors"), {
-          ...payload, ownerId: user.uid, claimCode: null, createdAt: serverTimestamp(),
+          ...payload, ownerId: user.uid, addedByAgentId: agent ? user.uid : null,
+          claimCode: null, createdAt: serverTimestamp(),
           ratingUpdatedAt: payload.placeId ? serverTimestamp() : null,
         });
       }

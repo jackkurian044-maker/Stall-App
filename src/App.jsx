@@ -74,7 +74,7 @@ export default function App() {
         ) : mode === "auth" ? (
           <AuthPage onSignedIn={() => setMode("mine")} />
         ) : mode === "mine" && user ? (
-          <VendorDashboard user={user} />
+          <VendorDashboard user={user} agent={agent} />
         ) : mode === "agent" && user && agent ? (
           <AgentDashboard user={user} agent={agent} />
         ) : mode === "admin" && isAdmin ? (
