@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { collection, onSnapshot, addDoc, updateDoc, setDoc, deleteDoc, doc, serverTimestamp, query, where } from "firebase/firestore";
-import { Plus, Trash2, RefreshCw, Star, Flag, Check, X as XIcon, Sparkles, Crown } from "lucide-react";
+import { Plus, Trash2, RefreshCw, Star, Flag, Check, X as XIcon, Sparkles, Crown, Users } from "lucide-react";
 import { db, auth } from "./firebase";
 import { CATEGORIES, CATEGORY_COLORS, COLORS } from "./constants";
 import { uid, toDateInputValue } from "./geo";
@@ -17,6 +17,10 @@ const emptyForm = {
   offer: "", offerExpiresAt: "",
 };
 
+const COMMISSION_LABEL = { pending: "pending", paid: "paid", clawed_back: "clawed back" };
+const COMMISSION_COLOR = { pending: COLORS.goldDark, paid: COLORS.green, clawed_back: COLORS.brick };
+const COMMISSION_BG = { pending: `${COLORS.marigold}22`, paid: `${COLORS.green}22`, clawed_back: `${COLORS.brick}22` };
+
 export default function AdminDashboard() {
   const [vendors, setVendors] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -31,6 +35,9 @@ export default function AdminDashboard() {
   const [premiumMap, setPremiumMap] = useState({});   // ownerId -> isPremium
   const [gbpMap, setGbpMap] = useState({});             // ownerId -> connected
   const [boostMap, setBoostMap] = useState({});          // vendor doc id -> boost/latest data
+  const [agents, setAgents] = useState([]);
+  const [commissions, setCommissions] = useState([]);
+  const [expandedAgentId, setExpandedAgentId] = useState(null);
   const refreshedRef = useRef(new Set());
 
   useEffect(() => {
@@ -73,6 +80,24 @@ export default function AdminDashboard() {
     return unsub;
   }, []);
 
+  // Sales agents — loaded in bulk so we can show per-agent store counts and
+  // active/inactive status without a separate query per agent.
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "agents"), (snap) => {
+      setAgents(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    }, () => {});
+    return unsub;
+  }, []);
+
+  // Commissions — one doc per vendor that has ever converted to Premium
+  // through an agent; status is "pending" | "paid" | "clawed_back".
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "commissions"), (snap) => {
+      setCommissions(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    }, () => {});
+    return unsub;
+  }, []);
+
   // Boost scores live in a subcollection per listing (vendors/{id}/boost/latest),
   // so there's no single collection to listen to — subscribe to each claimed
   // listing individually and keep the subscriptions in sync as the vendor
@@ -96,6 +121,31 @@ export default function AdminDashboard() {
   useEffect(() => {
     autoRefreshStale(vendors, refreshedRef.current);
   }, [vendors]);
+
+  // ── Agents: stores grouped by agent, commissions indexed by vendor,
+  // and an "active" agent = has added at least one store, ever. ──
+  const vendorsByAgent = useMemo(() => {
+    const map = {};
+    vendors.forEach((v) => {
+      if (!v.addedByAgentId) return;
+      (map[v.addedByAgentId] ||= []).push(v);
+    });
+    return map;
+  }, [vendors]);
+
+  const commissionByVendorId = useMemo(() => {
+    const map = {};
+    commissions.forEach((c) => { map[c.vendorId] = c; });
+    return map;
+  }, [commissions]);
+
+  const activeAgentsCount = agents.filter((a) => (vendorsByAgent[a.id]?.length || 0) > 0).length;
+
+  // Stores added by any agent that are claimed but not yet Premium —
+  // the pool that hasn't converted to a commission yet.
+  const agentStoresNotYetPremium = useMemo(() => {
+    return vendors.filter((v) => v.addedByAgentId && v.ownerId && !premiumMap[v.ownerId]).length;
+  }, [vendors, premiumMap]);
 
   const inputStyle = {
     width: "100%", padding: "9px 10px", borderRadius: 7,
@@ -352,6 +402,79 @@ export default function AdminDashboard() {
             </div>
           </div>
         )}
+
+        <div style={{ marginBottom: 28 }}>
+          <div className="font-display" style={{ fontSize: 19, fontWeight: 700, marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}>
+            <Users size={17} /> Agents
+          </div>
+          <div style={{ fontSize: 12, color: "#666", marginBottom: 4 }}>
+            {activeAgentsCount} active (added ≥1 store) of {agents.length} total
+          </div>
+          <div style={{ fontSize: 12, color: "#666", marginBottom: 12 }}>
+            {agentStoresNotYetPremium} agent-added store{agentStoresNotYetPremium === 1 ? "" : "s"} claimed but not yet Premium across all agents
+          </div>
+          {agents.length === 0 ? (
+            <div style={{ border: `2px dashed ${COLORS.ink}55`, borderRadius: 12, padding: 24, textAlign: "center", color: "#666", fontSize: 13 }}>
+              No agent accounts yet.
+            </div>
+          ) : (
+            <div style={{ border: `2px solid ${COLORS.ink}`, borderRadius: 12, overflow: "hidden" }}>
+              {agents.map((a, i) => {
+                const stores = vendorsByAgent[a.id] || [];
+                const premiumCount = stores.filter((v) => v.ownerId && premiumMap[v.ownerId]).length;
+                const isExpanded = expandedAgentId === a.id;
+                return (
+                  <div key={a.id} style={{ borderTop: i === 0 ? "none" : `1px solid ${COLORS.ink}22`, background: "#fff" }}>
+                    <div
+                      onClick={() => setExpandedAgentId(isExpanded ? null : a.id)}
+                      style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", cursor: "pointer" }}
+                    >
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, fontSize: 14 }}>{a.name || a.id}</div>
+                        <div style={{ fontSize: 11.5, color: "#777" }}>
+                          {stores.length} store{stores.length === 1 ? "" : "s"} · {premiumCount} premium
+                          {stores.length - premiumCount > 0 ? ` · ${stores.length - premiumCount} not yet premium` : ""}
+                        </div>
+                      </div>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: stores.length > 0 ? COLORS.teal : COLORS.brick }}>
+                        {stores.length > 0 ? "ACTIVE" : "INACTIVE"}
+                      </span>
+                    </div>
+                    {isExpanded && (
+                      <div style={{ borderTop: `1px solid ${COLORS.ink}15`, background: "#fafafa" }}>
+                        {stores.length === 0 ? (
+                          <div style={{ padding: "10px 16px", fontSize: 12, color: "#777" }}>No stores added yet.</div>
+                        ) : (
+                          stores.map((v) => {
+                            const isPremium = !!(v.ownerId && premiumMap[v.ownerId]);
+                            const commission = commissionByVendorId[v.id];
+                            return (
+                              <div key={v.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 16px 8px 28px", borderTop: `1px solid ${COLORS.ink}10` }}>
+                                <div style={{ minWidth: 0 }}>
+                                  <div style={{ fontSize: 13, fontWeight: 600 }}>{v.name}</div>
+                                  <div style={{ fontSize: 11, color: "#777" }}>
+                                    {v.ownerId ? "Claimed" : "Unclaimed"}{isPremium ? " · Premium" : v.ownerId ? " · Not yet premium" : ""}
+                                  </div>
+                                </div>
+                                {commission ? (
+                                  <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 20, background: COMMISSION_BG[commission.status], color: COMMISSION_COLOR[commission.status] }}>
+                                    ₹{commission.amount} {commission.status}
+                                  </span>
+                                ) : (
+                                  <span style={{ fontSize: 10.5, color: "#aaa" }}>—</span>
+                                )}
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
         <div className="font-display" style={{ fontSize: 19, fontWeight: 700, marginBottom: 4 }}>All listings</div>
         <div style={{ fontSize: 12, color: "#666", marginBottom: 12 }}>{vendors.length} total</div>
