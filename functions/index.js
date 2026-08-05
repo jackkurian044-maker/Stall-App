@@ -240,6 +240,11 @@ exports.razorpayWebhook = functions.https.onRequest(async (req, res) => {
         if (snap.empty) break;
 
         const vendorId = snap.docs[0].id;
+        const existingData = snap.docs[0].data();
+        // First charge = no payments recorded yet on this premium_vendors doc.
+        // Renewals (2nd, 3rd... charge) will already have a non-empty payments array.
+        const isFirstCharge = !(existingData.payments && existingData.payments.length > 0);
+
         const nextBilling = new Date();
         nextBilling.setDate(nextBilling.getDate() + 30);
 
@@ -255,6 +260,42 @@ exports.razorpayWebhook = functions.https.onRequest(async (req, res) => {
           }),
         });
         console.log(`✅ Subscription renewed for vendor ${vendorId}`);
+
+        // ── Agent commission — only on the vendor's first successful payment ──
+        // (renewals never reach here since isFirstCharge is false after the 1st charge)
+        if (isFirstCharge) {
+          try {
+            const vendorListingSnap = await db.collection("vendors")
+              .where("ownerId", "==", vendorId).limit(1).get();
+            if (!vendorListingSnap.empty) {
+              const vendorDoc = vendorListingSnap.docs[0];
+              const vendorData = vendorDoc.data();
+              if (vendorData.addedByAgentId) {
+                // Idempotency guard — Razorpay can retry webhook delivery
+                const existingCommission = await db.collection("commissions")
+                  .where("vendorId", "==", vendorDoc.id).limit(1).get();
+                if (existingCommission.empty) {
+                  const amountPaise = payment?.amount || 49900;
+                  // ₹499/month → ₹100 commission. ₹4,999/year → ₹500 commission.
+                  // Detected from the actual charge amount so this keeps working
+                  // once a yearly plan exists, without needing a separate plan lookup.
+                  const commissionAmount = amountPaise > 100000 ? 500 : 100;
+                  await db.collection("commissions").add({
+                    agentId: vendorData.addedByAgentId,
+                    vendorId: vendorDoc.id,
+                    vendorName: vendorData.name || "",
+                    amount: commissionAmount,
+                    status: "pending",
+                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                  });
+                  console.log(`💰 Commission created for agent ${vendorData.addedByAgentId} — ₹${commissionAmount}`);
+                }
+              }
+            }
+          } catch (commErr) {
+            console.error("Commission creation error:", commErr);
+          }
+        }
         break;
       }
 
@@ -302,7 +343,36 @@ exports.razorpayWebhook = functions.https.onRequest(async (req, res) => {
         const vendorSnap = await db.collection("vendors")
           .where("ownerId", "==", vendorId).limit(1).get();
         if (!vendorSnap.empty) {
-          await vendorSnap.docs[0].ref.update({ isPremium: false });
+          const vendorDoc = vendorSnap.docs[0];
+          await vendorDoc.ref.update({ isPremium: false });
+
+          // ── Claw back the agent's commission if this store cancels within
+          // 30 days of converting ──
+          try {
+            const commissionSnap = await db.collection("commissions")
+              .where("vendorId", "==", vendorDoc.id).limit(1).get();
+            if (!commissionSnap.empty) {
+              const commissionDoc = commissionSnap.docs[0];
+              const commissionData = commissionDoc.data();
+              const convertedAt = commissionData.createdAt?.toDate?.();
+              const daysSinceConversion = convertedAt
+                ? (Date.now() - convertedAt.getTime()) / (1000 * 60 * 60 * 24)
+                : null;
+              if (
+                commissionData.status !== "clawed_back" &&
+                daysSinceConversion !== null &&
+                daysSinceConversion <= 30
+              ) {
+                await commissionDoc.ref.update({
+                  status: "clawed_back",
+                  clawedBackAt: admin.firestore.FieldValue.serverTimestamp(),
+                });
+                console.log(`⚠️ Commission clawed back for vendor ${vendorDoc.id} (cancelled ${daysSinceConversion.toFixed(1)} days after conversion)`);
+              }
+            }
+          } catch (clawErr) {
+            console.error("Clawback check error:", clawErr);
+          }
         }
         console.log(`Subscription cancelled for vendor ${vendorId}`);
         break;
@@ -311,6 +381,7 @@ exports.razorpayWebhook = functions.https.onRequest(async (req, res) => {
       default:
         console.log(`Unhandled webhook event: ${event}`);
     }
+
 
     res.status(200).json({ received: true });
   } catch (err) {
