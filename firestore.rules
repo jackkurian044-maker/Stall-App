@@ -207,6 +207,21 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    match /agents/{agentId} {
+      allow read: if request.auth != null && (request.auth.uid == agentId || isAdmin());
+      allow write: if false;
+    }
+
+    match /commissions/{commissionId} {
+      allow read: if request.auth != null &&
+        (resource.data.agentId == request.auth.uid || isAdmin());
+      allow create: if false;
+      allow update: if isAdmin() &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['status', 'paidAt', 'paidBy', 'priorStatusBeforeClawback']);
+      allow delete: if false;
+    }
+
     // One-time OAuth state nonces (see beginGbpOauth / oauthCallback in
     // functions/index.js). Written and immediately deleted by Cloud
     // Functions via the Admin SDK only — no client should ever read,
