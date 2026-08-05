@@ -84,8 +84,11 @@ export default function AdminDashboard() {
   // active/inactive status without a separate query per agent.
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "agents"), (snap) => {
+      console.log("agents snapshot:", snap.docs.length, "docs");
       setAgents(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-    }, () => {});
+    }, (err) => {
+      console.error("agents listener error:", err.code, err.message);
+    });
     return unsub;
   }, []);
 
@@ -93,8 +96,11 @@ export default function AdminDashboard() {
   // through an agent; status is "pending" | "paid" | "clawed_back".
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "commissions"), (snap) => {
+      console.log("commissions snapshot:", snap.docs.length, "docs");
       setCommissions(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-    }, () => {});
+    }, (err) => {
+      console.error("commissions listener error:", err.code, err.message);
+    });
     return unsub;
   }, []);
 
