@@ -436,7 +436,7 @@ export default function AdminDashboard() {
                       style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", cursor: "pointer" }}
                     >
                       <div style={{ minWidth: 0 }}>
-                        <div style={{ fontWeight: 700, fontSize: 14 }}>{a.name || a.id}</div>
+                        <div style={{ fontWeight: 700, fontSize: 14, color: COLORS.ink }}>{a.name || a.id}</div>
                         <div style={{ fontSize: 11.5, color: "#777" }}>
                           {stores.length} store{stores.length === 1 ? "" : "s"} · {premiumCount} premium
                           {stores.length - premiumCount > 0 ? ` · ${stores.length - premiumCount} not yet premium` : ""}
@@ -457,7 +457,7 @@ export default function AdminDashboard() {
                             return (
                               <div key={v.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 16px 8px 28px", borderTop: `1px solid ${COLORS.ink}10` }}>
                                 <div style={{ minWidth: 0 }}>
-                                  <div style={{ fontSize: 13, fontWeight: 600 }}>{v.name}</div>
+                                  <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.ink }}>{v.name}</div>
                                   <div style={{ fontSize: 11, color: "#777" }}>
                                     {v.ownerId ? "Claimed" : "Unclaimed"}{isPremium ? " · Premium" : v.ownerId ? " · Not yet premium" : ""}
                                   </div>
