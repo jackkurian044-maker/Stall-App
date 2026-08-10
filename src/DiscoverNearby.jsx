@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { collection, doc, writeBatch, serverTimestamp } from "firebase/firestore";
 import { MapPin, Locate, Search, Copy, Loader2 } from "lucide-react";
 import { db } from "./firebase";
-import { CATEGORIES, CATEGORY_COLORS, COLORS, DEFAULT_LOC } from "./constants";
+import { CATEGORIES, CATEGORY_COLORS, COLORS, DEFAULT_LOC, CITIES } from "./constants";
 import { uid, haversineKm } from "./geo";
 import { loadGoogleMaps } from "./googleMaps";
 import { findExistingPlaceIds } from "./duplicateCheck";
@@ -35,6 +35,7 @@ function guessCategory(types = []) {
 
 export default function DiscoverNearby() {
   const [centerLoc, setCenterLoc] = useState(null);
+  const [centerCityName, setCenterCityName] = useState(null);
   const [locating, setLocating] = useState(false);
   const [manualLat, setManualLat] = useState("");
   const [manualLng, setManualLng] = useState("");
@@ -49,11 +50,18 @@ export default function DiscoverNearby() {
   const [importError, setImportError] = useState("");
   const [locateError, setLocateError] = useState("");
 
+  const pickCity = (city) => {
+    setCenterLoc({ lat: city.lat, lng: city.lng });
+    setCenterCityName(city.name);
+    setLocateError("");
+  };
+
   const locate = () => {
     setLocating(true);
     setLocateError("");
+    setCenterCityName(null);
     if (!navigator.geolocation) {
-      setLocateError("Your browser doesn't support location — enter coordinates below instead.");
+      setLocateError("Your browser doesn't support location — pick a city or enter coordinates below instead.");
       setCenterLoc(DEFAULT_LOC);
       setLocating(false);
       return;
@@ -66,11 +74,11 @@ export default function DiscoverNearby() {
       (err) => {
         setLocating(false);
         if (err.code === err.PERMISSION_DENIED) {
-          setLocateError("Location access was denied — check your browser/site settings, or enter coordinates below.");
+          setLocateError("Location access was denied — pick a city above, or enter coordinates below.");
         } else if (err.code === err.TIMEOUT) {
-          setLocateError("Location took too long to find — try again, or enter coordinates below.");
+          setLocateError("Location took too long to find — try again, pick a city, or enter coordinates below.");
         } else {
-          setLocateError("Couldn't get your location — try again, or enter coordinates below.");
+          setLocateError("Couldn't get your location — try again, pick a city, or enter coordinates below.");
         }
       },
       { timeout: 12000, enableHighAccuracy: true, maximumAge: 0 }
@@ -80,7 +88,10 @@ export default function DiscoverNearby() {
   const useManualLoc = () => {
     const lat = parseFloat(manualLat);
     const lng = parseFloat(manualLng);
-    if (Number.isFinite(lat) && Number.isFinite(lng)) setCenterLoc({ lat, lng });
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      setCenterLoc({ lat, lng });
+      setCenterCityName(null);
+    }
   };
 
   const runSearch = async (svc, request) => {
@@ -101,7 +112,7 @@ export default function DiscoverNearby() {
       return;
     }
     if (!centerLoc) {
-      setSearchError("Set a center point first (use your location or enter coordinates).");
+      setSearchError("Set a center point first (pick a city, use your location, or enter coordinates).");
       return;
     }
     setSearching(true);
@@ -267,7 +278,20 @@ export default function DiscoverNearby() {
       <div style={{ background: "#fff", border: "1px solid rgba(15,26,36,0.08)", boxShadow: "0 8px 24px rgba(15,26,36,0.08)", borderRadius: 20, padding: 16, marginBottom: 16 }}>
         {!centerLoc ? (
           <div>
-            <div style={{ fontSize: 13, marginBottom: 10 }}>Set a center point to search around.</div>
+            <div style={{ fontSize: 11, color: "#555", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>Jump to a market</div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
+              {CITIES.map((city) => (
+                <button
+                  key={city.name}
+                  onClick={() => pickCity(city)}
+                  className="stall-btn"
+                  style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 999, padding: "7px 14px", fontSize: 12.5, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}
+                >
+                  <MapPin size={13} /> {city.name}
+                </button>
+              ))}
+            </div>
+            <div style={{ fontSize: 13, marginBottom: 10 }}>Or set your own point:</div>
             <button onClick={locate} className="stall-btn" style={{ background: COLORS.navy, color: "#fff", border: "none", borderRadius: 999, padding: "10px 14px", display: "flex", alignItems: "center", gap: 8, fontWeight: 600, fontSize: 13, marginBottom: 10 }}>
               <Locate size={16} /> {locating ? "Locating…" : "Use my location"}
             </button>
@@ -283,11 +307,14 @@ export default function DiscoverNearby() {
           </div>
         ) : (
           <div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
               <div style={{ fontSize: 12, color: COLORS.green, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
-                <MapPin size={14} /> CENTER SET · <span className="font-mono">{centerLoc.lat.toFixed(4)}, {centerLoc.lng.toFixed(4)}</span>
+                <MapPin size={14} /> CENTER SET{centerCityName ? ` · ${centerCityName}` : ""} · <span className="font-mono">{centerLoc.lat.toFixed(4)}, {centerLoc.lng.toFixed(4)}</span>
               </div>
-              <button onClick={locate} style={{ background: "none", border: "none", fontSize: 11, textDecoration: "underline", cursor: "pointer" }}>{locating ? "…" : "re-locate"}</button>
+              <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                <button onClick={() => { setCenterLoc(null); setCenterCityName(null); }} style={{ background: "none", border: "none", fontSize: 11, textDecoration: "underline", cursor: "pointer" }}>change market</button>
+                <button onClick={locate} style={{ background: "none", border: "none", fontSize: 11, textDecoration: "underline", cursor: "pointer" }}>{locating ? "…" : "re-locate"}</button>
+              </div>
             </div>
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
               <div style={{ flex: "1 1 200px" }}>
