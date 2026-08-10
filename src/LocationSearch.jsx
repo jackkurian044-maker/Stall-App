@@ -55,7 +55,7 @@ export default function LocationSearch({ address, lat, lng, website, mapsUrl, pl
         const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
           fields: ["formatted_address", "geometry", "name", "website", "url", "place_id", "rating", "user_ratings_total", "formatted_phone_number", "opening_hours"],
           bounds,
-          componentRestrictions: { country: "in" },
+          componentRestrictions: { country: ["in", "ae"] },
         });
         autocomplete.addListener("place_changed", () => {
           const place = autocomplete.getPlace();
