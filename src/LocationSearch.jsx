@@ -44,18 +44,15 @@ export default function LocationSearch({ address, lat, lng, website, mapsUrl, pl
     loadGoogleMaps(GOOGLE_API_KEY)
       .then(() => {
         if (cancelled || !inputRef.current) return;
-        // Bias results toward the local area (and keep results within
-        // India) so a chain's *nearby* branch surfaces first and is easy
-        // to tell apart from same-named branches elsewhere. This only
-        // biases ranking — it doesn't hide farther-away results entirely.
-        const bounds = new window.google.maps.LatLngBounds(
-          { lat: DEFAULT_LOC.lat - 0.5, lng: DEFAULT_LOC.lng - 0.5 },
-          { lat: DEFAULT_LOC.lat + 0.5, lng: DEFAULT_LOC.lng + 0.5 }
-        );
+        // No `bounds` bias here — a single lat/lng box only made sense
+        // when every vendor was near one city (Bengaluru). With India
+        // and UAE both live, a fixed box centered on Bengaluru would
+        // quietly rank UAE results below anything nearby, even for a
+        // UAE-based admin/vendor. `componentRestrictions` below still
+        // keeps results scoped to the two countries we operate in.
         const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
           fields: ["formatted_address", "geometry", "name", "website", "url", "place_id", "rating", "user_ratings_total", "formatted_phone_number", "opening_hours"],
-          bounds,
-          componentRestrictions: { country: "in" },
+          componentRestrictions: { country: ["in", "ae"] },
         });
         autocomplete.addListener("place_changed", () => {
           const place = autocomplete.getPlace();
