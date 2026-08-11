@@ -15,6 +15,7 @@ import ReviewAutoResponder from "./ReviewAutoResponder";
 import BoostTab from "./BoostTab";
 import { findDuplicateVendor } from "./duplicateCheck";
 import QuickOfferModal from "./QuickOfferModal";
+import { payWebsiteBuildFee } from "./websiteBuildCheckout";
 
 const emptyForm = {
   name: "", category: CATEGORIES[0], description: "", products: "",
@@ -36,6 +37,7 @@ export default function VendorDashboard({ user, agent }) {
   const [dashTab, setDashTab] = useState("listings"); // "listings" | "insights" | "premium"
   const [quickOfferListing, setQuickOfferListing] = useState(null);
   const [vendorDigests, setVendorDigests] = useState({}); // vendorId -> digest doc
+  const [buildLoading, setBuildLoading] = useState(null); // tracks which website-build tier is checking out
 
   useEffect(() => {
     if (listings.length === 0) return;
@@ -158,6 +160,18 @@ export default function VendorDashboard({ user, agent }) {
       setClaimCode("");
     } catch (err) {
       setClaimMsg("Couldn't claim that listing — check the code and try again.");
+    }
+  };
+
+  const handleBuildPayment = async (tier) => {
+    setBuildLoading(tier);
+    try {
+      await payWebsiteBuildFee(tier);
+      alert("Payment successful — we'll be in touch to start your website build.");
+    } catch (err) {
+      alert(err.message || "Payment failed. Please try again.");
+    } finally {
+      setBuildLoading(null);
     }
   };
 
@@ -435,6 +449,33 @@ export default function VendorDashboard({ user, agent }) {
             <div style={{ height: 24 }} />
             <PremiumGate user={user} listing={listings[0]} />
             <BoostTab user={user} listing={listings[0]} />
+            <div style={{ height: 24 }} />
+            <div style={{ background: "#fff", border: `2px solid ${COLORS.ink}`, borderRadius: 12, padding: 18 }}>
+              <div className="font-display" style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>
+                🌐 Get a website built
+              </div>
+              <div style={{ fontSize: 12, color: "#666", marginBottom: 14 }}>
+                A one-time fee — no recurring charge, separate from your Premium subscription above.
+              </div>
+              <div style={{ display: "flex", gap: 10 }}>
+                <button
+                  disabled={buildLoading === "in_basic"}
+                  onClick={() => handleBuildPayment("in_basic")}
+                  className="stall-btn"
+                  style={{ flex: 1, background: COLORS.ink, color: "#fff", border: "none", borderRadius: 7, padding: "10px", fontSize: 13, fontWeight: 700 }}
+                >
+                  {buildLoading === "in_basic" ? "Processing…" : "Basic — ₹2,999"}
+                </button>
+                <button
+                  disabled={buildLoading === "in_advanced"}
+                  onClick={() => handleBuildPayment("in_advanced")}
+                  className="stall-btn"
+                  style={{ flex: 1, background: COLORS.ink, color: "#fff", border: "none", borderRadius: 7, padding: "10px", fontSize: 13, fontWeight: 700 }}
+                >
+                  {buildLoading === "in_advanced" ? "Processing…" : "Advanced — ₹7,999"}
+                </button>
+              </div>
+            </div>
           </div>
       
         )}
