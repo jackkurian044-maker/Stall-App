@@ -295,9 +295,9 @@ export default function DiscoverNearby() {
                 <input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="e.g. medical store, bakery, salon" style={{ ...inputStyle, width: "100%" }} />
               </div>
               <div style={{ flex: "1 1 160px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, textTransform: "uppercase", fontWeight: 700, marginBottom: 5 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, textTransform: "uppercase", fontWeight: 700, marginBottom: 5, color: COLORS.ink }}>
                   <span>Radius</span>
-                  <span className="font-mono">{radiusKm} km</span>
+                  <span className="font-mono" style={{ color: COLORS.ink }}>{radiusKm} km</span>
                 </div>
                 <input type="range" min={0.5} max={10} step={0.5} value={radiusKm} onChange={(e) => setRadiusKm(parseFloat(e.target.value))} style={{ width: "100%", accentColor: COLORS.brick }} />
               </div>
