@@ -394,7 +394,7 @@ export default function VendorDashboard({ user, agent }) {
                     <div style={{ fontWeight: 700, fontSize: 14.5, marginBottom: 12, color: COLORS.ink }}>{l.name}</div>
                     {vendorDigests[l.id] && !vendorDigests[l.id].read && (
                       <div style={{ background: `${COLORS.teal}15`, border: `1.5px solid ${COLORS.teal}`, borderRadius: 10, padding: "10px 12px", marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
-                        <div style={{ fontSize: 12.5 }}>
+                        <div style={{ fontSize: 12.5, color: COLORS.ink }}>
                           <strong>This week:</strong> {vendorDigests[l.id].views || 0} views, {vendorDigests[l.id].calls || 0} calls, {vendorDigests[l.id].whatsapp || 0} WhatsApp, {vendorDigests[l.id].directions || 0} directions
                         </div>
                         <button onClick={() => dismissVendorDigest(l.id)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11.5, color: COLORS.teal, fontWeight: 600, flexShrink: 0 }}>
