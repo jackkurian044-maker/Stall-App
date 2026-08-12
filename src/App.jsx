@@ -21,6 +21,17 @@ export default function App() {
   const [mode, setMode] = useState("find");
 
   useEffect(() => {
+    // If we just landed back from the Google Business Profile OAuth
+    // redirect, jump straight into the vendor dashboard and strip the
+    // query param so it doesn't linger in the URL / re-trigger on refresh.
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("gbp") === "connected") {
+      setMode("mine");
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
+
+  useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       if (u) {

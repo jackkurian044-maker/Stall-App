@@ -1,9 +1,20 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { collection, onSnapshot, doc, updateDoc } from "firebase/firestore";
+import {
+  collection,
+  query,
+  orderBy,
+  startAt,
+  endAt,
+  getDocs,
+  doc,
+  updateDoc,
+  onSnapshot,
+} from "firebase/firestore";
+import { geohashQueryBounds, distanceBetween } from "geofire-common";
 import { MapPin, Search, Locate, ChevronLeft, ChevronRight } from "lucide-react";
 import { db } from "./firebase";
 import { CATEGORIES, COLORS, DEFAULT_LOC } from "./constants";
-import { haversineKm, bearingRad } from "./geo";
+import { bearingRad } from "./geo";
 import { autoRefreshStale } from "./ratingSync";
 import VendorTicket from "./VendorTicket";
 import RadarChart from "./RadarChart";
@@ -12,12 +23,49 @@ import { watchFavorites, toggleFavorite } from "./favorites";
 
 const PAGE_SIZE = 10;
 
+// Debounce how fast the radius slider re-triggers Firestore queries — the
+// slider fires onChange continuously while dragging, and we don't want a
+// query per pixel of drag.
+const RADIUS_QUERY_DEBOUNCE_MS = 350;
+
+/**
+ * Runs a geohash bounding-box search against `vendors` for everything
+ * within `radiusKm` of `center`, and returns only the docs that are
+ * genuinely inside that radius (bounding-box ranges return a superset —
+ * geohash boxes are roughly square, radius search is circular — so we
+ * filter precisely by haversine distance client-side afterward, but only
+ * across the small set the box query returned, not the whole collection).
+ */
+async function fetchVendorsNear(center, radiusKm) {
+  const radiusM = radiusKm * 1000;
+  const bounds = geohashQueryBounds([center.lat, center.lng], radiusM);
+
+  const snaps = await Promise.all(
+    bounds.map(([start, end]) =>
+      getDocs(query(collection(db, "vendors"), orderBy("geohash"), startAt(start), endAt(end)))
+    )
+  );
+
+  const byId = new Map();
+  for (const snap of snaps) {
+    for (const d of snap.docs) {
+      const data = { id: d.id, ...d.data() };
+      if (typeof data.lat !== "number" || typeof data.lng !== "number") continue;
+      const distanceKm = distanceBetween([data.lat, data.lng], [center.lat, center.lng]);
+      if (distanceKm * 1000 <= radiusM) {
+        byId.set(d.id, { ...data, distance: distanceKm });
+      }
+    }
+  }
+  return Array.from(byId.values());
+}
+
 export default function FindView({ user, isAdmin, onRequestSignIn }) {
   const [vendors, setVendors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userLoc, setUserLoc] = useState(null);
   const [radiusKm, setRadiusKm] = useState(5);
-  const [query, setQuery] = useState("");
+  const [query_, setQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [locating, setLocating] = useState(false);
   const [selected, setSelected] = useState(null);
@@ -32,6 +80,8 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
   const [cityFilter, setCityFilter] = useState("");
   const refreshedRef = useRef(new Set());
   const locFromUrlRef = useRef(false);
+  const debounceRef = useRef(null);
+  const requestIdRef = useRef(0);
 
   useEffect(() => {
     if (!user) {
@@ -60,6 +110,7 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
     }
     toggleFavorite(db, user.uid, vendorId, isFavorited);
   };
+
   // Picks up ?q= (search box), ?lat=&lng= (the landing page's "Use Current
   // Location" button), ?city= (auto-detected nearest city, or the fallback
   // default when geolocation fails), and ?approx=1 (set only for that
@@ -91,17 +142,38 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
     }
   }, []);
 
+  // THE ACTUAL FIX: query only vendors within radiusKm of userLoc via
+  // geohash bounding-box ranges, instead of pulling the entire `vendors`
+  // collection and filtering client-side. Re-runs (debounced) whenever
+  // userLoc or radiusKm changes.
   useEffect(() => {
-    const unsub = onSnapshot(
-      collection(db, "vendors"),
-      (snap) => {
-        setVendors(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-        setLoading(false);
-      },
-      () => setLoading(false)
-    );
-    return unsub;
-  }, []);
+    if (!userLoc) {
+      setVendors([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    debounceRef.current = setTimeout(async () => {
+      const myRequestId = ++requestIdRef.current;
+      try {
+        const found = await fetchVendorsNear(userLoc, radiusKm);
+        // Guard against a slower earlier request resolving after a newer
+        // one (e.g. rapid radius changes) and clobbering fresher results.
+        if (myRequestId === requestIdRef.current) {
+          setVendors(found);
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error("Vendor search failed:", err);
+        if (myRequestId === requestIdRef.current) setLoading(false);
+      }
+    }, RADIUS_QUERY_DEBOUNCE_MS);
+
+    return () => clearTimeout(debounceRef.current);
+  }, [userLoc, radiusKm]);
 
   // Keep Google-sourced ratings/phone fresh with zero manual clicks —
   // gated by staleness both here (avoid redundant checks this session)
@@ -161,16 +233,17 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
     }
   };
 
+  // `vendors` is now already scoped to radiusKm by the query above, so this
+  // is just category/text/favorites filtering + sort over a small, already
+  // radius-bounded set — not a distance filter over the whole collection.
   const results = useMemo(() => {
     if (!userLoc) return [];
     return vendors
-      .map((v) => ({ ...v, distance: haversineKm(userLoc, { lat: v.lat, lng: v.lng }) }))
-      .filter((v) => v.distance <= radiusKm)
       .filter((v) => categoryFilter === "All" || v.category === categoryFilter)
       .filter((v) => !showFavoritesOnly || favoriteIds.has(v.id))
       .filter((v) => {
-        if (!query.trim()) return true;
-        const q = query.toLowerCase();
+        if (!query_.trim()) return true;
+        const q = query_.toLowerCase();
         return (
           v.name.toLowerCase().includes(q) ||
           (v.products || "").toLowerCase().includes(q) ||
@@ -183,7 +256,7 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
         if (br !== ar) return br - ar; // higher rating first; unrated (-1) sinks to the bottom
         return a.distance - b.distance; // tie-break (including among unrated): closer first
       });
-  }, [vendors, userLoc, radiusKm, categoryFilter, query, showFavoritesOnly, favoriteIds]);
+  }, [vendors, userLoc, categoryFilter, query_, showFavoritesOnly, favoriteIds]);
 
   const radarData = useMemo(() => {
     if (!userLoc) return [];
@@ -199,7 +272,7 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
   // page number that no longer has any results.
   useEffect(() => {
     setPage(1);
-  }, [radiusKm, categoryFilter, query, userLoc, showFavoritesOnly]);
+  }, [radiusKm, categoryFilter, query_, userLoc, showFavoritesOnly]);
 
   const totalPages = Math.max(1, Math.ceil(results.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -308,7 +381,7 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
             <Search size={15} style={{ position: "absolute", left: 10, top: 11, color: "#9c9c9c" }} />
             <input
               placeholder="Search vendors or products…"
-              value={query}
+              value={query_}
               onChange={(e) => setQuery(e.target.value)}
               style={{ width: "100%", padding: "9px 10px 9px 32px", borderRadius: 8, border: `1.5px solid #2a2a2a`, fontSize: 13, background: "#161616", color: "#fff" }}
             />
