@@ -2,15 +2,30 @@
 // Drop this in: src/PremiumGate.jsx
 // Import in VendorDashboard.jsx — see integration comment at bottom of this file
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { doc, onSnapshot } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { db } from "./firebase";
 import { COLORS } from "./constants";
+import { regionFromLatLng } from "./geo";
 import { Zap, CheckCircle, XCircle, CreditCard, AlertCircle } from "lucide-react";
 
-const PLAN_PRICE = 499; // ₹ per month — change here only
 const PLAN_NAME = "Stall Premium";
+
+// Display-only pricing table — must match SUBSCRIPTION_PLANS in
+// functions/index.js. The amount actually charged is always
+// recomputed server-side from the vendor's listing location, so this
+// being stale would only show the wrong price, not charge the wrong one.
+const PRICING = {
+  in: { symbol: "₹", monthly: 499, annual: 4999 },
+  ae: { symbol: "AED ", monthly: 100, annual: 999 },
+};
+
+function formatPrice(region, cycle) {
+  const p = PRICING[region];
+  const amount = cycle === "annual" ? p.annual : p.monthly;
+  return `${p.symbol}${amount.toLocaleString("en-IN")}`;
+}
 
 const FEATURES = [
   "⭐ Auto-respond to every Google review instantly",
@@ -28,11 +43,18 @@ export default function PremiumGate({ user, listing }) {
   const [statusError, setStatusError] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [showConfirmCancel, setShowConfirmCancel] = useState(false);
+  const [billingCycle, setBillingCycle] = useState("monthly"); // "monthly" | "annual"
 
   // premium_vendors and the Cloud Functions are keyed by the vendor's
   // Firebase Auth uid (context.auth.uid on the backend) — NOT the
   // listing id, since one account can own multiple listings.
   const vendorId = user?.uid;
+
+  // Display-only region guess from the listing's own coordinates — the
+  // backend independently re-derives this from the vendor's saved
+  // listing when the subscription is actually created, so this is just
+  // for showing the right currency before checkout opens.
+  const region = useMemo(() => regionFromLatLng(listing?.lat, listing?.lng), [listing?.lat, listing?.lng]);
 
   const functions = getFunctions();
 
@@ -70,22 +92,30 @@ export default function PremiumGate({ user, listing }) {
     setError("");
     setLoading(true);
     try {
-      // Step 1: Create subscription on backend
+      // Step 1: Create subscription on backend — region and final price
+      // are determined server-side from the vendor's own listing, not
+      // from anything sent here.
       const createSubscription = httpsCallable(functions, "createSubscription");
       const { data } = await createSubscription({
         vendorId,
         vendorName: listing?.name || user?.displayName || "Vendor",
         vendorEmail: user?.email || "",
+        billingCycle,
       });
 
       if (!data.subscriptionId) throw new Error("Failed to create subscription");
+      if (!data.keyId) throw new Error("Payment setup incomplete. Contact support.");
 
-      // Step 2: Open Razorpay checkout
+      // Step 2: Open Razorpay checkout — key and price both come from
+      // the backend response, never from a frontend env var/constant.
+      const cyclePrice = data.currency === "AED"
+        ? `AED ${(data.amount / 100).toLocaleString("en-IN")}`
+        : `₹${(data.amount / 100).toLocaleString("en-IN")}`;
       const options = {
-        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+        key: data.keyId,
         subscription_id: data.subscriptionId,
         name: "Stall App",
-        description: `${PLAN_NAME} — ₹${PLAN_PRICE}/month`,
+        description: `${PLAN_NAME} — ${cyclePrice}/${billingCycle === "annual" ? "year" : "month"}`,
         image: "/stall-logo.png", // your logo path
         handler: async (response) => {
           // Step 3: Verify payment on backend
@@ -175,7 +205,9 @@ export default function PremiumGate({ user, listing }) {
               {PLAN_NAME} — Active ✦
             </div>
             <div style={{ fontSize: 11, color: "#666" }}>
-              ₹{PLAN_PRICE}/month · Next billing: {premium.nextBillingDate
+              {premium.currency === "AED" ? "AED " : "₹"}
+              {premium.amount ? (premium.amount / 100).toLocaleString("en-IN") : "—"}
+              /{premium.billingCycle === "annual" ? "year" : "month"} · Next billing: {premium.nextBillingDate
                 ? new Date(premium.nextBillingDate.seconds * 1000).toLocaleDateString("en-IN")
                 : "auto-renewal"}
             </div>
@@ -188,7 +220,7 @@ export default function PremiumGate({ user, listing }) {
             ✓ Auto-review active
           </span>
           <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 20, background: "#E6F1FB", color: "#0C447C", fontWeight: 600 }}>
-            Plan: Monthly
+            Plan: {premium.billingCycle === "annual" ? "Annual" : "Monthly"}
           </span>
           {premium.subscriptionId && (
             <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 20, background: "#F3F4F6", color: "#6B7280", fontFamily: "monospace" }}>
@@ -203,7 +235,7 @@ export default function PremiumGate({ user, listing }) {
             <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", marginBottom: 6 }}>Payment history</div>
             {premium.payments.slice(0, 3).map((p, i) => (
               <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "6px 0", borderBottom: "1px solid #F3F4F6" }}>
-                <span style={{ color: "#374151" }}>₹{p.amount / 100}</span>
+                <span style={{ color: "#374151" }}>{premium.currency === "AED" ? "AED " : "₹"}{p.amount / 100}</span>
                 <span style={{ color: "#6B7280" }}>{new Date(p.paidAt?.seconds * 1000).toLocaleDateString("en-IN")}</span>
                 <span style={{ color: "#1D9E75", fontWeight: 600 }}>✓ Paid</span>
               </div>
@@ -276,14 +308,34 @@ export default function PremiumGate({ user, listing }) {
         </div>
       )}
 
+      {/* Billing cycle toggle */}
+      <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+        {["monthly", "annual"].map((c) => (
+          <button
+            key={c}
+            type="button"
+            onClick={() => setBillingCycle(c)}
+            style={{
+              flex: 1, padding: "7px 10px", borderRadius: 12, fontSize: 12, fontWeight: 600,
+              border: `1.5px solid ${COLORS.ink}`, cursor: "pointer",
+              background: billingCycle === c ? COLORS.ink : "#fff",
+              color: billingCycle === c ? "#fff" : COLORS.ink,
+            }}
+          >
+            {c === "monthly" ? "Monthly" : "Annual · save ~17%"}
+          </button>
+        ))}
+      </div>
+
       {/* Pricing */}
       <div style={{ background: "#F9FAFB", borderRadius: 16, padding: "14px 16px", marginBottom: 16, border: "1px solid #E5E7EB" }}>
         <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 4 }}>
-          <span style={{ fontSize: 32, fontWeight: 800, color: COLORS.ink }}>₹{PLAN_PRICE}</span>
-          <span style={{ fontSize: 14, color: "#6B7280" }}>/month</span>
+          <span style={{ fontSize: 32, fontWeight: 800, color: COLORS.ink }}>{formatPrice(region, billingCycle)}</span>
+          <span style={{ fontSize: 14, color: "#6B7280" }}>/{billingCycle === "annual" ? "year" : "month"}</span>
         </div>
         <div style={{ fontSize: 12, color: "#9CA3AF" }}>
-          Auto-renews monthly · Cancel anytime · Billed via Razorpay
+          {billingCycle === "annual" ? "Auto-renews yearly" : "Auto-renews monthly"} · Cancel anytime · Billed via Razorpay
+          {region === "ae" ? " · UAE pricing" : ""}
         </div>
       </div>
 
@@ -309,7 +361,7 @@ export default function PremiumGate({ user, listing }) {
         }}
       >
         <CreditCard size={16} />
-        {loading ? "Opening payment..." : `Subscribe for ₹${PLAN_PRICE}/month`}
+        {loading ? "Opening payment..." : `Subscribe for ${formatPrice(region, billingCycle)}/${billingCycle === "annual" ? "year" : "month"}`}
       </button>
 
       {error && (

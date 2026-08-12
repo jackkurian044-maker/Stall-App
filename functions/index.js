@@ -31,6 +31,58 @@ function getRazorpay() {
   return new Razorpay({ key_id: cfg.key_id, key_secret: cfg.key_secret });
 }
 
+// Coarse country classifier for India vs UAE, the two markets STALL
+// currently operates in — used to price a vendor's subscription off
+// their listing's actual location. Deliberately server-side and never
+// trusted from the client, so pricing can't be spoofed by requesting
+// the cheaper region. Mirrors src/geo.js's regionFromLatLng (kept as a
+// separate copy since functions/ and src/ are different build targets);
+// the two countries' bounding boxes don't overlap, so this is reliable
+// at the current scale.
+function regionFromLatLng(lat, lng) {
+  if (typeof lat !== "number" || typeof lng !== "number") return "in";
+  const inUae = lat >= 22.0 && lat <= 26.5 && lng >= 51.0 && lng <= 56.5;
+  return inUae ? "ae" : "in";
+}
+
+// Plan catalog — keep in sync with confirmed STALL pricing:
+//   India: ₹499/month · ₹4,999/year      UAE: AED 100/month · AED 999/year
+// Amounts are in the smallest currency unit (paise / fils).
+// planKey = "<region>_<cycle>".
+const SUBSCRIPTION_PLANS = {
+  in_monthly: { amount: 49900, currency: "INR", period: "monthly", interval: 1, label: "Stall Premium — Monthly" },
+  in_annual: { amount: 499900, currency: "INR", period: "yearly", interval: 1, label: "Stall Premium — Annual" },
+  ae_monthly: { amount: 10000, currency: "AED", period: "monthly", interval: 1, label: "Stall Premium — Monthly" },
+  ae_annual: { amount: 99900, currency: "AED", period: "yearly", interval: 1, label: "Stall Premium — Annual" },
+};
+
+// Looks up (or lazily creates, once ever) the Razorpay plan_id for a
+// given plan key, caching it in Firestore so repeat subscribers reuse
+// the same Razorpay plan instead of creating a new one every time.
+async function getOrCreatePlanId(razorpay, planKey) {
+  const plan = SUBSCRIPTION_PLANS[planKey];
+  const cacheRef = db.collection("razorpay_plans").doc(planKey);
+  const cached = await cacheRef.get();
+  if (cached.exists && cached.data().planId) return cached.data().planId;
+
+  const created = await razorpay.plans.create({
+    period: plan.period,
+    interval: plan.interval,
+    item: {
+      name: plan.label,
+      amount: plan.amount,
+      currency: plan.currency,
+      description: "Auto Google Review Responder",
+    },
+  });
+  await cacheRef.set({
+    planId: created.id, ...plan,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+  console.log(`Created Razorpay plan for ${planKey}:`, created.id);
+  return created.id;
+}
+
 // ─────────────────────────────────────────────────────────────
 // 1A. CREATE SUBSCRIPTION
 // Called from PremiumGate.jsx when vendor clicks Subscribe
@@ -40,7 +92,8 @@ exports.createSubscription = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError("unauthenticated", "Login required");
   }
 
-  const { vendorId, vendorName, vendorEmail } = data;
+  const { vendorId, vendorName, vendorEmail, billingCycle } = data;
+  const cycle = billingCycle === "annual" ? "annual" : "monthly";
 
   if (context.auth.uid !== vendorId) {
     throw new functions.https.HttpsError("permission-denied", "Unauthorized");
@@ -52,38 +105,33 @@ exports.createSubscription = functions.https.onCall(async (data, context) => {
   }
 
   try {
-    const razorpay = getRazorpay();
-    const cfg = functions.config().razorpay;
-    let planId = cfg.plan_id;
+    // Region comes from the vendor's own listing location, never from
+    // the client. Falls back to "in" if they have no listing yet.
+    const vendorListingSnap = await db.collection("vendors").where("ownerId", "==", vendorId).limit(1).get();
+    const listing = vendorListingSnap.empty ? null : vendorListingSnap.docs[0].data();
+    const region = regionFromLatLng(listing?.lat, listing?.lng);
+    const planKey = `${region}_${cycle}`;
+    const plan = SUBSCRIPTION_PLANS[planKey];
 
-    // Create plan if not yet configured
-    if (!planId) {
-      const plan = await razorpay.plans.create({
-        period: "monthly",
-        interval: 1,
-        item: {
-          name: "Stall Premium",
-          amount: 49900, // ₹499 in paise
-          currency: "INR",
-          description: "Auto Google Review Responder — Monthly",
-        },
-      });
-      planId = plan.id;
-      console.log("Created Razorpay plan:", planId, "— save as razorpay.plan_id in functions config");
-    }
+    const razorpay = getRazorpay();
+    const planId = await getOrCreatePlanId(razorpay, planKey);
 
     const subscription = await razorpay.subscriptions.create({
       plan_id: planId,
       customer_notify: 1,
       quantity: 1,
-      total_count: 120,
-      notes: { vendorId, vendorName: vendorName || "", vendorEmail: vendorEmail || "", source: "stall-app" },
+      total_count: cycle === "annual" ? 10 : 120, // ~10yr / ~10yr of cycles either way
+      notes: { vendorId, vendorName: vendorName || "", vendorEmail: vendorEmail || "", source: "stall-app", planKey },
     });
 
     await db.collection("premium_vendors").doc(vendorId).set({
       isPremium: false,
       subscriptionId: subscription.id,
       planId,
+      planKey,
+      billingCycle: cycle,
+      amount: plan.amount,
+      currency: plan.currency,
       status: "created",
       vendorName: vendorName || "",
       vendorEmail: vendorEmail || "",
@@ -93,7 +141,14 @@ exports.createSubscription = functions.https.onCall(async (data, context) => {
       payments: [],
     }, { merge: true });
 
-    return { subscriptionId: subscription.id };
+    const cfg = functions.config().razorpay;
+    return {
+      subscriptionId: subscription.id,
+      keyId: cfg.key_id,
+      planKey,
+      amount: plan.amount,
+      currency: plan.currency,
+    };
 
   } catch (err) {
     console.error("createSubscription error:", err);
@@ -133,8 +188,10 @@ exports.verifySubscription = functions.https.onCall(async (data, context) => {
     const razorpay = getRazorpay();
     const payment = await razorpay.payments.fetch(razorpay_payment_id);
 
+    const premiumSnap = await db.collection("premium_vendors").doc(vendorId).get();
+    const billingCycle = premiumSnap.exists ? premiumSnap.data().billingCycle : "monthly";
     const nextBilling = new Date();
-    nextBilling.setDate(nextBilling.getDate() + 30);
+    nextBilling.setDate(nextBilling.getDate() + (billingCycle === "annual" ? 365 : 30));
 
     // Activate premium
     await db.collection("premium_vendors").doc(vendorId).set({
@@ -244,7 +301,7 @@ exports.razorpayWebhook = functions.https.onRequest(async (req, res) => {
         const isFirstCharge = !(existingData.payments && existingData.payments.length > 0);
 
         const nextBilling = new Date();
-        nextBilling.setDate(nextBilling.getDate() + 30);
+        nextBilling.setDate(nextBilling.getDate() + (existingData.billingCycle === "annual" ? 365 : 30));
 
         await db.collection("premium_vendors").doc(vendorId).update({
           isPremium: true,
@@ -252,7 +309,7 @@ exports.razorpayWebhook = functions.https.onRequest(async (req, res) => {
           nextBillingDate: nextBilling,
           payments: admin.firestore.FieldValue.arrayUnion({
             paymentId: payment?.id || "",
-            amount: payment?.amount || 49900,
+            amount: payment?.amount || existingData.amount || 49900,
             paidAt: admin.firestore.Timestamp.now(),
             method: payment?.method || "auto",
           }),
@@ -270,8 +327,16 @@ exports.razorpayWebhook = functions.https.onRequest(async (req, res) => {
                 const existingCommission = await db.collection("commissions")
                   .where("vendorId", "==", vendorDoc.id).limit(1).get();
                 if (existingCommission.empty) {
+<<<<<<< Updated upstream
                   const amountPaise = payment?.amount || 49900;
                   const commissionAmount = amountPaise > 100000 ? 500 : 100;
+=======
+                  // Keyed off billing cycle rather than the raw payment
+                  // amount — that number is in paise for INR plans but
+                  // fils for AED plans, so comparing it against a flat
+                  // threshold would misclassify UAE annual plans.
+                  const commissionAmount = existingData.billingCycle === "annual" ? 500 : 100;
+>>>>>>> Stashed changes
                   await db.collection("commissions").add({
                     agentId: vendorData.addedByAgentId,
                     vendorId: vendorDoc.id,

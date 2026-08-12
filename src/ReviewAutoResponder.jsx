@@ -111,8 +111,7 @@ export default function ReviewAutoResponder({ listing }) {
         redirect_uri: import.meta.env.VITE_GOOGLE_OAUTH_REDIRECT_URI,
         response_type: "code",
         scope: [
-          "https://www.googleapis.com/auth/business.manage",
-         
+          "https://www.googleapis.com/auth/business.manage"
         ].join(" "),
         access_type: "offline",
         prompt: "consent",

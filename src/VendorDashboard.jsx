@@ -9,7 +9,7 @@ import { CATEGORIES, COLORS } from "./constants";
 import LocationSearch from "./LocationSearch";
 import ImageUpload from "./ImageUpload";
 import { autoRefreshStale, isRatingStale } from "./ratingSync";
-import { uid, toDateInputValue } from "./geo";
+import { uid, toDateInputValue, regionFromLatLng } from "./geo";
 import PremiumGate from "./PremiumGate";
 import ReviewAutoResponder from "./ReviewAutoResponder";
 import BoostTab from "./BoostTab";
@@ -457,24 +457,37 @@ export default function VendorDashboard({ user, agent }) {
               <div style={{ fontSize: 12, color: "#666", marginBottom: 14 }}>
                 A one-time fee — no recurring charge, separate from your Premium subscription above.
               </div>
-              <div style={{ display: "flex", gap: 10 }}>
-                <button
-                  disabled={buildLoading === "in_basic"}
-                  onClick={() => handleBuildPayment("in_basic")}
-                  className="stall-btn"
-                  style={{ flex: 1, background: COLORS.ink, color: "#fff", border: "none", borderRadius: 7, padding: "10px", fontSize: 13, fontWeight: 700 }}
-                >
-                  {buildLoading === "in_basic" ? "Processing…" : "Basic — ₹2,999"}
-                </button>
-                <button
-                  disabled={buildLoading === "in_advanced"}
-                  onClick={() => handleBuildPayment("in_advanced")}
-                  className="stall-btn"
-                  style={{ flex: 1, background: COLORS.ink, color: "#fff", border: "none", borderRadius: 7, padding: "10px", fontSize: 13, fontWeight: 700 }}
-                >
-                  {buildLoading === "in_advanced" ? "Processing…" : "Advanced — ₹7,999"}
-                </button>
-              </div>
+              {(() => {
+                // Priced off this vendor's own listing location — same
+                // region the backend independently re-derives when the
+                // order is actually created, so the buttons shown here
+                // and the amount actually charged always agree.
+                const region = regionFromLatLng(listings[0]?.lat, listings[0]?.lng);
+                const basicTier = `${region}_basic`;
+                const advancedTier = `${region}_advanced`;
+                const basicLabel = region === "ae" ? "Basic — AED 399" : "Basic — ₹2,999";
+                const advancedLabel = region === "ae" ? "Advanced — AED 999" : "Advanced — ₹7,999";
+                return (
+                  <div style={{ display: "flex", gap: 10 }}>
+                    <button
+                      disabled={buildLoading === basicTier}
+                      onClick={() => handleBuildPayment(basicTier)}
+                      className="stall-btn"
+                      style={{ flex: 1, background: COLORS.ink, color: "#fff", border: "none", borderRadius: 7, padding: "10px", fontSize: 13, fontWeight: 700 }}
+                    >
+                      {buildLoading === basicTier ? "Processing…" : basicLabel}
+                    </button>
+                    <button
+                      disabled={buildLoading === advancedTier}
+                      onClick={() => handleBuildPayment(advancedTier)}
+                      className="stall-btn"
+                      style={{ flex: 1, background: COLORS.ink, color: "#fff", border: "none", borderRadius: 7, padding: "10px", fontSize: 13, fontWeight: 700 }}
+                    >
+                      {buildLoading === advancedTier ? "Processing…" : advancedLabel}
+                    </button>
+                  </div>
+                );
+              })()}
             </div>
           </div>
       

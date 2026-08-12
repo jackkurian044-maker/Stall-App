@@ -17,6 +17,15 @@ const Razorpay = require("razorpay");
 
 const db = admin.firestore();
 
+// Same classifier as createSubscription in index.js — kept as a
+// separate copy since this file is designed to be a self-contained
+// drop-in (see the header comment above).
+function regionFromLatLng(lat, lng) {
+  if (typeof lat !== "number" || typeof lng !== "number") return "in";
+  const inUae = lat >= 22.0 && lat <= 26.5 && lng >= 51.0 && lng <= 56.5;
+  return inUae ? "ae" : "in";
+}
+
 function getRazorpay() {
   const cfg = functions.config().razorpay;
   return new Razorpay({ key_id: cfg.key_id, key_secret: cfg.key_secret });
@@ -52,6 +61,17 @@ exports.createWebsiteBuildOrder = functions.https.onCall(async (data, context) =
   const fee = WEBSITE_BUILD_FEES[tier];
   if (!fee) {
     throw new functions.https.HttpsError("invalid-argument", "Unknown website build tier");
+  }
+
+  // Cross-check the requested tier's region against the vendor's own
+  // listing location — stops a client requesting India pricing for a
+  // UAE listing (or vice versa) by just passing a different tier string.
+  const requestedRegion = tier.startsWith("ae_") ? "ae" : "in";
+  const vendorListingSnap = await db.collection("vendors").where("ownerId", "==", vendorId).limit(1).get();
+  const listing = vendorListingSnap.empty ? null : vendorListingSnap.docs[0].data();
+  const actualRegion = regionFromLatLng(listing?.lat, listing?.lng);
+  if (requestedRegion !== actualRegion) {
+    throw new functions.https.HttpsError("invalid-argument", "Pricing tier doesn't match your listing's region");
   }
 
   try {

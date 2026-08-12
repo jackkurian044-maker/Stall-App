@@ -21,6 +21,20 @@ export function bearingRad(a, b) {
   return Math.atan2(y, x);
 }
 
+// Coarse country classifier for the two markets STALL currently operates
+// in (India and UAE), used to *display* the right currency/price before
+// checkout. The two countries' bounding boxes don't overlap, so this is
+// reliable at the current scale — revisit if a third market is added.
+// This is a display-only convenience: the amount actually charged is
+// always recomputed server-side from the vendor's own listing location
+// (see regionFromLatLng in functions/index.js), so this copy being wrong
+// or stale can't be used to get cheaper pricing than you qualify for.
+export function regionFromLatLng(lat, lng) {
+  if (typeof lat !== "number" || typeof lng !== "number") return "in";
+  const inUae = lat >= 22.0 && lat <= 26.5 && lng >= 51.0 && lng <= 56.5;
+  return inUae ? "ae" : "in";
+}
+
 export function uid(len = 6) {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let out = "";
