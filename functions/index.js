@@ -241,8 +241,6 @@ exports.razorpayWebhook = functions.https.onRequest(async (req, res) => {
 
         const vendorId = snap.docs[0].id;
         const existingData = snap.docs[0].data();
-        // First charge = no payments recorded yet on this premium_vendors doc.
-        // Renewals (2nd, 3rd... charge) will already have a non-empty payments array.
         const isFirstCharge = !(existingData.payments && existingData.payments.length > 0);
 
         const nextBilling = new Date();
@@ -261,8 +259,6 @@ exports.razorpayWebhook = functions.https.onRequest(async (req, res) => {
         });
         console.log(`✅ Subscription renewed for vendor ${vendorId}`);
 
-        // ── Agent commission — only on the vendor's first successful payment ──
-        // (renewals never reach here since isFirstCharge is false after the 1st charge)
         if (isFirstCharge) {
           try {
             const vendorListingSnap = await db.collection("vendors")
@@ -271,14 +267,10 @@ exports.razorpayWebhook = functions.https.onRequest(async (req, res) => {
               const vendorDoc = vendorListingSnap.docs[0];
               const vendorData = vendorDoc.data();
               if (vendorData.addedByAgentId) {
-                // Idempotency guard — Razorpay can retry webhook delivery
                 const existingCommission = await db.collection("commissions")
                   .where("vendorId", "==", vendorDoc.id).limit(1).get();
                 if (existingCommission.empty) {
                   const amountPaise = payment?.amount || 49900;
-                  // ₹499/month → ₹100 commission. ₹4,999/year → ₹500 commission.
-                  // Detected from the actual charge amount so this keeps working
-                  // once a yearly plan exists, without needing a separate plan lookup.
                   const commissionAmount = amountPaise > 100000 ? 500 : 100;
                   await db.collection("commissions").add({
                     agentId: vendorData.addedByAgentId,
@@ -346,8 +338,6 @@ exports.razorpayWebhook = functions.https.onRequest(async (req, res) => {
           const vendorDoc = vendorSnap.docs[0];
           await vendorDoc.ref.update({ isPremium: false });
 
-          // ── Claw back the agent's commission if this store cancels within
-          // 30 days of converting ──
           try {
             const commissionSnap = await db.collection("commissions")
               .where("vendorId", "==", vendorDoc.id).limit(1).get();
@@ -382,7 +372,6 @@ exports.razorpayWebhook = functions.https.onRequest(async (req, res) => {
         console.log(`Unhandled webhook event: ${event}`);
     }
 
-
     res.status(200).json({ received: true });
   } catch (err) {
     console.error("Webhook handler error:", err);
@@ -413,12 +402,6 @@ exports.getSubscriptionStatus = functions.https.onCall(async (data, context) => 
 
 // ─────────────────────────────────────────────────────────────
 // 2A-i. BEGIN OAUTH
-// Called from ReviewAutoResponder.jsx right before redirecting to
-// Google. Issues a random one-time state value tied to the calling
-// vendor's uid, so oauthCallback can verify the person who completes
-// Google's consent screen is the same vendor who started the flow —
-// without this, a signed-in attacker could swap `state` for a
-// different vendor's uid and hijack their GBP connection.
 // ─────────────────────────────────────────────────────────────
 exports.beginGbpOauth = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
@@ -431,7 +414,7 @@ exports.beginGbpOauth = functions.https.onCall(async (data, context) => {
   await db.collection("oauth_states").doc(state).set({
     vendorId,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes to complete consent
+    expiresAt: new Date(Date.now() + 10 * 60 * 1000),
   });
 
   return { state };
@@ -441,15 +424,17 @@ exports.beginGbpOauth = functions.https.onCall(async (data, context) => {
 // 2A. OAUTH CALLBACK
 // Google redirects here after vendor grants permission
 // URL: https://<region>-stall-app-1aab7.cloudfunctions.net/oauthCallback
+//
+// FIXED: cfg now reads from functions.config().google.* (matching the
+// pattern used everywhere else in this file — razorpay, anthropic)
+// instead of process.env.GOOGLE_*, which was never being set.
+// Run once: firebase functions:config:set google.client_id="..." google.client_secret="..." google.redirect_uri="https://us-central1-stall-app-1aab7.cloudfunctions.net/oauthCallback"
 // ─────────────────────────────────────────────────────────────
 exports.oauthCallback = functions.https.onRequest(async (req, res) => {
   const { code, state } = req.query;
   if (!code || !state) return res.status(400).send("Missing code or state");
 
   try {
-    // Resolve + burn the one-time state issued by beginGbpOauth. This is
-    // what ties this callback back to the vendor who actually clicked
-    // "Connect" — state is no longer a bare, guessable/forgeable uid.
     const stateRef = db.collection("oauth_states").doc(state);
     const stateDoc = await stateRef.get();
     if (!stateDoc.exists) {
@@ -457,15 +442,19 @@ exports.oauthCallback = functions.https.onRequest(async (req, res) => {
     }
 
     const { vendorId, expiresAt } = stateDoc.data();
-    await stateRef.delete(); // one-time use — never valid again, replay or not
+    await stateRef.delete();
 
     if (!expiresAt || expiresAt.toDate() < new Date()) {
       return res.status(400).send("This connection request expired. Please try connecting again.");
     }
 
-    const cfg = { client_id: process.env.GOOGLE_CLIENT_ID, client_secret: process.env.GOOGLE_CLIENT_SECRET, redirect_uri: process.env.GOOGLE_REDIRECT_URI };
+    // FIXED: was process.env.GOOGLE_*, now functions.config().google.*
+    const cfg = {
+      client_id: functions.config().google.client_id,
+      client_secret: functions.config().google.client_secret,
+      redirect_uri: functions.config().google.redirect_uri,
+    };
 
-    // Exchange auth code for tokens
     const tokenRes = await axios.post("https://oauth2.googleapis.com/token", {
       code,
       client_id: cfg.client_id,
@@ -476,7 +465,6 @@ exports.oauthCallback = functions.https.onRequest(async (req, res) => {
 
     const { access_token, refresh_token, expires_in } = tokenRes.data;
 
-    // Get vendor's GBP account
     const accountsRes = await axios.get(
       "https://mybusinessaccountmanagement.googleapis.com/v1/accounts",
       { headers: { Authorization: `Bearer ${access_token}` } }
@@ -485,7 +473,6 @@ exports.oauthCallback = functions.https.onRequest(async (req, res) => {
     const account = accountsRes.data.accounts?.[0];
     if (!account) return res.status(400).send("No GBP account found");
 
-    // Get location
     const locationsRes = await axios.get(
       `https://mybusinessbusinessinformation.googleapis.com/v1/${account.name}/locations`,
       { headers: { Authorization: `Bearer ${access_token}` } }
@@ -493,7 +480,6 @@ exports.oauthCallback = functions.https.onRequest(async (req, res) => {
 
     const location = locationsRes.data.locations?.[0];
 
-    // Store in Firestore
     await db.collection("gbp_connections").doc(vendorId).set({
       connected: true,
       accessToken: access_token,
@@ -507,7 +493,7 @@ exports.oauthCallback = functions.https.onRequest(async (req, res) => {
     }, { merge: true });
 
     // Redirect back to app
-   res.redirect(`https://stallapp.cutncutestudio.in/premium?gbp=connected`);
+    res.redirect(`https://stallapp.cutncutestudio.in/premium?gbp=connected`);
 
   } catch (err) {
     console.error("OAuth callback error:", err.response?.data || err.message);
@@ -517,9 +503,14 @@ exports.oauthCallback = functions.https.onRequest(async (req, res) => {
 
 // ─────────────────────────────────────────────────────────────
 // 2B. TOKEN HELPERS
+// FIXED: same functions.config().google.* change as above
 // ─────────────────────────────────────────────────────────────
 async function refreshAccessToken(vendorId, connectionData) {
-  const cfg = { client_id: process.env.GOOGLE_CLIENT_ID, client_secret: process.env.GOOGLE_CLIENT_SECRET, redirect_uri: process.env.GOOGLE_REDIRECT_URI };
+  const cfg = {
+    client_id: functions.config().google.client_id,
+    client_secret: functions.config().google.client_secret,
+    redirect_uri: functions.config().google.redirect_uri,
+  };
   const res = await axios.post("https://oauth2.googleapis.com/token", {
     refresh_token: connectionData.refreshToken,
     client_id: cfg.client_id,
@@ -543,7 +534,6 @@ async function getValidToken(vendorId, connectionData) {
 
 // ─────────────────────────────────────────────────────────────
 // 2C. AI RESPONSE GENERATOR
-// Uses Claude to write personalised review responses
 // ─────────────────────────────────────────────────────────────
 async function generateAIResponse(review, listing, settings) {
   const apiKey = functions.config().anthropic.api_key;
@@ -594,14 +584,12 @@ Write ONLY the response. No quotes, no labels.`;
 
 // ─────────────────────────────────────────────────────────────
 // 2D. POLL REVIEWS — runs every 30 minutes
-// Only processes vendors who are BOTH connected AND premium
 // ─────────────────────────────────────────────────────────────
 exports.pollReviews = functions.pubsub
   .schedule("every 30 minutes")
   .onRun(async () => {
     console.log("pollReviews: starting");
 
-    // Get all connected GBP vendors
     const connectionsSnap = await db.collection("gbp_connections")
       .where("connected", "==", true).get();
 
@@ -615,23 +603,19 @@ exports.pollReviews = functions.pubsub
       const connectionData = connDoc.data();
 
       try {
-        // ── PREMIUM GATE: only process premium vendors ──
         const premiumDoc = await db.collection("premium_vendors").doc(vendorId).get();
         if (!premiumDoc.exists || !premiumDoc.data().isPremium) {
           console.log(`Skipping vendor ${vendorId} — not premium`);
           return;
         }
 
-        // Get vendor listing for context
         const vendorSnap = await db.collection("vendors")
           .where("ownerId", "==", vendorId).limit(1).get();
         const listing = vendorSnap.docs[0]?.data() || {};
         const settings = connectionData.responseSettings || {};
 
-        // Get valid token
         const accessToken = await getValidToken(vendorId, connectionData);
 
-        // Fetch reviews from Google
         const reviewsRes = await axios.get(
           `https://mybusiness.googleapis.com/v4/${connectionData.locationId}/reviews`,
           { headers: { Authorization: `Bearer ${accessToken}` }, params: { pageSize: 50 } }
@@ -644,15 +628,12 @@ exports.pollReviews = functions.pubsub
           const reviewId = review.reviewId;
           const starRating = { ONE: 1, TWO: 2, THREE: 3, FOUR: 4, FIVE: 5 }[review.starRating] || 3;
 
-          // Skip if already responded in Firestore
           const existingDoc = await db.collection("review_responses")
             .doc(`${vendorId}_${reviewId}`).get();
           if (existingDoc.exists) continue;
 
-          // Skip if already has reply on Google
           if (review.reviewReply) continue;
 
-          // Skip per vendor settings
           if (settings[`replyTo${starRating}Star`] === false) continue;
 
           const reviewData = {
@@ -667,21 +648,17 @@ exports.pollReviews = functions.pubsub
             postedAt: null,
           };
 
-          // Save to Firestore
           await db.collection("review_responses")
             .doc(`${vendorId}_${reviewId}`).set(reviewData);
 
-          // Generate AI response
           const aiResponse = await generateAIResponse(reviewData, listing, settings);
 
-          // Post to Google
           await axios.put(
             `https://mybusiness.googleapis.com/v4/${connectionData.locationId}/reviews/${reviewId}/reply`,
             { comment: aiResponse },
             { headers: { Authorization: `Bearer ${accessToken}` } }
           );
 
-          // Update Firestore
           await db.collection("review_responses")
             .doc(`${vendorId}_${reviewId}`).update({
               aiResponse,
@@ -692,7 +669,6 @@ exports.pollReviews = functions.pubsub
           console.log(`✅ Posted response — vendor ${vendorId}, review ${reviewId}`);
         }
 
-        // Update last polled
         await db.collection("gbp_connections").doc(vendorId)
           .update({ lastPolled: admin.firestore.FieldValue.serverTimestamp() });
 
@@ -744,8 +720,7 @@ exports.triggerPollForVendor = functions.https.onCall(async (data, context) => {
 });
 
 // ═══════════════════════════════════════════════════════════════
-//  SECTION 3 — WEEKLY DIGESTS (see digestFunctions.js for full notes
-//  on what's computed vs. what still needs a delivery channel wired up)
+//  SECTION 3 — WEEKLY DIGESTS
 // ═══════════════════════════════════════════════════════════════
 
 const EARTH_RADIUS_KM = 6371;
@@ -761,18 +736,6 @@ function haversineKm(a, b) {
 const DIGEST_RADIUS_KM = 5;
 const NEW_LISTING_DAYS = 7;
 
-// ─────────────────────────────────────────────────────────────
-// CUSTOMER WEEKLY DIGEST — runs every Monday 9am
-//
-// Scope note: there's currently no persisted "home location" per user —
-// location is just browser geolocation, used live each session, never
-// saved. So this digest is built around each user's FAVORITED vendors'
-// locations instead (the centroid of where they've already shown
-// interest), which needs zero new fields since it reuses the favorites
-// feature. Users with no favorites yet are skipped — there's nothing
-// to build "nearby" from for them until they favorite at least one
-// vendor, or until a persisted home-location field is added later.
-// ─────────────────────────────────────────────────────────────
 exports.weeklyCustomerDigest = functions.pubsub
   .schedule("every monday 09:00")
   .timeZone("Asia/Kolkata")
@@ -799,7 +762,7 @@ exports.weeklyCustomerDigest = functions.pubsub
     for (const userDoc of usersSnap.docs) {
       const uid = userDoc.id;
       const favSnap = await db.collection("users").doc(uid).collection("favorites").get();
-      if (favSnap.empty) continue; // nothing to base "nearby" on yet — see note above
+      if (favSnap.empty) continue;
 
       const favIds = new Set(favSnap.docs.map((d) => d.id));
       const favVendors = vendors.filter((v) => favIds.has(v.id) && typeof v.lat === "number" && typeof v.lng === "number");
@@ -817,7 +780,7 @@ exports.weeklyCustomerDigest = functions.pubsub
         (v) => typeof v.lat === "number" && typeof v.lng === "number" && haversineKm(centroid, v) <= DIGEST_RADIUS_KM
       );
 
-      if (nearbyNew.length === 0 && nearbyOffers.length === 0) continue; // nothing worth telling them this week
+      if (nearbyNew.length === 0 && nearbyOffers.length === 0) continue;
 
       await db.collection("digests").doc(uid).set({
         weekOf: admin.firestore.FieldValue.serverTimestamp(),
@@ -832,13 +795,6 @@ exports.weeklyCustomerDigest = functions.pubsub
     return null;
   });
 
-// ─────────────────────────────────────────────────────────────
-// VENDOR WEEKLY PERFORMANCE DIGEST — runs every Monday 9am
-//
-// Compares this week's interaction counters against the same counters
-// recorded exactly 7 days ago (stored as a snapshot), so the number
-// shown is "views this week" rather than a confusing lifetime total.
-// ─────────────────────────────────────────────────────────────
 exports.weeklyVendorDigest = functions.pubsub
   .schedule("every monday 09:00")
   .timeZone("Asia/Kolkata")
@@ -871,10 +827,9 @@ exports.weeklyVendorDigest = functions.pubsub
         directions: Math.max(0, current.directionsCount - (prev.directionsCount || 0)),
       };
 
-      // Save this week's totals as the new baseline for next week's comparison
       await snapshotRef.set(current);
 
-      if (delta.views + delta.calls + delta.whatsapp + delta.directions === 0) continue; // nothing happened, skip the digest
+      if (delta.views + delta.calls + delta.whatsapp + delta.directions === 0) continue;
 
       await db.collection("vendor_digests").doc(vendorId).set({
         weekOf: admin.firestore.FieldValue.serverTimestamp(),
@@ -891,24 +846,10 @@ exports.weeklyVendorDigest = functions.pubsub
 
 // ═══════════════════════════════════════════════════════════════
 //  SECTION 4 — VENDOR BOOST (GBP health score + checklist)
-//
-//  PASTE THIS DIRECTLY INTO functions/index.js, after Section 3.
-//  This is NOT a separate deployed function file — delete this
-//  boost/index.js from your project once you've pasted its contents
-//  into the root index.js. It reuses db, admin, functions, axios,
-//  and getValidToken() which are already defined there.
-//
-//  Keep functions/boost/scoreProfile.js exactly where it is — the
-//  require path below is already correct relative to the root index.js.
 // ═══════════════════════════════════════════════════════════════
 
 const { scoreProfile, mapGbpResponse } = require("./boost/scoreProfile");
 
-// ─────────────────────────────────────────────────────────────
-// 4A. FETCH GBP PROFILE DATA (location info, posts, questions)
-// Reviews you already fetch in pollReviews — this adds the extra
-// reads Boost needs. Same v1 Business Profile APIs, same access token.
-// ─────────────────────────────────────────────────────────────
 async function fetchBoostData(accessToken, connectionData) {
   const { locationId } = connectionData;
 
@@ -928,7 +869,7 @@ async function fetchBoostData(accessToken, connectionData) {
       .get(`https://mybusiness.googleapis.com/v4/${locationId}/localPosts`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       })
-      .catch(() => ({ data: { localPosts: [] } })), // localPosts API is flaky/deprecated on some accounts — don't fail the whole scan
+      .catch(() => ({ data: { localPosts: [] } })),
     axios
       .get(`https://mybusinessqanda.googleapis.com/v1/${locationId}/questions`, {
         headers: { Authorization: `Bearer ${accessToken}` },
@@ -936,8 +877,6 @@ async function fetchBoostData(accessToken, connectionData) {
       .catch(() => ({ data: { questions: [] } })),
   ]);
 
-  // Photos live under a separate media endpoint in v1 — fetch
-  // separately since it 404s on locations with none instead of returning [].
   let mediaItems = [];
   try {
     const mediaRes = await axios.get(
@@ -957,11 +896,6 @@ async function fetchBoostData(accessToken, connectionData) {
   };
 }
 
-// ─────────────────────────────────────────────────────────────
-// 4B. TRANSLATE CHECKLIST INTO VENDOR-FACING COPY
-// Same axios + Claude pattern as generateAIResponse() above —
-// reuses functions.config().anthropic.api_key, no new secret.
-// ─────────────────────────────────────────────────────────────
 async function writeVendorFacingCopy(checklist, vendorName) {
   if (checklist.length === 0) return [];
 
@@ -993,11 +927,6 @@ ${checklist.map((i) => `- ${i.key}: ${i.label} (impact: ${Math.round(i.max - i.p
   }
 }
 
-// ─────────────────────────────────────────────────────────────
-// 4C. RUN BOOST SCAN — callable, same auth pattern as your other
-// onCall functions. Gated on premium_vendors.isPremium for now —
-// see note below on splitting this into its own add-on billing tier.
-// ─────────────────────────────────────────────────────────────
 exports.runBoostScan = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError("unauthenticated", "Login required");
@@ -1015,11 +944,6 @@ exports.runBoostScan = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError("failed-precondition", "GBP not connected");
   }
 
-  // NOTE: reusing the same isPremium flag as the review responder for
-  // now. If you go with a separate Boost add-on price (₹299–499/mo on
-  // top of the ₹499 tier, per our earlier discussion), swap this check
-  // for a distinct field, e.g. premiumDoc.data().boostActive, and add a
-  // second Razorpay plan the same way createSubscription() does above.
   if (!premiumDoc.exists || !premiumDoc.data().isPremium) {
     throw new functions.https.HttpsError("failed-precondition", "Premium subscription required");
   }
@@ -1054,6 +978,7 @@ exports.runBoostScan = functions.https.onCall(async (data, context) => {
 
   return { ...result, scannedAt: new Date().toISOString() };
 });
+
 // Sales agent commission triggers + agent account management
 Object.assign(exports, require("./agentCommissions"));
 Object.assign(exports, require("./websiteBuildPayments"));
