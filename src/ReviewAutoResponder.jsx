@@ -112,7 +112,7 @@ export default function ReviewAutoResponder({ listing }) {
         response_type: "code",
         scope: [
           "https://www.googleapis.com/auth/business.manage",
-          "https://www.googleapis.com/auth/plus.business.manage"
+         
         ].join(" "),
         access_type: "offline",
         prompt: "consent",
