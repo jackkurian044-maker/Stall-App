@@ -507,8 +507,7 @@ exports.oauthCallback = functions.https.onRequest(async (req, res) => {
     }, { merge: true });
 
     // Redirect back to app
-    const appUrl = cfg.redirect_uri.replace("/oauthCallback", "");
-    res.redirect(`${appUrl}?gbp=connected`);
+   res.redirect(`https://stallapp.cutncutestudio.in/premium?gbp=connected`);
 
   } catch (err) {
     console.error("OAuth callback error:", err.response?.data || err.message);
