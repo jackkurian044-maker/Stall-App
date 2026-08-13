@@ -20,7 +20,19 @@ service cloud.firestore {
       allow read: if true;
 
       allow create: if request.auth != null && (
-        request.resource.data.ownerId == request.auth.uid ||
+        (
+          request.resource.data.ownerId == request.auth.uid &&
+          // addedByAgentId may only be the creator's own uid (the normal
+          // "an agent added this store" case) or left unset/null — never a
+          // third party's uid. Without this, anyone could name an arbitrary
+          // agent as the referrer on their own listing and redirect that
+          // agent's future commission payout onto a sale they never made.
+          (
+            !('addedByAgentId' in request.resource.data) ||
+            request.resource.data.addedByAgentId == null ||
+            request.resource.data.addedByAgentId == request.auth.uid
+          )
+        ) ||
         (isAdmin() && request.resource.data.ownerId == null)
       ) || (
         // Public self-registration from register.html — no auth required,
@@ -42,20 +54,35 @@ service cloud.firestore {
       );
 
       allow update: if request.auth != null && (
-        resource.data.ownerId == request.auth.uid ||
         isAdmin() ||
         (
-          resource.data.ownerId == null &&
-          request.resource.data.ownerId == request.auth.uid &&
-          request.resource.data.claimCode == resource.data.claimCode &&
-          // If this listing came with an ownerEmail (i.e. it was
-          // self-registered via register.html), only the matching Gmail/
-          // email account may claim it — not just anyone with the code.
-          // Listings without an ownerEmail (e.g. admin-added) skip this
-          // check, since there's nothing on file to match against.
+          // Locked fields: an owner (or someone claiming a listing) can
+          // change anything about their own listing except these four.
+          // addedByAgentId decides who gets paid a commission when this
+          // vendor goes Premium — owner-writable, it would let anyone
+          // redirect a real payout to any agent they choose after the
+          // fact. isPremium/rating/ratingsCount each already have their
+          // own narrowly-scoped write paths (the premium_vendors
+          // collection, and the rating-sync branch below) and must never
+          // be set directly by the owner.
+          !request.resource.data.diff(resource.data).affectedKeys()
+            .hasAny(['addedByAgentId', 'isPremium', 'rating', 'ratingsCount']) &&
           (
-            !('ownerEmail' in resource.data) ||
-            request.auth.token.email.lower() == resource.data.ownerEmail.lower()
+            resource.data.ownerId == request.auth.uid ||
+            (
+              resource.data.ownerId == null &&
+              request.resource.data.ownerId == request.auth.uid &&
+              request.resource.data.claimCode == resource.data.claimCode &&
+              // If this listing came with an ownerEmail (i.e. it was
+              // self-registered via register.html), only the matching Gmail/
+              // email account may claim it — not just anyone with the code.
+              // Listings without an ownerEmail (e.g. admin-added) skip this
+              // check, since there's nothing on file to match against.
+              (
+                !('ownerEmail' in resource.data) ||
+                request.auth.token.email.lower() == resource.data.ownerEmail.lower()
+              )
+            )
           )
         )
       ) || (

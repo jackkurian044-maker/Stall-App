@@ -298,7 +298,6 @@ exports.razorpayWebhook = functions.https.onRequest(async (req, res) => {
 
         const vendorId = snap.docs[0].id;
         const existingData = snap.docs[0].data();
-        const isFirstCharge = !(existingData.payments && existingData.payments.length > 0);
 
         const nextBilling = new Date();
         nextBilling.setDate(nextBilling.getDate() + (existingData.billingCycle === "annual" ? 365 : 30));
@@ -316,43 +315,12 @@ exports.razorpayWebhook = functions.https.onRequest(async (req, res) => {
         });
         console.log(`✅ Subscription renewed for vendor ${vendorId}`);
 
-        if (isFirstCharge) {
-          try {
-            const vendorListingSnap = await db.collection("vendors")
-              .where("ownerId", "==", vendorId).limit(1).get();
-            if (!vendorListingSnap.empty) {
-              const vendorDoc = vendorListingSnap.docs[0];
-              const vendorData = vendorDoc.data();
-              if (vendorData.addedByAgentId) {
-                const existingCommission = await db.collection("commissions")
-                  .where("vendorId", "==", vendorDoc.id).limit(1).get();
-                if (existingCommission.empty) {
-<<<<<<< Updated upstream
-                  const amountPaise = payment?.amount || 49900;
-                  const commissionAmount = amountPaise > 100000 ? 500 : 100;
-=======
-                  // Keyed off billing cycle rather than the raw payment
-                  // amount — that number is in paise for INR plans but
-                  // fils for AED plans, so comparing it against a flat
-                  // threshold would misclassify UAE annual plans.
-                  const commissionAmount = existingData.billingCycle === "annual" ? 500 : 100;
->>>>>>> Stashed changes
-                  await db.collection("commissions").add({
-                    agentId: vendorData.addedByAgentId,
-                    vendorId: vendorDoc.id,
-                    vendorName: vendorData.name || "",
-                    amount: commissionAmount,
-                    status: "pending",
-                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
-                  });
-                  console.log(`💰 Commission created for agent ${vendorData.addedByAgentId} — ₹${commissionAmount}`);
-                }
-              }
-            }
-          } catch (commErr) {
-            console.error("Commission creation error:", commErr);
-          }
-        }
+        // Agent commissions are granted exclusively by onPremiumStatusChanged
+        // (functions/agentCommissions.js), a Firestore trigger on
+        // premium_vendors/{vendorUid} — the update() above fires it. Do not
+        // duplicate commission-creation logic here: two independent code
+        // paths writing commissions for the same event is how you end up
+        // with divergent payout amounts or double-created commissions.
         break;
       }
 
