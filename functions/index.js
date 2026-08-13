@@ -533,7 +533,7 @@ exports.oauthCallback = functions.https.onRequest(async (req, res) => {
     }, { merge: true });
 
     // Redirect back to app
-    res.redirect(`https://stallapp.cutncutestudio.in/premium?gbp=connected`);
+    res.redirect(`https://stallapp.cutncutestudio.in/?gbp=connected`);
 
   } catch (err) {
     console.error("OAuth callback error:", err.response?.data || err.message);
