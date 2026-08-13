@@ -893,18 +893,30 @@ const { scoreProfile, mapGbpResponse } = require("./boost/scoreProfile");
 async function fetchBoostData(accessToken, connectionData) {
   const { locationId } = connectionData;
 
+  // mybusiness.googleapis.com/v4 is the legacy "Google My Business API".
+  // Google has locked review read/reply access behind a separate approval
+  // process for most projects now, so this 404s for accounts that haven't
+  // been granted that access — same as posts/questions below, this needs
+  // to degrade gracefully rather than take the whole scan down with it.
   const [locationRes, reviewsRes, postsRes, questionsRes] = await Promise.all([
-    axios.get(
-      `https://mybusinessbusinessinformation.googleapis.com/v1/${locationId}`,
-      {
+    axios
+      .get(`https://mybusinessbusinessinformation.googleapis.com/v1/${locationId}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
         params: { readMask: "categories,profile,regularHours" },
-      }
-    ),
-    axios.get(
-      `https://mybusiness.googleapis.com/v4/${locationId}/reviews`,
-      { headers: { Authorization: `Bearer ${accessToken}` }, params: { pageSize: 50 } }
-    ),
+      })
+      .catch((err) => {
+        console.error("Boost: location fetch failed", err.response?.status, err.response?.data || err.message);
+        return { data: {} };
+      }),
+    axios
+      .get(`https://mybusiness.googleapis.com/v4/${locationId}/reviews`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        params: { pageSize: 50 },
+      })
+      .catch((err) => {
+        console.error("Boost: reviews fetch failed", err.response?.status, err.response?.data || err.message);
+        return { data: { reviews: [] } };
+      }),
     axios
       .get(`https://mybusiness.googleapis.com/v4/${locationId}/localPosts`, {
         headers: { Authorization: `Bearer ${accessToken}` },
@@ -996,23 +1008,36 @@ exports.runBoostScan = functions.https.onCall(async (data, context) => {
   const listing = vendorDoc.data();
   const connectionData = connDoc.data();
 
-  const accessToken = await getValidToken(vendorId, connectionData);
-  const { locationData, reviews, posts, questions } = await fetchBoostData(accessToken, connectionData);
+  let result;
+  try {
+    const accessToken = await getValidToken(vendorId, connectionData);
+    const { locationData, reviews, posts, questions } = await fetchBoostData(accessToken, connectionData);
 
-  const profile = mapGbpResponse({ locationData, reviews, posts, questions });
+    const profile = mapGbpResponse({ locationData, reviews, posts, questions });
 
-  const { score, band, checklist } = scoreProfile(profile);
-  const vendorCopy = await writeVendorFacingCopy(checklist, listing.name);
+    const { score, band, checklist } = scoreProfile(profile);
+    const vendorCopy = await writeVendorFacingCopy(checklist, listing.name);
 
-  const result = {
-    score,
-    band,
-    checklist: checklist.map((item) => ({
-      ...item,
-      ...(vendorCopy.find((c) => c.key === item.key) || {}),
-    })),
-    scannedAt: admin.firestore.FieldValue.serverTimestamp(),
-  };
+    result = {
+      score,
+      band,
+      checklist: checklist.map((item) => ({
+        ...item,
+        ...(vendorCopy.find((c) => c.key === item.key) || {}),
+      })),
+      scannedAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+  } catch (err) {
+    console.error("runBoostScan failed:", err.response?.status, err.response?.data || err.message);
+    // NOTE: code must NOT be "internal" — the callable client SDK masks
+    // the custom message for that specific code and shows a bare
+    // "INTERNAL" to the user regardless of what's set here. "unavailable"
+    // (or anything else) passes the message through correctly.
+    throw new functions.https.HttpsError(
+      "unavailable",
+      "Couldn't complete the scan. Please try again in a moment."
+    );
+  }
 
   await vendorDoc.ref.collection("boost").doc("latest").set(result);
 
