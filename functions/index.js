@@ -506,9 +506,16 @@ exports.oauthCallback = functions.https.onRequest(async (req, res) => {
     const account = accountsRes.data.accounts?.[0];
     if (!account) return res.status(400).send("No GBP account found");
 
+    // NOTE: Business Information API's locations.list REQUIRES a readMask
+    // query param on every request — omitting it makes Google reject the
+    // whole call with 400 INVALID_ARGUMENT ("Request contains an invalid
+    // argument"), which is what was showing up in the logs.
     const locationsRes = await axios.get(
       `https://mybusinessbusinessinformation.googleapis.com/v1/${account.name}/locations`,
-      { headers: { Authorization: `Bearer ${access_token}` } }
+      {
+        headers: { Authorization: `Bearer ${access_token}` },
+        params: { readMask: "name,title,storefrontAddress,phoneNumbers,websiteUri" },
+      }
     );
 
     const location = locationsRes.data.locations?.[0];
