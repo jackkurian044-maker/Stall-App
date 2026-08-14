@@ -9,13 +9,14 @@ import { CATEGORIES, COLORS } from "./constants";
 import LocationSearch from "./LocationSearch";
 import ImageUpload from "./ImageUpload";
 import { autoRefreshStale, isRatingStale } from "./ratingSync";
-import { uid, toDateInputValue, regionFromLatLng } from "./geo";
+import { uid, toDateInputValue } from "./geo";
 import PremiumGate from "./PremiumGate";
 import ReviewAutoResponder from "./ReviewAutoResponder";
 import BoostTab from "./BoostTab";
 import { findDuplicateVendor } from "./duplicateCheck";
 import QuickOfferModal from "./QuickOfferModal";
 import { payWebsiteBuildFee } from "./websiteBuildCheckout";
+import { encodeGeohash } from "./geohash";
 
 const emptyForm = {
   name: "", category: CATEGORIES[0], description: "", products: "",
@@ -53,6 +54,7 @@ export default function VendorDashboard({ user, agent }) {
     updateDoc(doc(db, "vendor_digests", vendorId), { read: true });
     setVendorDigests((prev) => ({ ...prev, [vendorId]: null }));
   };
+
   const refreshedRef = useRef(new Set());
 
   useEffect(() => {
@@ -72,6 +74,7 @@ export default function VendorDashboard({ user, agent }) {
     width: "100%", padding: "9px 10px", borderRadius: 7,
     border: `1.5px solid ${COLORS.ink}`, fontSize: 13, background: "#fff", boxSizing: "border-box",
   };
+
   const field = (label, node) => (
     <div style={{ marginBottom: 12 }}>
       <label style={{ display: "block", fontSize: 11, textTransform: "uppercase", fontWeight: 700, marginBottom: 5 }}>{label}</label>
@@ -99,7 +102,6 @@ export default function VendorDashboard({ user, agent }) {
     const lng = parseFloat(form.lng);
     if (!form.name.trim()) return setError("Name is required.");
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) return setError("Please select an address from the suggestions dropdown (or switch to \"enter manually\" and type coordinates).");
-
     setSaving(true);
     try {
       if (!editingId) {
@@ -114,7 +116,16 @@ export default function VendorDashboard({ user, agent }) {
       const payload = {
         name: form.name.trim(), category: form.category, description: form.description.trim(),
         products: form.products.trim(), address: form.address.trim(), phone: form.phone.trim(),
-        lat, lng, website: form.website || null, mapsUrl: form.mapsUrl || null, placeId: form.placeId || null,
+        lat, lng,
+        // Powers the geohash-bounded proximity queries in FindView.jsx —
+        // without this field, this listing would be invisible to the
+        // "nearby vendors" search regardless of how close it actually is,
+        // since Firestore range queries silently exclude documents
+        // missing the queried field. Recomputed on every save (not just
+        // creation), since editing a listing's address changes its
+        // coordinates and the geohash needs to track that.
+        geohash: encodeGeohash(lat, lng, 9),
+        website: form.website || null, mapsUrl: form.mapsUrl || null, placeId: form.placeId || null,
         rating: form.rating ?? null, ratingsCount: form.ratingsCount ?? null,
         hours: form.hours.trim(), photos: form.photos || [], preferredLink: form.preferredLink || null,
         offer: form.offer.trim(), offerExpiresAt: form.offerExpiresAt ? new Date(`${form.offerExpiresAt}T23:59:59`) : null,
@@ -457,40 +468,26 @@ export default function VendorDashboard({ user, agent }) {
               <div style={{ fontSize: 12, color: "#666", marginBottom: 14 }}>
                 A one-time fee — no recurring charge, separate from your Premium subscription above.
               </div>
-              {(() => {
-                // Priced off this vendor's own listing location — same
-                // region the backend independently re-derives when the
-                // order is actually created, so the buttons shown here
-                // and the amount actually charged always agree.
-                const region = regionFromLatLng(listings[0]?.lat, listings[0]?.lng);
-                const basicTier = `${region}_basic`;
-                const advancedTier = `${region}_advanced`;
-                const basicLabel = region === "ae" ? "Basic — AED 399" : "Basic — ₹2,999";
-                const advancedLabel = region === "ae" ? "Advanced — AED 999" : "Advanced — ₹7,999";
-                return (
-                  <div style={{ display: "flex", gap: 10 }}>
-                    <button
-                      disabled={buildLoading === basicTier}
-                      onClick={() => handleBuildPayment(basicTier)}
-                      className="stall-btn"
-                      style={{ flex: 1, background: COLORS.ink, color: "#fff", border: "none", borderRadius: 7, padding: "10px", fontSize: 13, fontWeight: 700 }}
-                    >
-                      {buildLoading === basicTier ? "Processing…" : basicLabel}
-                    </button>
-                    <button
-                      disabled={buildLoading === advancedTier}
-                      onClick={() => handleBuildPayment(advancedTier)}
-                      className="stall-btn"
-                      style={{ flex: 1, background: COLORS.ink, color: "#fff", border: "none", borderRadius: 7, padding: "10px", fontSize: 13, fontWeight: 700 }}
-                    >
-                      {buildLoading === advancedTier ? "Processing…" : advancedLabel}
-                    </button>
-                  </div>
-                );
-              })()}
+              <div style={{ display: "flex", gap: 10 }}>
+                <button
+                  disabled={buildLoading === "in_basic"}
+                  onClick={() => handleBuildPayment("in_basic")}
+                  className="stall-btn"
+                  style={{ flex: 1, background: COLORS.ink, color: "#fff", border: "none", borderRadius: 7, padding: "10px", fontSize: 13, fontWeight: 700 }}
+                >
+                  {buildLoading === "in_basic" ? "Processing…" : "Basic — ₹2,999"}
+                </button>
+                <button
+                  disabled={buildLoading === "in_advanced"}
+                  onClick={() => handleBuildPayment("in_advanced")}
+                  className="stall-btn"
+                  style={{ flex: 1, background: COLORS.ink, color: "#fff", border: "none", borderRadius: 7, padding: "10px", fontSize: 13, fontWeight: 700 }}
+                >
+                  {buildLoading === "in_advanced" ? "Processing…" : "Advanced — ₹7,999"}
+                </button>
+              </div>
             </div>
           </div>
-      
         )}
       </div>
 
