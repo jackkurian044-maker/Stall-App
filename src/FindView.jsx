@@ -1,10 +1,20 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { collection, query, where, getDocs, doc, onSnapshot, updateDoc } from "firebase/firestore";
+import {
+  collection,
+  query,
+  orderBy,
+  startAt,
+  endAt,
+  getDocs,
+  doc,
+  updateDoc,
+  onSnapshot,
+} from "firebase/firestore";
+import { geohashQueryBounds, distanceBetween } from "geofire-common";
 import { MapPin, Search, Locate, ChevronLeft, ChevronRight } from "lucide-react";
 import { db } from "./firebase";
 import { CATEGORIES, COLORS, DEFAULT_LOC } from "./constants";
-import { haversineKm, bearingRad } from "./geo";
-import { getGeohashQueryBounds } from "./geohash";
+import { bearingRad } from "./geo";
 import { autoRefreshStale } from "./ratingSync";
 import VendorTicket from "./VendorTicket";
 import RadarChart from "./RadarChart";
@@ -13,11 +23,42 @@ import { watchFavorites, toggleFavorite } from "./favorites";
 
 const PAGE_SIZE = 10;
 
-// Debounce window for re-querying as the radius slider moves. Without
-// this, dragging the slider would fire a fresh set of Firestore queries
-// on every pixel of movement — the debounce collapses that into one
-// query shortly after the user stops adjusting it.
-const RADIUS_QUERY_DEBOUNCE_MS = 400;
+// Debounce how fast the radius slider re-triggers Firestore queries — the
+// slider fires onChange continuously while dragging, and we don't want a
+// query per pixel of drag.
+const RADIUS_QUERY_DEBOUNCE_MS = 350;
+
+/**
+ * Runs a geohash bounding-box search against `vendors` for everything
+ * within `radiusKm` of `center`, and returns only the docs that are
+ * genuinely inside that radius (bounding-box ranges return a superset —
+ * geohash boxes are roughly square, radius search is circular — so we
+ * filter precisely by haversine distance client-side afterward, but only
+ * across the small set the box query returned, not the whole collection).
+ */
+async function fetchVendorsNear(center, radiusKm) {
+  const radiusM = radiusKm * 1000;
+  const bounds = geohashQueryBounds([center.lat, center.lng], radiusM);
+
+  const snaps = await Promise.all(
+    bounds.map(([start, end]) =>
+      getDocs(query(collection(db, "vendors"), orderBy("geohash"), startAt(start), endAt(end)))
+    )
+  );
+
+  const byId = new Map();
+  for (const snap of snaps) {
+    for (const d of snap.docs) {
+      const data = { id: d.id, ...d.data() };
+      if (typeof data.lat !== "number" || typeof data.lng !== "number") continue;
+      const distanceKm = distanceBetween([data.lat, data.lng], [center.lat, center.lng]);
+      if (distanceKm * 1000 <= radiusM) {
+        byId.set(d.id, { ...data, distance: distanceKm });
+      }
+    }
+  }
+  return Array.from(byId.values());
+}
 
 export default function FindView({ user, isAdmin, onRequestSignIn }) {
   const [vendors, setVendors] = useState([]);
@@ -39,7 +80,8 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
   const [cityFilter, setCityFilter] = useState("");
   const refreshedRef = useRef(new Set());
   const locFromUrlRef = useRef(false);
-  const fetchTokenRef = useRef(0); // guards against a slow, stale fetch overwriting a newer one
+  const debounceRef = useRef(null);
+  const requestIdRef = useRef(0);
 
   useEffect(() => {
     if (!user) {
@@ -82,7 +124,6 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
     const approx = params.get("approx") === "1";
     const lat = parseFloat(params.get("lat"));
     const lng = parseFloat(params.get("lng"));
-
     if (q) setQuery(q);
     if (Number.isFinite(lat) && Number.isFinite(lng)) {
       setUserLoc({ lat, lng });
@@ -90,7 +131,6 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
       if (approx) setRadiusKm(25);
     }
     if (city) setCityFilter(city);
-
     if (q || city || approx || (params.has("lat") && params.has("lng"))) {
       params.delete("q");
       params.delete("city");
@@ -102,24 +142,10 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
     }
   }, []);
 
-  // ─────────────────────────────────────────────────────────────
-  // THE ACTUAL FIX: only fetch vendors within the search radius,
-  // using geohash range queries, instead of the entire collection.
-  //
-  // Previously this ran once on mount with onSnapshot(collection(db,
-  // "vendors")) — every visitor downloaded every vendor everywhere,
-  // just to filter down to a handful nearby. At real scale (multiple
-  // countries, large vendor counts) that's unbounded cost per page
-  // load and would eventually crash the browser tab outright.
-  //
-  // This re-queries whenever userLoc or radiusKm changes (debounced
-  // for the slider). It's NOT a live onSnapshot per cell — holding up
-  // to 9 concurrent real-time listeners open per session, re-subscribing
-  // constantly as the radius slider moves, would trade one cost problem
-  // for another. A short-lived one-time query per meaningful change is
-  // both simpler and cheaper; local vendor listings don't need
-  // sub-second live updates the way, say, a chat feed would.
-  // ─────────────────────────────────────────────────────────────
+  // THE ACTUAL FIX: query only vendors within radiusKm of userLoc via
+  // geohash bounding-box ranges, instead of pulling the entire `vendors`
+  // collection and filtering client-side. Re-runs (debounced) whenever
+  // userLoc or radiusKm changes.
   useEffect(() => {
     if (!userLoc) {
       setVendors([]);
@@ -128,39 +154,25 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
     }
 
     setLoading(true);
-    const myToken = ++fetchTokenRef.current;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
 
-    const timer = setTimeout(async () => {
+    debounceRef.current = setTimeout(async () => {
+      const myRequestId = ++requestIdRef.current;
       try {
-        const bounds = getGeohashQueryBounds(userLoc.lat, userLoc.lng, radiusKm);
-        const snapshots = await Promise.all(
-          bounds.map(([start, end]) =>
-            getDocs(query(collection(db, "vendors"), where("geohash", ">=", start), where("geohash", "<=", end)))
-          )
-        );
-
-        // A vendor's geohash falls in exactly one cell by construction,
-        // but dedupe defensively by id anyway in case of edge cases.
-        const merged = new Map();
-        for (const snap of snapshots) {
-          for (const d of snap.docs) {
-            merged.set(d.id, { id: d.id, ...d.data() });
-          }
+        const found = await fetchVendorsNear(userLoc, radiusKm);
+        // Guard against a slower earlier request resolving after a newer
+        // one (e.g. rapid radius changes) and clobbering fresher results.
+        if (myRequestId === requestIdRef.current) {
+          setVendors(found);
+          setLoading(false);
         }
-
-        // If a newer fetch has started since this one began (userLoc or
-        // radiusKm changed again while we were querying), drop this
-        // result rather than overwriting fresher data with stale data.
-        if (myToken !== fetchTokenRef.current) return;
-
-        setVendors([...merged.values()]);
-        setLoading(false);
-      } catch {
-        if (myToken === fetchTokenRef.current) setLoading(false);
+      } catch (err) {
+        console.error("Vendor search failed:", err);
+        if (myRequestId === requestIdRef.current) setLoading(false);
       }
     }, RADIUS_QUERY_DEBOUNCE_MS);
 
-    return () => clearTimeout(timer);
+    return () => clearTimeout(debounceRef.current);
   }, [userLoc, radiusKm]);
 
   // Keep Google-sourced ratings/phone fresh with zero manual clicks —
@@ -221,17 +233,12 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
     }
   };
 
+  // `vendors` is now already scoped to radiusKm by the query above, so this
+  // is just category/text/favorites filtering + sort over a small, already
+  // radius-bounded set — not a distance filter over the whole collection.
   const results = useMemo(() => {
     if (!userLoc) return [];
     return vendors
-      .map((v) => ({ ...v, distance: haversineKm(userLoc, { lat: v.lat, lng: v.lng }) }))
-      // Still needed even after the geohash query: a geohash cell is a
-      // coarse square, not a precise circle, so this exact-distance
-      // filter is what actually enforces the radius boundary. The
-      // difference from before is that this now runs on a small,
-      // pre-filtered set (typically tens of vendors) instead of every
-      // vendor in the database.
-      .filter((v) => v.distance <= radiusKm)
       .filter((v) => categoryFilter === "All" || v.category === categoryFilter)
       .filter((v) => !showFavoritesOnly || favoriteIds.has(v.id))
       .filter((v) => {
@@ -249,7 +256,7 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
         if (br !== ar) return br - ar; // higher rating first; unrated (-1) sinks to the bottom
         return a.distance - b.distance; // tie-break (including among unrated): closer first
       });
-  }, [vendors, userLoc, radiusKm, categoryFilter, query_, showFavoritesOnly, favoriteIds]);
+  }, [vendors, userLoc, categoryFilter, query_, showFavoritesOnly, favoriteIds]);
 
   const radarData = useMemo(() => {
     if (!userLoc) return [];
@@ -350,6 +357,7 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
             </div>
           )}
         </div>
+
         {userLoc && <RadarChart radarData={radarData} radiusKm={radiusKm} onSelect={setSelected} />}
       </div>
 
@@ -410,7 +418,7 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
             text={
               showFavoritesOnly
                 ? "No favorites in range yet — tap the heart on a listing to save it here."
-                : vendors.length === 0 ? "Nothing in range — try widening your search radius." : "Nothing in range — try widening your search radius."
+                : vendors.length === 0 ? "No vendors listed yet." : "Nothing in range — try widening your search radius."
             }
           />
         ) : (
@@ -433,6 +441,7 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
                 />
               ))}
             </div>
+
             {totalPages > 1 && (
               <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 6, marginTop: 20, flexWrap: "wrap" }}>
                 <button
