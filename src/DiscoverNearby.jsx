@@ -1,77 +1,133 @@
-import React, { useEffect, useRef, useState } from "react";
-import { writeBatch, doc, collection, serverTimestamp } from "firebase/firestore";
-import { Search, Loader2, MapPin } from "lucide-react";
+import React, { useState } from "react";
+import { collection, doc, writeBatch, serverTimestamp } from "firebase/firestore";
+import { MapPin, Locate, Search, Copy, Loader2 } from "lucide-react";
 import { db } from "./firebase";
-import { COLORS, CATEGORY_COLORS } from "./constants";
+import { CATEGORIES, CATEGORY_COLORS, COLORS, DEFAULT_LOC, CITIES } from "./constants";
+import { uid, haversineKm } from "./geo";
 import { loadGoogleMaps } from "./googleMaps";
 import { findExistingPlaceIds } from "./duplicateCheck";
-import { uid, haversineKm } from "./geo";
-import { encodeGeohash } from "./geohash";
+
+const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_PLACES_API_KEY;
+
+// Best-effort mapping from Google's place "types" to our own categories.
+// Admins can always override per-result before adding.
+const TYPE_CATEGORY_MAP = [
+  [["restaurant", "food", "bakery", "grocery_or_supermarket", "meal_takeaway", "meal_delivery", "cafe"], "Food & Produce"],
+  [["clothing_store", "shoe_store", "jewelry_store"], "Clothing & Accessories"],
+  [["hardware_store", "home_goods_store", "furniture_store"], "Home & Garden"],
+  [["electrician"], "Electricians"],
+  [["plumber"], "Plumbers"],
+  [["hair_care", "beauty_salon", "spa"], "Salons"],
+  [["car_repair"], "Mechanics"],
+  [["pharmacy", "drugstore"], "Pharmacies"],
+  [["school", "primary_school", "secondary_school"], "Tuition"],
+  [["laundry", "locksmith", "moving_company", "roofing_contractor", "general_contractor"], "Home Services"],
+  [["doctor", "dentist", "gym", "physiotherapist", "veterinary_care"], "Services"],
+  [["store"], "Crafts & Goods"],
+];
 
 function guessCategory(types = []) {
-  const map = {
-    bakery: "Food & Produce", cafe: "Food & Produce", restaurant: "Food & Produce",
-    grocery_or_supermarket: "Food & Produce", food: "Food & Produce",
-    clothing_store: "Clothing & Accessories", shoe_store: "Clothing & Accessories",
-    hardware_store: "Home & Garden", florist: "Home & Garden", home_goods_store: "Home & Garden",
-    book_store: "Crafts & Goods", jewelry_store: "Crafts & Goods", art_gallery: "Crafts & Goods",
-    hair_care: "Services", beauty_salon: "Services", laundry: "Services", electrician: "Services", plumber: "Services",
-  };
-  for (const t of types) if (map[t]) return map[t];
+  for (const [keys, category] of TYPE_CATEGORY_MAP) {
+    if (types.some((t) => keys.includes(t))) return category;
+  }
   return "Other";
 }
 
 export default function DiscoverNearby() {
-  const [query, setQuery] = useState("");
-  const [radiusKm, setRadiusKm] = useState(3);
-  const [results, setResults] = useState([]);
-  const [selected, setSelected] = useState({});
+  const [centerLoc, setCenterLoc] = useState(null);
+  const [centerCityName, setCenterCityName] = useState(null);
+  const [locating, setLocating] = useState(false);
+  const [manualLat, setManualLat] = useState("");
+  const [manualLng, setManualLng] = useState("");
+  const [radiusKm, setRadiusKm] = useState(2);
+  const [keyword, setKeyword] = useState("");
   const [searching, setSearching] = useState(false);
-  const [error, setError] = useState("");
+  const [searchError, setSearchError] = useState("");
+  const [results, setResults] = useState([]);
+  const [selected, setSelected] = useState({}); // placeId -> bool
   const [adding, setAdding] = useState(false);
-  const [addedCount, setAddedCount] = useState(0);
-  const [userLoc, setUserLoc] = useState(null);
-  const svcRef = useRef(null);
-  const mapDivRef = useRef(null);
+  const [importResults, setImportResults] = useState(null);
+  const [importError, setImportError] = useState("");
+  const [locateError, setLocateError] = useState("");
 
-  useEffect(() => {
-    if (!navigator.geolocation) return;
+  const pickCity = (city) => {
+    setCenterLoc({ lat: city.lat, lng: city.lng });
+    setCenterCityName(city.name);
+    setLocateError("");
+  };
+
+  const locate = () => {
+    setLocating(true);
+    setLocateError("");
+    setCenterCityName(null);
+    if (!navigator.geolocation) {
+      setLocateError("Your browser doesn't support location — pick a city or enter coordinates below instead.");
+      setCenterLoc(DEFAULT_LOC);
+      setLocating(false);
+      return;
+    }
     navigator.geolocation.getCurrentPosition(
-      (pos) => setUserLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      () => {}
+      (pos) => {
+        setCenterLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setLocating(false);
+      },
+      (err) => {
+        setLocating(false);
+        if (err.code === err.PERMISSION_DENIED) {
+          setLocateError("Location access was denied — pick a city above, or enter coordinates below.");
+        } else if (err.code === err.TIMEOUT) {
+          setLocateError("Location took too long to find — try again, pick a city, or enter coordinates below.");
+        } else {
+          setLocateError("Couldn't get your location — try again, pick a city, or enter coordinates below.");
+        }
+      },
+      { timeout: 12000, enableHighAccuracy: true, maximumAge: 0 }
     );
-  }, []);
+  };
 
-  const runSearch = (svc, request) =>
-    new Promise((resolve, reject) => {
+  const useManualLoc = () => {
+    const lat = parseFloat(manualLat);
+    const lng = parseFloat(manualLng);
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      setCenterLoc({ lat, lng });
+      setCenterCityName(null);
+    }
+  };
+
+  const runSearch = async (svc, request) => {
+    return new Promise((resolve) => {
       svc.nearbySearch(request, (res, status) => {
-        if (status === window.google.maps.places.PlacesServiceStatus.OK) resolve(res || []);
-        else if (status === window.google.maps.places.PlacesServiceStatus.ZERO_RESULTS) resolve([]);
-        else reject(new Error(status));
+        if (status === window.google.maps.places.PlacesServiceStatus.OK && res) {
+          resolve(res);
+        } else {
+          resolve([]);
+        }
       });
     });
+  };
 
   const search = async () => {
-    if (!userLoc) {
-      setError("Waiting for your location — allow location access and try again.");
+    if (!GOOGLE_API_KEY) {
+      setSearchError("Google Places API key isn't configured.");
+      return;
+    }
+    if (!centerLoc) {
+      setSearchError("Set a center point first (pick a city, use your location, or enter coordinates).");
       return;
     }
     setSearching(true);
-    setError("");
+    setSearchError("");
+    setResults([]);
     setSelected({});
+    setImportResults(null);
     try {
-      await loadGoogleMaps();
-      if (!mapDivRef.current) mapDivRef.current = document.createElement("div");
-      const map = new window.google.maps.Map(mapDivRef.current);
-      const svc = new window.google.maps.places.PlacesService(map);
-      svcRef.current = svc;
-
+      await loadGoogleMaps(GOOGLE_API_KEY);
+      const svc = new window.google.maps.places.PlacesService(document.createElement("div"));
       const request = {
-        location: new window.google.maps.LatLng(userLoc.lat, userLoc.lng),
-        radius: radiusKm * 1000,
-        keyword: query.trim() || undefined,
+        location: new window.google.maps.LatLng(centerLoc.lat, centerLoc.lng),
+        radius: Math.round(radiusKm * 1000),
+        keyword: keyword.trim() || undefined,
       };
-
       const res = await runSearch(svc, request);
       const existingPlaceIds = await findExistingPlaceIds(db, res.map((p) => p.place_id));
       const mapped = res.map((p) => ({
@@ -87,8 +143,8 @@ export default function DiscoverNearby() {
         alreadyListed: existingPlaceIds.has(p.place_id),
       }));
       setResults(mapped);
-    } catch (err) {
-      setError("Search failed — try again in a moment.");
+    } catch {
+      setSearchError("Search failed — try again.");
     } finally {
       setSearching(false);
     }
@@ -100,7 +156,7 @@ export default function DiscoverNearby() {
     setSelected((s) => ({ ...s, [placeId]: !s[placeId] }));
   };
 
-  const setResultCategory = (placeId, category) => {
+  const updateResultCategory = (placeId, category) => {
     setResults((rs) => rs.map((r) => (r.placeId === placeId ? { ...r, category } : r)));
   };
 
@@ -109,9 +165,22 @@ export default function DiscoverNearby() {
   const addSelected = async () => {
     if (selectedResults.length === 0) return;
     setAdding(true);
+    setImportError("");
     try {
+      await loadGoogleMaps(GOOGLE_API_KEY);
+      const svc = new window.google.maps.places.PlacesService(document.createElement("div"));
+      const detailsFor = (placeId) =>
+        new Promise((resolve) => {
+          svc.getDetails({ placeId, fields: ["formatted_address", "website", "url", "opening_hours"] }, (place, status) => {
+            if (status === window.google.maps.places.PlacesServiceStatus.OK && place) resolve(place);
+            else resolve({});
+          });
+        });
+
       const batch = writeBatch(db);
+      const created = [];
       for (const r of selectedResults) {
+        const details = await detailsFor(r.placeId);
         const ref = doc(collection(db, "vendors"));
         const code = uid(6);
         batch.set(ref, {
@@ -119,72 +188,156 @@ export default function DiscoverNearby() {
           category: r.category,
           description: "",
           products: "",
-          address: r.vicinity,
+          address: details.formatted_address || r.vicinity || "",
           phone: "",
           lat: r.lat,
           lng: r.lng,
-          // Same reasoning as VendorDashboard.jsx: without this, a
-          // bulk-added listing would be invisible to FindView.jsx's
-          // proximity search regardless of how close it actually is.
-          geohash: encodeGeohash(r.lat, r.lng, 9),
-          website: null,
-          mapsUrl: `https://www.google.com/maps/place/?q=place_id:${r.placeId}`,
+          website: details.website || null,
+          mapsUrl: details.url || null,
           placeId: r.placeId,
           rating: r.rating,
           ratingsCount: r.ratingsCount,
-          hours: "",
+          hours: details.opening_hours?.weekday_text?.length ? details.opening_hours.weekday_text.join("\n") : "",
           photos: [],
-          preferredLink: null,
-          offer: "",
-          offerExpiresAt: null,
           ownerId: null,
-          addedByAgentId: null,
           claimCode: code,
           createdAt: serverTimestamp(),
-          ratingUpdatedAt: serverTimestamp(),
+          ratingUpdatedAt: r.placeId ? serverTimestamp() : null,
         });
+        created.push({ name: r.name, code });
+        await new Promise((res) => setTimeout(res, 150)); // gentle pacing
       }
       await batch.commit();
-      setAddedCount((c) => c + selectedResults.length);
-      setResults((rs) => rs.map((r) => (selected[r.placeId] ? { ...r, alreadyListed: true } : r)));
+      setImportResults(created);
+      setResults([]);
       setSelected({});
-    } catch (err) {
-      setError("Couldn't add listings — try again.");
+    } catch {
+      setImportError("Import failed — check your admin doc exists and try again.");
     } finally {
       setAdding(false);
     }
   };
 
+  const copyResults = () => {
+    const text = importResults.map((r) => `${r.name}: ${r.code}`).join("\n");
+    navigator.clipboard?.writeText(text);
+  };
+
+  const inputStyle = {
+    padding: "9px 10px", borderRadius: 14,
+    border: `1.5px solid ${COLORS.ink}`, fontSize: 13, background: "#fff", boxSizing: "border-box",
+  };
+
+  if (importResults) {
+    return (
+      <div className="stall-page" style={{ maxWidth: 640 }}>
+        <div className="font-display" style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>
+          Added {importResults.length} vendor{importResults.length === 1 ? "" : "s"}
+        </div>
+        <div style={{ fontSize: 12.5, color: "#666", marginBottom: 14 }}>
+          Share each claim code with that business — they enter it under
+          "Claim a listing" in My Listings to take over editing.
+        </div>
+        <div style={{ background: "#fff", border: "1px solid rgba(15,26,36,0.08)", boxShadow: "0 8px 24px rgba(15,26,36,0.08)", borderRadius: 20, padding: 16, marginBottom: 14 }}>
+          {importResults.map((r, i) => (
+            <div
+              key={i}
+              style={{
+                display: "flex", justifyContent: "space-between", padding: "8px 0",
+                borderTop: i === 0 ? "none" : `1px solid ${COLORS.ink}15`, fontSize: 13,
+              }}
+            >
+              <span>{r.name}</span>
+              <span className="font-mono" style={{ fontWeight: 700 }}>{r.code}</span>
+            </div>
+          ))}
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={copyResults} className="stall-btn" style={{ background: COLORS.navy, color: "#fff", border: "none", borderRadius: 999, padding: "9px 14px", fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
+            <Copy size={14} /> Copy all as text
+          </button>
+          <button onClick={() => setImportResults(null)} className="stall-btn" style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 14, padding: "9px 14px", fontSize: 13, fontWeight: 600 }}>
+            Search again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div style={{ maxWidth: 720, margin: "0 auto" }}>
-      <div className="font-display" style={{ fontSize: 19, fontWeight: 700, marginBottom: 4 }}>Discover Nearby</div>
-      <div style={{ fontSize: 12, color: "#666", marginBottom: 16 }}>
-        Search Google Places around your current location and bulk-add real businesses to Stall.
+    <div className="stall-page" style={{ maxWidth: 900 }}>
+      <div className="font-display" style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>Discover nearby vendors</div>
+      <div style={{ fontSize: 12.5, color: "#666", marginBottom: 16, lineHeight: 1.5 }}>
+        Set a center point, search a category (e.g. "medical store", "bakery"),
+        and pick which real nearby results to add — nothing is added until
+        you select it and click Add. Shows up to ~20 nearest matches per
+        search; narrow the keyword or shrink the radius for a more specific
+        set if you don't see what you're after.
       </div>
 
-      <div style={{ display: "flex", gap: 10, marginBottom: 6, flexWrap: "wrap" }}>
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && search()}
-          placeholder="e.g. bakery, tailor, hardware…"
-          style={{ flex: "1 1 220px", padding: "9px 10px", borderRadius: 8, border: `1.5px solid ${COLORS.ink}`, fontSize: 13 }}
-        />
-        <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5 }}>
-          <span>{radiusKm} km</span>
-          <input type="range" min={0.5} max={10} step={0.5} value={radiusKm} onChange={(e) => setRadiusKm(parseFloat(e.target.value))} />
-        </div>
-        <button
-          onClick={search}
-          disabled={searching}
-          className="stall-btn"
-          style={{ background: COLORS.ink, color: "#fff", border: "none", borderRadius: 8, padding: "9px 16px", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}
-        >
-          {searching ? <Loader2 size={14} className="spin" /> : <Search size={14} />} Search nearby
-        </button>
+      <div style={{ background: "#fff", border: "1px solid rgba(15,26,36,0.08)", boxShadow: "0 8px 24px rgba(15,26,36,0.08)", borderRadius: 20, padding: 16, marginBottom: 16 }}>
+        {!centerLoc ? (
+          <div>
+            <div style={{ fontSize: 11, color: "#555", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>Jump to a market</div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
+              {CITIES.map((city) => (
+                <button
+                  key={city.name}
+                  onClick={() => pickCity(city)}
+                  className="stall-btn"
+                  style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 999, padding: "7px 14px", fontSize: 12.5, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}
+                >
+                  <MapPin size={13} /> {city.name}
+                </button>
+              ))}
+            </div>
+            <div style={{ fontSize: 13, marginBottom: 10 }}>Or set your own point:</div>
+            <button onClick={locate} className="stall-btn" style={{ background: COLORS.navy, color: "#fff", border: "none", borderRadius: 999, padding: "10px 14px", display: "flex", alignItems: "center", gap: 8, fontWeight: 600, fontSize: 13, marginBottom: 10 }}>
+              <Locate size={16} /> {locating ? "Locating…" : "Use my location"}
+            </button>
+            {locateError && (
+              <div style={{ fontSize: 11.5, color: COLORS.brick, marginBottom: 10 }}>{locateError}</div>
+            )}
+            <div style={{ fontSize: 11, color: "#555", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>or enter coordinates</div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <input placeholder="Latitude" value={manualLat} onChange={(e) => setManualLat(e.target.value)} className="font-mono" style={{ ...inputStyle, flex: "1 1 120px" }} />
+              <input placeholder="Longitude" value={manualLng} onChange={(e) => setManualLng(e.target.value)} className="font-mono" style={{ ...inputStyle, flex: "1 1 120px" }} />
+              <button onClick={useManualLoc} className="stall-btn" style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 14, padding: "0 14px", fontSize: 12.5, fontWeight: 600, flexShrink: 0 }}>Set</button>
+            </div>
+          </div>
+        ) : (
+          <div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
+              <div style={{ fontSize: 12, color: COLORS.green, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
+                <MapPin size={14} /> CENTER SET{centerCityName ? ` · ${centerCityName}` : ""} · <span className="font-mono">{centerLoc.lat.toFixed(4)}, {centerLoc.lng.toFixed(4)}</span>
+              </div>
+              <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                <button onClick={() => { setCenterLoc(null); setCenterCityName(null); }} style={{ background: "none", border: "none", fontSize: 11, textDecoration: "underline", cursor: "pointer" }}>change market</button>
+                <button onClick={locate} style={{ background: "none", border: "none", fontSize: 11, textDecoration: "underline", cursor: "pointer" }}>{locating ? "…" : "re-locate"}</button>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
+              <div style={{ flex: "1 1 200px" }}>
+                <label style={{ display: "block", fontSize: 11, textTransform: "uppercase", fontWeight: 700, marginBottom: 5 }}>Search for</label>
+                <input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="e.g. medical store, bakery, salon" style={{ ...inputStyle, width: "100%" }} />
+              </div>
+              <div style={{ flex: "1 1 160px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, textTransform: "uppercase", fontWeight: 700, marginBottom: 5, color: COLORS.ink }}>
+                  <span>Radius</span>
+                  <span className="font-mono" style={{ color: COLORS.ink }}>{radiusKm} km</span>
+                </div>
+                <input type="range" min={0.5} max={10} step={0.5} value={radiusKm} onChange={(e) => setRadiusKm(parseFloat(e.target.value))} style={{ width: "100%", accentColor: COLORS.brick }} />
+              </div>
+              <button onClick={search} disabled={searching} className="stall-btn" style={{ background: COLORS.navy, color: "#fff", border: "none", borderRadius: 999, padding: "10px 16px", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
+                <Search size={15} /> {searching ? "Searching…" : "Search nearby"}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
-      {!userLoc && <div style={{ fontSize: 11.5, color: "#999", marginBottom: 10 }}>Waiting for your location…</div>}
-      {error && <div style={{ fontSize: 12, color: COLORS.brick, marginBottom: 10 }}>{error}</div>}
+
+      {searchError && <div style={{ color: COLORS.brick, fontSize: 12.5, marginBottom: 12 }}>{searchError}</div>}
+      {importError && <div style={{ color: COLORS.brick, fontSize: 12.5, marginBottom: 12 }}>{importError}</div>}
 
       {results.length > 0 && (
         <>
@@ -192,17 +345,17 @@ export default function DiscoverNearby() {
             {results.length} result{results.length === 1 ? "" : "s"} · {selectedResults.length} selected
             {results.some((r) => r.alreadyListed) && ` · ${results.filter((r) => r.alreadyListed).length} already on Stall`}
           </div>
-          <div style={{ border: `1.5px solid ${COLORS.ink}33`, borderRadius: 10, overflow: "hidden", marginBottom: 14 }}>
+          <div style={{ border: "1px solid rgba(15,26,36,0.08)", boxShadow: "0 8px 24px rgba(15,26,36,0.08)", borderRadius: 20, overflow: "hidden", marginBottom: 16 }}>
             {results.map((r, i) => {
-              const dist = userLoc ? haversineKm(userLoc, { lat: r.lat, lng: r.lng }) : null;
+              const dist = centerLoc ? haversineKm(centerLoc, { lat: r.lat, lng: r.lng }) : null;
               return (
                 <div key={r.placeId} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "12px 16px", borderTop: i === 0 ? "none" : `1px solid ${COLORS.ink}15`, background: r.alreadyListed ? "#f5f5f5" : selected[r.placeId] ? `${COLORS.marigold}15` : "#fff", opacity: r.alreadyListed ? 0.6 : 1 }}>
                   <input type="checkbox" checked={!!selected[r.placeId]} disabled={r.alreadyListed} onChange={() => toggleSelect(r.placeId)} style={{ marginTop: 4, width: 16, height: 16, accentColor: COLORS.brick, flexShrink: 0, cursor: r.alreadyListed ? "not-allowed" : "pointer" }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                      <span style={{ fontWeight: 700, fontSize: 13.5 }}>{r.name}</span>
+                      <span style={{ fontWeight: 700, fontSize: 13.5, color: COLORS.ink }}>{r.name}</span>
                       {r.alreadyListed && (
-                        <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 10, background: COLORS.ink, color: "#fff" }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 16, background: COLORS.ink, color: "#fff" }}>
                           Already listed
                         </span>
                       )}
@@ -211,37 +364,29 @@ export default function DiscoverNearby() {
                       )}
                       {dist != null && <span className="font-mono" style={{ fontSize: 11, color: "#999" }}>{dist.toFixed(1)} km</span>}
                     </div>
-                    <div style={{ fontSize: 12, color: "#777", marginTop: 2 }}>{r.vicinity}</div>
+                    <div style={{ fontSize: 11.5, color: "#777", marginBottom: 4 }}>{r.vicinity}</div>
                     <select
                       value={r.category}
-                      disabled={r.alreadyListed}
-                      onChange={(e) => setResultCategory(r.placeId, e.target.value)}
-                      style={{ marginTop: 6, fontSize: 11.5, padding: "3px 8px", borderRadius: 6, border: `1px solid ${COLORS.ink}33`, color: CATEGORY_COLORS[r.category] || COLORS.ink }}
+                      onChange={(e) => updateResultCategory(r.placeId, e.target.value)}
+                      style={{ fontSize: 11, padding: "3px 6px", borderRadius: 20, border: `1px solid ${COLORS.ink}55`, background: "#fff" }}
                     >
-                      {Object.keys(CATEGORY_COLORS).map((c) => <option key={c}>{c}</option>)}
+                      {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
                     </select>
                   </div>
                 </div>
               );
             })}
           </div>
+
           <button
             onClick={addSelected}
-            disabled={selectedResults.length === 0 || adding}
+            disabled={adding || selectedResults.length === 0}
             className="stall-btn"
-            style={{
-              width: "100%", background: selectedResults.length ? COLORS.ink : "#ccc", color: "#fff", border: "none",
-              borderRadius: 8, padding: "11px", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center",
-              justifyContent: "center", gap: 8, cursor: selectedResults.length ? "pointer" : "default",
-            }}
+            style={{ background: COLORS.brick, color: "#fff", border: "none", borderRadius: 14, padding: "10px 16px", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}
           >
-            <MapPin size={15} /> {adding ? "Adding…" : `Add ${selectedResults.length || ""} to Stall`}
+            {adding && <Loader2 size={14} className="spin" />}
+            {adding ? "Adding…" : `Add ${selectedResults.length} selected`}
           </button>
-          {addedCount > 0 && (
-            <div style={{ fontSize: 12, color: COLORS.teal, marginTop: 8, textAlign: "center" }}>
-              {addedCount} listing{addedCount === 1 ? "" : "s"} added this session.
-            </div>
-          )}
         </>
       )}
     </div>
