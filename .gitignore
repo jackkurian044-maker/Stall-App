@@ -6,3 +6,4 @@ dist
 functions/.env
 firebase-debug.log
 *.patch
+.env.local
