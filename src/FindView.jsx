@@ -20,6 +20,7 @@ import VendorTicket from "./VendorTicket";
 import RadarChart from "./RadarChart";
 import ReviewsModal from "./ReviewsModal";
 import { watchFavorites, toggleFavorite } from "./favorites";
+import TagStoreModal from "./TagStoreModal";
 
 const PAGE_SIZE = 10;
 
@@ -68,6 +69,7 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
   const [query_, setQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [locating, setLocating] = useState(false);
+  const [showTagModal, setShowTagModal] = useState(false);
   const [selected, setSelected] = useState(null);
   const [manualLat, setManualLat] = useState("");
   const [manualLng, setManualLng] = useState("");
@@ -421,7 +423,27 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
                 : vendors.length === 0 ? "No vendors listed yet." : "Nothing in range — try widening your search radius."
             }
           />
-        ) : (
+        ) : null}
+        {!userLoc ? null : !loading && results.length === 0 && !showFavoritesOnly && (
+          <button
+            onClick={() => (user ? setShowTagModal(true) : onRequestSignIn())}
+            className="stall-btn"
+            style={{
+              marginTop: 12, background: "#161616", color: "#fff", border: "none",
+              borderRadius: 999, padding: "10px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer",
+            }}
+          >
+            Don't see it? Tag it — earn 25 points
+          </button>
+        )}
+        {showTagModal && (
+          <TagStoreModal
+            user={user}
+            onClose={() => setShowTagModal(false)}
+            onTagged={() => setShowTagModal(false)}
+          />
+        )}
+        {results.length > 0 && (
           <>
             <div style={{ fontSize: 12, color: "#9c9c9c", marginBottom: 10 }}>
               {results.length} result{results.length === 1 ? "" : "s"}
