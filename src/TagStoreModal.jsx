@@ -10,26 +10,18 @@ import {
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { COLORS } from "./constants";
-import { distanceBetween } from "geofire-common"; // returns km, same lib FindView already uses
+import { distanceBetween } from "geofire-common";
 
 const TAG_RADIUS_KM = 1;
 const POINTS_PER_TAG = 25;
 const DAILY_TAG_CAP = 3;
 
-// ── Distance guard ──────────────────────────────────────────────
-// Client-side check is only a UX convenience (fail fast, good message).
-// The Cloud Function callable ('tagStore') that actually performs the
-// write MUST re-check distance server-side using the client's reported
-// GPS coords — never trust a browser-supplied distance for point payout.
 function isWithinTagRadius(userLoc, place) {
   if (!userLoc || !place?.lat || !place?.lng) return false;
   const distanceKm = distanceBetween([userLoc.lat, userLoc.lng], [place.lat, place.lng]);
   return distanceKm <= TAG_RADIUS_KM;
 }
 
-// Local same-day counter, mirrors the server-side cap check.
-// Not authoritative (a client can lie), but lets us show "limit reached"
-// immediately instead of waiting on a rejected transaction.
 function todayKey() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -39,7 +31,7 @@ export default function TagStoreModal({ user, onClose, onTagged }) {
   const [locError, setLocError] = useState("");
   const [locating, setLocating] = useState(true);
 
-  const [place, setPlace] = useState(null); // { placeId, name, address, lat, lng, category }
+  const [place, setPlace] = useState(null);
   const [distanceError, setDistanceError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
@@ -48,8 +40,6 @@ export default function TagStoreModal({ user, onClose, onTagged }) {
   const inputRef = useRef(null);
   const autocompleteRef = useRef(null);
 
-  // ── 1. Get GPS location on open — no fallback to a manual/browsing
-  // location, since tagging is deliberately GPS-only (see stall-mvp notes).
   useEffect(() => {
     if (!navigator.geolocation) {
       setLocError("Your browser doesn't support location — tagging needs GPS.");
@@ -69,8 +59,6 @@ export default function TagStoreModal({ user, onClose, onTagged }) {
     );
   }, []);
 
-  // ── 2. Wire up Google Places Autocomplete once we have a location to
-  // bias results toward (same pattern as vendor registration's picker).
   useEffect(() => {
     if (!userLoc || !inputRef.current || !window.google?.maps?.places) return;
 
@@ -110,7 +98,10 @@ export default function TagStoreModal({ user, onClose, onTagged }) {
     };
   }, [userLoc]);
 
-  // ── 3. Submit — daily cap + tag write + points award, one transaction.
+  // Submit — checks (1) has this user ever tagged this exact place before
+  // (blocks repeat-tag point farming on the same store) and (2) today's
+  // distinct-store cap, before writing the tag and awarding points.
+  // Both checks + the writes happen in one transaction so they can't race.
   const submitTag = async () => {
     if (!place || !user) return;
     setSubmitting(true);
@@ -119,10 +110,16 @@ export default function TagStoreModal({ user, onClose, onTagged }) {
     const uid = user.uid;
     const capRef = doc(db, "users", uid, "tagCounters", todayKey());
     const userRef = doc(db, "users", uid);
+    const alreadyTaggedRef = doc(db, "users", uid, "taggedPlaces", place.placeId);
     const tagRef = doc(collection(db, "store_tags"));
 
     try {
       await runTransaction(db, async (tx) => {
+        const alreadySnap = await tx.get(alreadyTaggedRef);
+        if (alreadySnap.exists()) {
+          throw new Error("ALREADY_TAGGED");
+        }
+
         const capSnap = await tx.get(capRef);
         const countToday = capSnap.exists() ? capSnap.data().count : 0;
         if (countToday >= DAILY_TAG_CAP) {
@@ -142,6 +139,7 @@ export default function TagStoreModal({ user, onClose, onTagged }) {
           createdAt: serverTimestamp(),
         });
 
+        tx.set(alreadyTaggedRef, { taggedAt: serverTimestamp() });
         tx.set(capRef, { count: countToday + 1 }, { merge: true });
 
         tx.update(userRef, {
@@ -158,7 +156,9 @@ export default function TagStoreModal({ user, onClose, onTagged }) {
       setSuccess(true);
       onTagged?.();
     } catch (err) {
-      if (err.message === "DAILY_CAP_REACHED") {
+      if (err.message === "ALREADY_TAGGED") {
+        setSubmitError("You've already tagged this store before — try a different one!");
+      } else if (err.message === "DAILY_CAP_REACHED") {
         setSubmitError(`You've hit today's tagging limit (${DAILY_TAG_CAP}/day) — come back tomorrow for more points!`);
       } else {
         console.error("submitTag error:", err);
