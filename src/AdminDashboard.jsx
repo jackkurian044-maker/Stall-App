@@ -4,7 +4,7 @@ import { Plus, Trash2, RefreshCw, Star, Flag, Check, X as XIcon, Sparkles, Crown
 import { db, auth } from "./firebase";
 import { CATEGORIES, CATEGORY_COLORS, COLORS } from "./constants";
 import { uid, toDateInputValue } from "./geo";
-import { autoRefreshStale, isRatingStale } from "./ratingSync";
+import { autoRefreshStale, isRatingStale, refreshVendorIfStale } from "./ratingSync";
 import LocationSearch from "./LocationSearch";
 import ImageUpload from "./ImageUpload";
 import { findDuplicateVendor } from "./duplicateCheck";
@@ -30,6 +30,8 @@ export default function AdminDashboard() {
   const [saving, setSaving] = useState(false);
   const [lastCode, setLastCode] = useState(null);
   const [ownerMessageStatus, setOwnerMessageStatus] = useState("");
+  const [phoneSyncingId, setPhoneSyncingId] = useState(null);
+  const [phoneSyncStatus, setPhoneSyncStatus] = useState("");
   const [tempId] = useState(() => uid(10));
   const [reports, setReports] = useState([]);
   const [reportsLoading, setReportsLoading] = useState(true);
@@ -152,6 +154,7 @@ export default function AdminDashboard() {
     setEditingId(v.id);
     setLastCode(null);
     setOwnerMessageStatus("");
+    setPhoneSyncStatus("");
     setError("");
     setForm({
       name: v.name, category: v.category, description: v.description || "",
@@ -245,6 +248,20 @@ export default function AdminDashboard() {
         `Couldn't update premium status for "${v.name}": ${err.message}\n\n` +
         `If this says "permission-denied," the Firestore rules allowing admin writes to premium_vendors haven't been deployed yet — run:\nfirebase deploy --only firestore:rules`
       );
+    }
+  };
+
+  const fetchVendorPhone = async (v) => {
+    if (!v.placeId || v.phone) return;
+    setPhoneSyncingId(v.id);
+    setPhoneSyncStatus("");
+    try {
+      await refreshVendorIfStale(v, true);
+      setPhoneSyncStatus(`Phone refresh requested for “${v.name}”. If Google has a public number, it will appear in the listing shortly.`);
+    } catch {
+      setPhoneSyncStatus(`Couldn’t fetch the phone for “${v.name}”.`);
+    } finally {
+      setPhoneSyncingId(null);
     }
   };
 
@@ -535,8 +552,32 @@ STall — Find what’s around the corner.` : "";
                   {v.phone && <div style={{ fontSize: 11.5, color: "#777" }}>{v.phone}</div>}
                 </div>
                 <div style={{ display: "flex", gap: 4, flexShrink: 0, alignItems: "center" }}>
+                  {v.placeId && !v.phone && !v.ownerId && <button onClick={() => fetchVendorPhone(v)} disabled={phoneSyncingId === v.id} title="Fetch business phone from Google" className="stall-btn" style={{ display: "flex", alignItems: "center", gap: 4, background: phoneSyncingId === v.id ? "#f5f5f5" : "transparent", border: `1.5px solid ${COLORS.ink}`, color: phoneSyncingId === v.id ? "#999" : COLORS.ink, borderRadius: 7, padding: "5px 9px", fontSize: 11, fontWeight: 700, cursor: phoneSyncingId === v.id ? "wait" : "pointer" }}><RefreshCw size={12} className={phoneSyncingId === v.id ? "spin" : ""} /> {phoneSyncingId === v.id ? "Fetching…" : "Fetch Phone"}</button>}
                   {v.placeId && isRatingStale(v) && <span title="Rating/phone will sync from Google automatically" style={{ color: "#bbb", padding: 6, display: "flex" }}><RefreshCw size={14} /></span>}
                   {v.ownerId && <button onClick={() => togglePremium(v)} title={premiumMap[v.ownerId] ? "Remove premium access" : "Manually grant premium access"} className="stall-btn" style={{ display: "flex", alignItems: "center", gap: 4, background: premiumMap[v.ownerId] ? COLORS.marigold : "transparent", border: `1.5px solid ${COLORS.marigold}`, color: premiumMap[v.ownerId] ? COLORS.ink : COLORS.marigold, borderRadius: 7, padding: "5px 9px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}><Crown size={12} /> {premiumMap[v.ownerId] ? "Premium" : "Grant"}</button>}
+                  {!v.ownerId && v.claimCode && (
+                    <button
+                      onClick={() => {
+                        setLastCode({ name: v.name, code: v.claimCode, phone: v.phone || "" });
+                        setOwnerMessageStatus("");
+                      }}
+                      title={v.phone ? "Contact the business owner using the listed business number" : "No business phone number available"}
+                      className="stall-btn"
+                      style={{
+                        background: v.phone ? COLORS.ink : "transparent",
+                        color: v.phone ? "#fff" : "#999",
+                        border: `1.5px solid ${COLORS.ink}`,
+                        borderRadius: 7,
+                        padding: "5px 9px",
+                        fontSize: 11,
+                        fontWeight: 700,
+                        cursor: v.phone ? "pointer" : "not-allowed",
+                      }}
+                      disabled={!v.phone}
+                    >
+                      💬 Contact Owner
+                    </button>
+                  )}
                   <button onClick={() => startEdit(v)} className="stall-btn" style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 7, padding: "5px 10px", fontSize: 12, fontWeight: 600 }}>Edit</button>
                   <button onClick={() => remove(v.id)} title="Remove vendor" style={{ background: "none", border: "none", cursor: "pointer", color: COLORS.brick, padding: 6 }}><Trash2 size={16} /></button>
                 </div>
@@ -544,6 +585,7 @@ STall — Find what’s around the corner.` : "";
             ))}
           </div>
         )}
+        {phoneSyncStatus && <div style={{ fontSize: 11, color: COLORS.teal, marginTop: 8 }}>{phoneSyncStatus}</div>}
       </div>
     </div>
   );
