@@ -21,9 +21,9 @@ export function isRatingStale(vendor) {
   return ageMs > RATING_STALE_HOURS * 60 * 60 * 1000;
 }
 
-export async function refreshVendorIfStale(vendor) {
+export async function refreshVendorIfStale(vendor, force = false) {
   if (!vendor.placeId || !GOOGLE_API_KEY) return;
-  if (!isRatingStale(vendor)) return;
+  if (!force && !isRatingStale(vendor)) return;
 
   try {
     await loadGoogleMaps(GOOGLE_API_KEY);
