@@ -18,12 +18,6 @@ export default function VendorTicket({ vendor, highlighted, onClick, onOpenRevie
     .map((p) => p.trim())
     .filter(Boolean);
 
-  // Log a "view" once per card per mount (not per render), and fetch the
-  // real recent-view count for the social-proof line. Both fire once per
-  // card shown in the results list — at PAGE_SIZE=10 per page (see
-  // FindView.jsx) that's an acceptable read cost for an MVP; if result
-  // lists grow much larger, this should move to only firing on the
-  // expanded/detail view instead of every card in a list.
   useEffect(() => {
     if (!vendor.id || viewLogged) return;
     setViewLogged(true);
@@ -52,10 +46,22 @@ export default function VendorTicket({ vendor, highlighted, onClick, onOpenRevie
     window.location.href = `tel:${vendor.phone}`;
   });
 
+  const normalizeWhatsAppPhone = (phone) => {
+    const raw = String(phone || "").trim();
+    if (!raw) return "";
+    const digits = raw.replace(/\D/g, "");
+    if (!digits) return "";
+    if (digits.length === 10) return `91${digits}`;
+    if (digits.length === 11 && digits.startsWith("0")) return `91${digits.slice(1)}`;
+    if (digits.length === 12 && digits.startsWith("91")) return digits;
+    return digits;
+  };
+
   const handleWhatsapp = stop(() => {
     logInteraction(db, vendor.id, "whatsapp");
-    const digits = (vendor.phone || "").replace(/[^\d]/g, "");
-    window.open(`https://wa.me/${digits}`, "_blank", "noopener,noreferrer");
+    const phone = normalizeWhatsAppPhone(vendor.phone);
+    if (!phone) return;
+    window.open(`https://wa.me/${phone}`, "_blank", "noopener,noreferrer");
   });
 
   const handleDirections = stop(() => {
@@ -82,10 +88,6 @@ export default function VendorTicket({ vendor, highlighted, onClick, onOpenRevie
     return ageMs <= NEW_LISTING_DAYS * 24 * 60 * 60 * 1000;
   })();
 
-  // Countdown text for offers ending within the next 48 hours — this is
-  // the "flash offer" urgency cue; older/undated offers just show the
-  // plain end date (or nothing) instead, since urgency framing on a
-  // 3-week-away expiry would just be noise.
   const offerCountdown = (() => {
     if (!offerActive || !vendor.offerExpiresAt?.toDate) return null;
     const msLeft = vendor.offerExpiresAt.toDate().getTime() - Date.now();
@@ -116,212 +118,57 @@ export default function VendorTicket({ vendor, highlighted, onClick, onOpenRevie
       }}
     >
       {offerActive && (
-        <div
-          style={{
-            background: COLORS.marigold,
-            color: COLORS.ink,
-            margin: "-24px -26px 18px -26px",
-            padding: "10px 26px",
-            borderRadius: "11px 11px 0 0",
-            fontSize: 12.5,
-            fontWeight: 700,
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-          }}
-        >
+        <div style={{ background: COLORS.marigold, color: COLORS.ink, margin: "-24px -26px 18px -26px", padding: "10px 26px", borderRadius: "11px 11px 0 0", fontSize: 12.5, fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}>
           <Tag size={13} />
           {vendor.offer}
           {offerCountdown ? (
-            <span style={{ fontWeight: 800, marginLeft: "auto", background: COLORS.ink, color: "#fff", padding: "2px 8px", borderRadius: 999, fontSize: 11 }}>
-              {offerCountdown}
-            </span>
+            <span style={{ fontWeight: 800, marginLeft: "auto", background: COLORS.ink, color: "#fff", padding: "2px 8px", borderRadius: 999, fontSize: 11 }}>{offerCountdown}</span>
           ) : vendor.offerExpiresAt?.toDate ? (
-            <span style={{ fontWeight: 500, opacity: 0.8 }}>
-              &nbsp;· ends {vendor.offerExpiresAt.toDate().toLocaleDateString(undefined, { day: "numeric", month: "short" })}
-            </span>
+            <span style={{ fontWeight: 500, opacity: 0.8 }}>&nbsp;· ends {vendor.offerExpiresAt.toDate().toLocaleDateString(undefined, { day: "numeric", month: "short" })}</span>
           ) : null}
         </div>
       )}
 
-      {/* Favorite + report — top-right corner, above everything else */}
       <div style={{ position: "absolute", top: offerActive ? 56 : 14, right: 14, display: "flex", gap: 6, zIndex: 2 }}>
-        <button
-          onClick={handleFavorite}
-          title={user ? (isFavorited ? "Remove from favorites" : "Save to favorites") : "Sign in to save favorites"}
-          style={{
-            background: "#fff", border: `1.5px solid ${COLORS.ink}22`, borderRadius: 999, width: 30, height: 30,
-            display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0,
-          }}
-        >
+        <button onClick={handleFavorite} title={user ? (isFavorited ? "Remove from favorites" : "Save to favorites") : "Sign in to save favorites"} style={{ background: "#fff", border: `1.5px solid ${COLORS.ink}22`, borderRadius: 999, width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }}>
           <Heart size={15} fill={isFavorited ? "#c0392b" : "none"} color={isFavorited ? "#c0392b" : "#999"} />
         </button>
-        <button
-          onClick={handleReport}
-          title="Report this listing"
-          style={{
-            background: "#fff", border: `1.5px solid ${COLORS.ink}22`, borderRadius: 999, width: 30, height: 30,
-            display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0,
-          }}
-        >
+        <button onClick={handleReport} title="Report this listing" style={{ background: "#fff", border: `1.5px solid ${COLORS.ink}22`, borderRadius: 999, width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }}>
           <Flag size={13} color="#999" />
         </button>
       </div>
 
       <div className="vendor-ticket-row" style={{ paddingTop: offerActive ? 36 : 20 }}>
-      {thumbnail && (
-        <img
-          src={thumbnail}
-          alt=""
-          style={{ width: 104, height: 104, borderRadius: 12, objectFit: "cover", flexShrink: 0, border: `1.5px solid ${COLORS.ink}22` }}
-        />
-      )}
-      <div style={{ minWidth: 0, flex: 1 }}>
-        <div className="vendor-ticket-name-row" style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 5, flexWrap: "wrap" }}>
-          <span className="font-display" style={{ fontSize: 22, fontWeight: 700, color: COLORS.ink }}>
-            {vendor.name}
-          </span>
-          <span
-            style={{
-              fontSize: 11,
-              textTransform: "uppercase",
-              letterSpacing: "0.05em",
-              fontWeight: 700,
-              padding: "3px 8px",
-              borderRadius: 999,
-              color: "#fff",
-              background: CATEGORY_COLORS[vendor.category] || COLORS.ink,
-            }}
-          >
-            {vendor.category}
-          </span>
-          {isNewListing && (
-            <span
-              style={{
-                fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 999,
-                color: "#fff", background: COLORS.teal, display: "flex", alignItems: "center", gap: 4,
-              }}
-            >
-              <Sparkles size={11} /> New
-            </span>
-          )}
-          {vendor.rating != null && (
-            <span
-              style={{
-                fontSize: 14,
-                fontWeight: 700,
-                color: COLORS.ink,
-                display: "flex",
-                alignItems: "center",
-                gap: 5,
-                background: `${COLORS.marigold}30`,
-                border: `1.5px solid ${COLORS.marigold}`,
-                padding: "3px 10px",
-                borderRadius: 999,
-              }}
-            >
-              <Star size={15} fill={COLORS.marigold} color={COLORS.marigold} strokeWidth={2.5} />
-              <span className="font-mono">{vendor.rating.toFixed(1)}</span>
-              {vendor.ratingsCount != null && (
-                <span style={{ color: "#6b6255", fontWeight: 600 }}>({vendor.ratingsCount})</span>
-              )}
-            </span>
-          )}
-        </div>
-        {vendor.description && (
-          <div style={{ fontSize: 14.5, color: "#444", marginBottom: 10 }}>{vendor.description}</div>
-        )}
-        {products.length > 0 && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 8 }}>
-            {products.slice(0, 6).map((p, i) => (
-              <span
-                key={i}
-                style={{
-                  fontSize: 12,
-                  background: `${COLORS.teal}1a`,
-                  color: COLORS.teal,
-                  padding: "3px 9px",
-                  borderRadius: 6,
-                }}
-              >
-                {p}
-              </span>
-            ))}
+        {thumbnail && <img src={thumbnail} alt="" style={{ width: 104, height: 104, borderRadius: 12, objectFit: "cover", flexShrink: 0, border: `1.5px solid ${COLORS.ink}22` }} />}
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div className="vendor-ticket-name-row" style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 5, flexWrap: "wrap" }}>
+            <span className="font-display" style={{ fontSize: 22, fontWeight: 700, color: COLORS.ink }}>{vendor.name}</span>
+            <span style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 700, padding: "3px 8px", borderRadius: 999, color: "#fff", background: CATEGORY_COLORS[vendor.category] || COLORS.ink }}>{vendor.category}</span>
+            {isNewListing && <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 999, color: "#fff", background: COLORS.teal, display: "flex", alignItems: "center", gap: 4 }}><Sparkles size={11} /> New</span>}
+            {vendor.rating != null && <span style={{ fontSize: 14, fontWeight: 700, color: COLORS.ink, display: "flex", alignItems: "center", gap: 5, background: `${COLORS.marigold}30`, border: `1.5px solid ${COLORS.marigold}`, padding: "3px 10px", borderRadius: 999 }}><Star size={15} fill={COLORS.marigold} color={COLORS.marigold} strokeWidth={2.5} /><span className="font-mono">{vendor.rating.toFixed(1)}</span>{vendor.ratingsCount != null && <span style={{ color: "#6b6255", fontWeight: 600 }}>({vendor.ratingsCount})</span>}</span>}
           </div>
-        )}
-        <div style={{ fontSize: 13.5, color: "#777" }}>{vendor.address}</div>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 8, flexWrap: "wrap" }}>
-          {firstHoursLine && (
-            <span style={{ fontSize: 12, color: "#777", display: "flex", alignItems: "center", gap: 4 }}>
-              <Clock size={12} /> {firstHoursLine}
-            </span>
-          )}
-          <button
-            onClick={handleReviewsClick}
-            style={{ background: "none", border: "none", cursor: "pointer", color: COLORS.teal, fontSize: 12, fontWeight: 600, display: "flex", alignItems: "center", gap: 4, padding: 0 }}
-          >
-            <MessageSquare size={12} /> Reviews
-          </button>
-        </div>
-        {proofLine && (
-          <div style={{ fontSize: 11.5, color: "#8a7a5a", marginTop: 6, fontStyle: "italic" }}>{proofLine}</div>
-        )}
+          {vendor.description && <div style={{ fontSize: 14.5, color: "#444", marginBottom: 10 }}>{vendor.description}</div>}
+          {products.length > 0 && <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 8 }}>{products.slice(0, 6).map((p, i) => <span key={i} style={{ fontSize: 12, background: `${COLORS.teal}1a`, color: COLORS.teal, padding: "3px 9px", borderRadius: 6 }}>{p}</span>)}</div>}
+          <div style={{ fontSize: 13.5, color: "#777" }}>{vendor.address}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 8, flexWrap: "wrap" }}>
+            {firstHoursLine && <span style={{ fontSize: 12, color: "#777", display: "flex", alignItems: "center", gap: 4 }}><Clock size={12} /> {firstHoursLine}</span>}
+            <button onClick={handleReviewsClick} style={{ background: "none", border: "none", cursor: "pointer", color: COLORS.teal, fontSize: 12, fontWeight: 600, display: "flex", alignItems: "center", gap: 4, padding: 0 }}><MessageSquare size={12} /> Reviews</button>
+          </div>
+          {proofLine && <div style={{ fontSize: 11.5, color: "#8a7a5a", marginTop: 6, fontStyle: "italic" }}>{proofLine}</div>}
 
-        {/* One-tap contact actions — the actual Phase 1 fix: these didn't
-            exist before as distinct actions, only a generic card-open link. */}
-        <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
-          {vendor.phone && (
-            <button
-              onClick={handleCall}
-              className="stall-btn"
-              style={{ display: "flex", alignItems: "center", gap: 6, background: COLORS.ink, color: "#fff", border: "none", borderRadius: 8, padding: "8px 13px", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}
-            >
-              <Phone size={13} /> Call
-            </button>
-          )}
-          {vendor.phone && (
-            <button
-              onClick={handleWhatsapp}
-              className="stall-btn"
-              style={{ display: "flex", alignItems: "center", gap: 6, background: "#25D366", color: "#fff", border: "none", borderRadius: 8, padding: "8px 13px", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}
-            >
-              <MessageCircle size={13} /> WhatsApp
-            </button>
-          )}
-          <button
-            onClick={handleDirections}
-            className="stall-btn"
-            style={{ display: "flex", alignItems: "center", gap: 6, background: "#fff", color: COLORS.ink, border: `1.5px solid ${COLORS.ink}`, borderRadius: 8, padding: "8px 13px", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}
-          >
-            <Navigation size={13} /> Directions
-          </button>
+          <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+            {vendor.phone && <button onClick={handleCall} className="stall-btn" style={{ display: "flex", alignItems: "center", gap: 6, background: COLORS.ink, color: "#fff", border: "none", borderRadius: 8, padding: "8px 13px", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}><Phone size={13} /> Call</button>}
+            {vendor.phone && <button onClick={handleWhatsapp} className="stall-btn" style={{ display: "flex", alignItems: "center", gap: 6, background: "#25D366", color: "#fff", border: "none", borderRadius: 8, padding: "8px 13px", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}><MessageCircle size={13} /> WhatsApp</button>}
+            <button onClick={handleDirections} className="stall-btn" style={{ display: "flex", alignItems: "center", gap: 6, background: "#fff", color: COLORS.ink, border: `1.5px solid ${COLORS.ink}`, borderRadius: 8, padding: "8px 13px", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}><Navigation size={13} /> Directions</button>
+          </div>
         </div>
-      </div>
-      <div className="vendor-ticket-meta">
-        <div
-          className="font-mono"
-          style={{
-            background: COLORS.ink,
-            color: "#fff",
-            borderRadius: 8,
-            padding: "8px 14px",
-            fontSize: 15,
-            fontWeight: 600,
-          }}
-        >
-          {vendor.distance.toFixed(1)} km
+        <div className="vendor-ticket-meta">
+          <div className="font-mono" style={{ background: COLORS.ink, color: "#fff", borderRadius: 8, padding: "8px 14px", fontSize: 15, fontWeight: 600 }}>{vendor.distance.toFixed(1)} km</div>
+          <ExternalLink size={19} color="#999" style={{ marginTop: 12 }} />
         </div>
-        <ExternalLink size={19} color="#999" style={{ marginTop: 12 }} />
-      </div>
       </div>
 
-      {reportOpen && (
-        <ReportModal
-          vendor={vendor}
-          user={user}
-          onClose={() => setReportOpen(false)}
-        />
-      )}
+      {reportOpen && <ReportModal vendor={vendor} user={user} onClose={() => setReportOpen(false)} />}
     </div>
   );
 }
