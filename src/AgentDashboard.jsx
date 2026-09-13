@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { collection, doc, onSnapshot, query, where } from "firebase/firestore";
-import { MapPin, Locate, Search, Target, IndianRupee, Store } from "lucide-react";
+import { MapPin, Locate, Search, Target, IndianRupee, Store, MessageCircle } from "lucide-react";
 import { db } from "./firebase";
 import { COLORS, DEFAULT_LOC } from "./constants";
 import { haversineKm } from "./geo";
@@ -39,10 +39,22 @@ const COMMISSION_LABEL = { pending: "pending", paid: "paid", clawed_back: "clawe
 const COMMISSION_COLOR = { pending: COLORS.goldDark, paid: COLORS.green, clawed_back: COLORS.brick };
 const COMMISSION_BG = { pending: `${COLORS.marigold}22`, paid: `${COLORS.green}22`, clawed_back: `${COLORS.brick}22` };
 
+const normalizeWhatsAppPhone = (phone) => {
+  const raw = String(phone || "").trim();
+  if (!raw) return "";
+  const digits = raw.replace(/\D/g, "");
+  if (!digits) return "";
+  if (digits.length === 10) return `91${digits}`;
+  if (digits.length === 11 && digits.startsWith("0")) return `91${digits.slice(1)}`;
+  if (digits.length === 12 && digits.startsWith("91")) return digits;
+  return digits;
+};
+
 export default function AgentDashboard({ user, agent }) {
   const [myVendors, setMyVendors] = useState([]);
   const [commissions, setCommissions] = useState([]);
-  const [tab, setTab] = useState("overview"); // "overview" | "discover"
+  const [tab, setTab] = useState("overview"); // "overview" | "discover" | "outreach"
+  const [outreachStatus, setOutreachStatus] = useState("");
 
   // ── Discover Nearby (view-only search) ──
   const [centerLoc, setCenterLoc] = useState(null);
@@ -82,6 +94,53 @@ export default function AgentDashboard({ user, agent }) {
   const paidTotal = commissions.filter((c) => c.status === "paid").reduce((s, c) => s + (c.amount || 0), 0);
   const clawedBackCount = commissions.filter((c) => c.status === "clawed_back").length;
   const conversionCount = commissions.length; // every store that ever converted, including ones later clawed back
+
+  const openOwnerWhatsApp = (vendor) => {
+    const phone = normalizeWhatsAppPhone(vendor.phone);
+    if (!phone) {
+      setOutreachStatus(`No valid phone number is available for “${vendor.name}”.`);
+      return;
+    }
+
+    const claimId = vendor.claimCode || "";
+    const message = `Hi 👋
+
+We’re reaching out from STall — your local business discovery platform.
+
+Good news! 🎉 We’ve already created a business listing for “${vendor.name}” on STall so customers can discover your business online.
+
+Your STall listing can help you:
+• Get discovered by local customers searching for businesses like yours
+• Showcase your business information, services and offers
+• Keep your business details updated
+• Build your online presence on STall
+• Understand how customers are discovering and interacting with your listing
+
+Your STall Claim ID: ${claimId}
+
+Your listing is already created. If you haven’t claimed it yet, now it’s your turn to claim it and take control of your business profile. If you have already claimed it, please review your listing and make sure your business information is up to date.
+
+👉 To access your listing:
+1. Open STall: https://stallapp.stallwale.in/
+2. Sign in / create your business account
+3. Go to My Listings
+4. Select “Claim a listing” if the listing is not already claimed
+5. Enter your Claim ID: ${claimId}
+
+Once claimed, you can review and update your business information so customers see the correct details.
+
+Welcome to STall! 🚀
+STall — Find what’s around the corner.`;
+
+    const encodedMessage = encodeURIComponent(message);
+    const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+    const whatsappUrl = isMobile
+      ? `https://wa.me/${phone}?text=${encodedMessage}`
+      : `https://web.whatsapp.com/send?phone=${phone}&text=${encodedMessage}`;
+
+    setOutreachStatus(`Opening WhatsApp for “${vendor.name}”…`);
+    window.location.assign(whatsappUrl);
+  };
 
   // ── location + search (view-only — no add-from-results) ──
   const locate = () => {
@@ -159,13 +218,14 @@ export default function AgentDashboard({ user, agent }) {
       </div>
 
       <div style={{ display: "flex", gap: 4, marginBottom: 16, flexWrap: "wrap" }}>
-        {["overview", "discover"].map((t) => (
+        {["overview", "discover", "outreach"].map((t) => (
           <button key={t} onClick={() => setTab(t)} className="stall-btn" style={{
             padding: "8px 16px", borderRadius: 14, fontSize: 13, fontWeight: 600,
             border: `1.5px solid ${COLORS.ink}`,
             background: tab === t ? COLORS.ink : "#fff", color: tab === t ? "#fff" : COLORS.ink,
+            display: "flex", alignItems: "center", gap: 6,
           }}>
-            {t === "overview" ? "Overview" : "Discover Nearby"}
+            {t === "overview" ? "Overview" : t === "discover" ? "Discover Nearby" : <><MessageCircle size={14} /> Owner Outreach</>}
           </button>
         ))}
       </div>
@@ -230,6 +290,60 @@ export default function AgentDashboard({ user, agent }) {
                   </div>
                 );
               })}
+            </div>
+          )}
+        </>
+      )}
+
+      {tab === "outreach" && (
+        <>
+          <div style={cardStyle}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap", marginBottom: 8 }}>
+              <div>
+                <div className="font-display" style={{ fontSize: 17, fontWeight: 700 }}>Owner Outreach</div>
+                <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>
+                  Contact every business owner for the stores you've added. This works for both claimed and unclaimed listings and uses the phone number already saved on the listing.
+                </div>
+              </div>
+              <div style={{ fontSize: 11, fontWeight: 700, padding: "5px 9px", borderRadius: 20, background: `${COLORS.ink}10`, color: COLORS.ink }}>
+                {myVendors.length} stores
+              </div>
+            </div>
+            {outreachStatus && <div style={{ fontSize: 12, color: COLORS.green, marginBottom: 10 }}>{outreachStatus}</div>}
+          </div>
+
+          {myVendors.length === 0 ? (
+            <div style={{ border: `2px dashed ${COLORS.ink}55`, borderRadius: 12, padding: 24, textAlign: "center", color: "#666", fontSize: 13 }}>
+              You haven't added any stores yet.
+            </div>
+          ) : (
+            <div style={{ border: "1px solid rgba(15,26,36,0.08)", boxShadow: "0 8px 24px rgba(15,26,36,0.08)", borderRadius: 20, overflow: "hidden" }}>
+              {myVendors.map((v, i) => (
+                <div key={v.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "13px 16px", borderTop: i === 0 ? "none" : `1px solid ${COLORS.ink}15` }}>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <div style={{ fontWeight: 700, fontSize: 13.5, color: COLORS.ink }}>{v.name}</div>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: v.ownerId ? COLORS.teal : COLORS.brick }}>
+                        {v.ownerId ? "CLAIMED" : "UNCLAIMED"}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 11.5, color: "#777", marginTop: 2 }}>{v.address || "Address not available"}</div>
+                    <div style={{ fontSize: 10.5, color: "#999", marginTop: 2 }}>
+                      Claim ID: <span className="font-mono">{v.claimCode || "—"}</span> · Phone: {v.phone || "Not available"}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => openOwnerWhatsApp(v)}
+                    disabled={!v.phone}
+                    className="stall-btn"
+                    style={{ background: v.phone ? COLORS.green : "#ddd", color: v.phone ? "#fff" : "#777", border: "none", borderRadius: 999, padding: "9px 13px", display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 700, flexShrink: 0 }}
+                    title={v.phone ? "Open WhatsApp with the owner message" : "No phone number available"}
+                  >
+                    <MessageCircle size={14} /> WhatsApp
+                  </button>
+                </div>
+              ))}
             </div>
           )}
         </>
