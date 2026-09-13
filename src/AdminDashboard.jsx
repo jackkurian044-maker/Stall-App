@@ -331,14 +331,7 @@ STall — Find what’s around the corner.` : "";
 
     setOwnerMessageStatus("Opening WhatsApp…");
 
-    const popup = window.open(whatsappUrl, "_blank", "noopener,noreferrer");
-
-    if (!popup) {
-      window.location.href = whatsappUrl;
-      return;
-    }
-
-    setOwnerMessageStatus("WhatsApp opened — click Send to deliver the message.");
+    window.location.assign(whatsappUrl);
   };
 
   return (
