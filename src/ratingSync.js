@@ -21,6 +21,53 @@ export function isRatingStale(vendor) {
   return ageMs > RATING_STALE_HOURS * 60 * 60 * 1000;
 }
 
+function getDetails(service, placeId) {
+  return new Promise((resolve) => {
+    service.getDetails(
+      { placeId, fields: ["rating", "user_ratings_total", "formatted_phone_number"] },
+      (place, status) => resolve({ place, status })
+    );
+  });
+}
+
+// Google can invalidate older cached Place IDs. When that happens, recover
+// the current Place ID from the listing's existing name + coordinates rather
+// than making the whole listing's refresh silently fail. We intentionally do
+// not persist the recovered Place ID because public Firestore refreshes are
+// only allowed to update rating/phone/timestamp fields.
+async function findFreshPlace(service, vendor) {
+  if (!vendor.name || !Number.isFinite(vendor.lat) || !Number.isFinite(vendor.lng)) return null;
+
+  return new Promise((resolve) => {
+    service.nearbySearch(
+      {
+        location: new window.google.maps.LatLng(vendor.lat, vendor.lng),
+        radius: 500,
+        keyword: vendor.name,
+      },
+      async (results, status) => {
+        if (status !== window.google.maps.places.PlacesServiceStatus.OK || !results?.length) {
+          resolve(null);
+          return;
+        }
+
+        const candidate = results.find((p) => p.place_id) || null;
+        if (!candidate?.place_id) {
+          resolve(null);
+          return;
+        }
+
+        const fresh = await getDetails(service, candidate.place_id);
+        if (fresh.status !== window.google.maps.places.PlacesServiceStatus.OK || !fresh.place) {
+          resolve(null);
+          return;
+        }
+        resolve(fresh.place);
+      }
+    );
+  });
+}
+
 export async function refreshVendorIfStale(vendor, force = false) {
   if (!vendor.placeId || !GOOGLE_API_KEY) return;
   if (!force && !isRatingStale(vendor)) return;
@@ -28,24 +75,29 @@ export async function refreshVendorIfStale(vendor, force = false) {
   try {
     await loadGoogleMaps(GOOGLE_API_KEY);
     const service = new window.google.maps.places.PlacesService(document.createElement("div"));
-    service.getDetails(
-      { placeId: vendor.placeId, fields: ["rating", "user_ratings_total", "formatted_phone_number"] },
-      async (place, status) => {
-        if (status !== window.google.maps.places.PlacesServiceStatus.OK || !place) return;
-        try {
-          await updateDoc(doc(db, "vendors", vendor.id), {
-            rating: typeof place.rating === "number" ? place.rating : null,
-            ratingsCount: typeof place.user_ratings_total === "number" ? place.user_ratings_total : null,
-            ...(place.formatted_phone_number ? { phone: place.formatted_phone_number } : {}),
-            ratingUpdatedAt: serverTimestamp(),
-          });
-        } catch {
-          // Most likely another visitor's browser already refreshed this
-          // exact listing a moment ago and the rule's staleness check
-          // now rejects ours — expected under concurrent traffic, not an error.
-        }
-      }
-    );
+
+    let result = await getDetails(service, vendor.placeId);
+    let place = result.place;
+
+    // Recover listings whose stored Google Place ID has become invalid.
+    if (result.status !== window.google.maps.places.PlacesServiceStatus.OK || !place) {
+      place = await findFreshPlace(service, vendor);
+    }
+
+    if (!place) return;
+
+    try {
+      await updateDoc(doc(db, "vendors", vendor.id), {
+        rating: typeof place.rating === "number" ? place.rating : null,
+        ratingsCount: typeof place.user_ratings_total === "number" ? place.user_ratings_total : null,
+        ...(place.formatted_phone_number ? { phone: place.formatted_phone_number } : {}),
+        ratingUpdatedAt: serverTimestamp(),
+      });
+    } catch {
+      // Most likely another visitor's browser already refreshed this
+      // exact listing a moment ago and the rule's staleness check
+      // now rejects ours — expected under concurrent traffic, not an error.
+    }
   } catch {
     // Google Maps script failed to load (offline, ad blocker, etc.) —
     // the next visitor's session will simply try again.
