@@ -316,13 +316,29 @@ STall — Find what’s around the corner.` : "";
 
   const shareOwnerMessage = () => {
     if (!ownerMessage || !lastCode?.phone) return;
+
     const phone = normalizeWhatsAppPhone(lastCode.phone);
     if (!phone) {
       setOwnerMessageStatus("No valid business phone number is available for WhatsApp.");
       return;
     }
-    setOwnerMessageStatus("");
-    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(ownerMessage)}`, "_blank", "noopener,noreferrer");
+
+    const encodedMessage = encodeURIComponent(ownerMessage);
+    const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+    const whatsappUrl = isMobile
+      ? `https://wa.me/${phone}?text=${encodedMessage}`
+      : `https://web.whatsapp.com/send?phone=${phone}&text=${encodedMessage}`;
+
+    setOwnerMessageStatus("Opening WhatsApp…");
+
+    const popup = window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+
+    if (!popup) {
+      window.location.href = whatsappUrl;
+      return;
+    }
+
+    setOwnerMessageStatus("WhatsApp opened — click Send to deliver the message.");
   };
 
   return (
@@ -439,7 +455,7 @@ STall — Find what’s around the corner.` : "";
               </button>
               {normalizeWhatsAppPhone(lastCode.phone) ? (
                 <button type="button" onClick={shareOwnerMessage} className="stall-btn" style={{ background: COLORS.ink, color: "#fff", border: `1.5px solid ${COLORS.ink}`, borderRadius: 7, padding: "8px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-                  💬 WhatsApp Owner
+                  💬 Open WhatsApp & Send
                 </button>
               ) : null}
             </div>
