@@ -293,7 +293,7 @@ Your STall Claim ID: ${lastCode.code}
 Your listing is already created. Now it’s your turn to claim it and take control of your business profile.
 
 👉 To claim:
-1. Open STall: https://stall.stallwale.in/
+1. Open STall: https://stallapp.stallwale.in/
 2. Sign in / create your business account
 3. Go to My Listings
 4. Select “Claim a listing”
