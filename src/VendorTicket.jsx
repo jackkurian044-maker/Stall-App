@@ -61,7 +61,13 @@ export default function VendorTicket({ vendor, highlighted, onClick, onOpenRevie
     logInteraction(db, vendor.id, "whatsapp");
     const phone = normalizeWhatsAppPhone(vendor.phone);
     if (!phone) return;
-    window.open(`https://wa.me/${phone}`, "_blank", "noopener,noreferrer");
+
+    const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+    const whatsappUrl = isMobile
+      ? `https://wa.me/${phone}`
+      : `https://web.whatsapp.com/send?phone=${phone}`;
+
+    window.open(whatsappUrl, "_blank", "noopener,noreferrer");
   });
 
   const handleDirections = stop(() => {
