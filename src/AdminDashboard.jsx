@@ -29,12 +29,13 @@ export default function AdminDashboard() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [lastCode, setLastCode] = useState(null);
+  const [ownerMessageStatus, setOwnerMessageStatus] = useState("");
   const [tempId] = useState(() => uid(10));
   const [reports, setReports] = useState([]);
   const [reportsLoading, setReportsLoading] = useState(true);
-  const [premiumMap, setPremiumMap] = useState({});   // ownerId -> isPremium
-  const [gbpMap, setGbpMap] = useState({});             // ownerId -> connected
-  const [boostMap, setBoostMap] = useState({});          // vendor doc id -> boost/latest data
+  const [premiumMap, setPremiumMap] = useState({});
+  const [gbpMap, setGbpMap] = useState({});
+  const [boostMap, setBoostMap] = useState({});
   const [agents, setAgents] = useState([]);
   const [commissions, setCommissions] = useState([]);
   const [expandedAgentId, setExpandedAgentId] = useState(null);
@@ -59,9 +60,6 @@ export default function AdminDashboard() {
     return unsub;
   }, []);
 
-  // Premium status and GBP connection status are keyed by ownerId (the
-  // vendor's auth uid), same collections the vendor-side Boost tab reads —
-  // just loaded here in bulk for every vendor at once.
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "premium_vendors"), (snap) => {
       const map = {};
@@ -80,8 +78,6 @@ export default function AdminDashboard() {
     return unsub;
   }, []);
 
-  // Sales agents — loaded in bulk so we can show per-agent store counts and
-  // active/inactive status without a separate query per agent.
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "agents"), (snap) => {
       console.log("agents snapshot:", snap.docs.length, "docs");
@@ -92,8 +88,6 @@ export default function AdminDashboard() {
     return unsub;
   }, []);
 
-  // Commissions — one doc per vendor that has ever converted to Premium
-  // through an agent; status is "pending" | "paid" | "clawed_back".
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "commissions"), (snap) => {
       console.log("commissions snapshot:", snap.docs.length, "docs");
@@ -104,10 +98,6 @@ export default function AdminDashboard() {
     return unsub;
   }, []);
 
-  // Boost scores live in a subcollection per listing (vendors/{id}/boost/latest),
-  // so there's no single collection to listen to — subscribe to each claimed
-  // listing individually and keep the subscriptions in sync as the vendor
-  // list changes (new claims added, listings removed).
   useEffect(() => {
     const claimedIds = vendors.filter((v) => v.ownerId).map((v) => v.id);
     const unsubs = claimedIds.map((id) =>
@@ -122,14 +112,10 @@ export default function AdminDashboard() {
     await resolveReport(db, reportId, status);
   };
 
-  // Same zero-click, staleness-gated refresh as the public Find page —
-  // see ratingSync.js and the firestore.rules note for the cost control.
   useEffect(() => {
     autoRefreshStale(vendors, refreshedRef.current);
   }, [vendors]);
 
-  // ── Agents: stores grouped by agent, commissions indexed by vendor,
-  // and an "active" agent = has added at least one store, ever. ──
   const vendorsByAgent = useMemo(() => {
     const map = {};
     vendors.forEach((v) => {
@@ -147,8 +133,6 @@ export default function AdminDashboard() {
 
   const activeAgentsCount = agents.filter((a) => (vendorsByAgent[a.id]?.length || 0) > 0).length;
 
-  // Stores added by any agent that are claimed but not yet Premium —
-  // the pool that hasn't converted to a commission yet.
   const agentStoresNotYetPremium = useMemo(() => {
     return vendors.filter((v) => v.addedByAgentId && v.ownerId && !premiumMap[v.ownerId]).length;
   }, [vendors, premiumMap]);
@@ -167,6 +151,7 @@ export default function AdminDashboard() {
   const startEdit = (v) => {
     setEditingId(v.id);
     setLastCode(null);
+    setOwnerMessageStatus("");
     setError("");
     setForm({
       name: v.name, category: v.category, description: v.description || "",
@@ -222,7 +207,8 @@ export default function AdminDashboard() {
           ...payload, ownerId: null, claimCode: code, createdAt: serverTimestamp(),
           ratingUpdatedAt: payload.placeId ? serverTimestamp() : null,
         });
-        setLastCode({ name: form.name.trim(), code });
+        setLastCode({ name: form.name.trim(), code, phone: form.phone.trim() });
+        setOwnerMessageStatus("");
         setForm(emptyForm);
       }
     } catch (err) {
@@ -237,14 +223,8 @@ export default function AdminDashboard() {
     if (editingId === id) cancelEdit();
   };
 
-  // Manually grant/revoke premium from the admin panel — for comps, pilots,
-  // or unblocking a vendor outside the normal Razorpay flow. Granting needs
-  // no confirmation; revoking does, since revoking a vendor who actually
-  // has a live Razorpay subscription only flips this flag locally — it
-  // doesn't touch their subscription, so the next successful charge
-  // webhook will silently turn isPremium back on.
   const togglePremium = async (v) => {
-    if (!v.ownerId) return; // no vendor account to key this to yet
+    if (!v.ownerId) return;
     const currentlyPremium = !!premiumMap[v.ownerId];
     if (currentlyPremium) {
       const ok = confirm(
@@ -266,6 +246,66 @@ export default function AdminDashboard() {
         `If this says "permission-denied," the Firestore rules allowing admin writes to premium_vendors haven't been deployed yet — run:\nfirebase deploy --only firestore:rules`
       );
     }
+  };
+
+  const normalizeWhatsAppPhone = (phone) => {
+    const raw = String(phone || "").trim();
+    if (!raw) return "";
+    const digits = raw.replace(/\D/g, "");
+    if (!digits) return "";
+    if (raw.startsWith("+")) return digits;
+    if (digits.length === 10) return `91${digits}`;
+    return digits;
+  };
+
+  const ownerMessage = lastCode ? `Hi 👋
+
+We’re reaching out from STall — your local business discovery platform.
+
+Good news! 🎉 We’ve already created a business listing for “${lastCode.name}” on STall so customers can discover your business online.
+
+Your STall listing can help you:
+• Get discovered by local customers searching for businesses like yours
+• Showcase your business information, services and offers
+• Keep your business details updated
+• Build your online presence on STall
+• Understand how customers are discovering and interacting with your listing
+
+Your STall Claim ID: ${lastCode.code}
+
+Your listing is already created. Now it’s your turn to claim it and take control of your business profile.
+
+👉 To claim:
+1. Open STall: https://stall.stallwale.in/
+2. Sign in / create your business account
+3. Go to My Listings
+4. Select “Claim a listing”
+5. Enter your Claim ID: ${lastCode.code}
+
+Once claimed, you can review and update your business information so customers see the correct details.
+
+Welcome to STall! 🚀
+STall — Find what’s around the corner.` : "";
+
+  const copyOwnerMessage = async () => {
+    if (!ownerMessage) return;
+    try {
+      await navigator.clipboard.writeText(ownerMessage);
+      setOwnerMessageStatus("Message copied.");
+    } catch {
+      setOwnerMessageStatus("Couldn’t copy automatically. Please select the message and copy it.");
+    }
+  };
+
+  const shareOwnerMessage = () => {
+    if (!ownerMessage || !lastCode?.phone) return;
+    const phone = normalizeWhatsAppPhone(lastCode.phone);
+    if (!phone) {
+      setOwnerMessageStatus("No valid business phone number is available for WhatsApp.");
+      return;
+    }
+    setOwnerMessageStatus("");
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(ownerMessage)}`, "_blank", "noopener,noreferrer");
   };
 
   return (
@@ -363,6 +403,32 @@ export default function AdminDashboard() {
             </div>
           </div>
         )}
+
+        {lastCode && (
+          <div style={{ marginTop: 12, background: "#fff", border: `1.5px solid ${COLORS.ink}22`, borderRadius: 8, padding: 12 }}>
+            <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 3 }}>📣 Contact Business Owner</div>
+            <div style={{ fontSize: 11, color: "#666", marginBottom: 10 }}>
+              Use the business phone already listed for this store. Once the owner claims the listing, you can use their account/contact details going forward.
+            </div>
+            <div style={{ fontSize: 11, color: "#555", marginBottom: 8 }}>
+              WhatsApp: {lastCode.phone || "No phone number provided"}
+            </div>
+            <div style={{ background: "#fafafa", border: `1px solid ${COLORS.ink}18`, borderRadius: 7, padding: 10, whiteSpace: "pre-wrap", fontSize: 11.5, lineHeight: 1.5, maxHeight: 320, overflowY: "auto" }}>
+              {ownerMessage}
+            </div>
+            <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+              <button type="button" onClick={copyOwnerMessage} className="stall-btn" style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 7, padding: "8px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                📋 Copy Message
+              </button>
+              {normalizeWhatsAppPhone(lastCode.phone) ? (
+                <button type="button" onClick={shareOwnerMessage} className="stall-btn" style={{ background: COLORS.ink, color: "#fff", border: `1.5px solid ${COLORS.ink}`, borderRadius: 7, padding: "8px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                  💬 WhatsApp Owner
+                </button>
+              ) : null}
+            </div>
+            {ownerMessageStatus && <div style={{ fontSize: 11, color: COLORS.teal, marginTop: 8 }}>{ownerMessageStatus}</div>}
+          </div>
+        )}
       </div>
 
       <div>
@@ -387,20 +453,8 @@ export default function AdminDashboard() {
                       </div>
                     </div>
                     <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-                      <button
-                        onClick={() => handleResolveReport(r.id, "dismissed")}
-                        title="Dismiss — no action needed"
-                        style={{ background: "none", border: `1.5px solid ${COLORS.ink}33`, borderRadius: 7, padding: "6px 8px", cursor: "pointer", color: "#666" }}
-                      >
-                        <XIcon size={14} />
-                      </button>
-                      <button
-                        onClick={() => handleResolveReport(r.id, "reviewed")}
-                        title="Mark as reviewed"
-                        style={{ background: COLORS.ink, border: "none", borderRadius: 7, padding: "6px 8px", cursor: "pointer", color: "#fff" }}
-                      >
-                        <Check size={14} />
-                      </button>
+                      <button onClick={() => handleResolveReport(r.id, "dismissed")} title="Dismiss — no action needed" style={{ background: "none", border: `1.5px solid ${COLORS.ink}33`, borderRadius: 7, padding: "6px 8px", cursor: "pointer", color: "#666" }}><XIcon size={14} /></button>
+                      <button onClick={() => handleResolveReport(r.id, "reviewed")} title="Mark as reviewed" style={{ background: COLORS.ink, border: "none", borderRadius: 7, padding: "6px 8px", cursor: "pointer", color: "#fff" }}><Check size={14} /></button>
                     </div>
                   </div>
                 </div>
@@ -410,19 +464,11 @@ export default function AdminDashboard() {
         )}
 
         <div style={{ marginBottom: 28 }}>
-          <div className="font-display" style={{ fontSize: 19, fontWeight: 700, marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}>
-            <Users size={17} /> Agents
-          </div>
-          <div style={{ fontSize: 12, color: "#666", marginBottom: 4 }}>
-            {activeAgentsCount} active (added ≥1 store) of {agents.length} total
-          </div>
-          <div style={{ fontSize: 12, color: "#666", marginBottom: 12 }}>
-            {agentStoresNotYetPremium} agent-added store{agentStoresNotYetPremium === 1 ? "" : "s"} claimed but not yet Premium across all agents
-          </div>
+          <div className="font-display" style={{ fontSize: 19, fontWeight: 700, marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}><Users size={17} /> Agents</div>
+          <div style={{ fontSize: 12, color: "#666", marginBottom: 4 }}>{activeAgentsCount} active (added ≥1 store) of {agents.length} total</div>
+          <div style={{ fontSize: 12, color: "#666", marginBottom: 12 }}>{agentStoresNotYetPremium} agent-added store{agentStoresNotYetPremium === 1 ? "" : "s"} claimed but not yet Premium across all agents</div>
           {agents.length === 0 ? (
-            <div style={{ border: `2px dashed ${COLORS.ink}55`, borderRadius: 12, padding: 24, textAlign: "center", color: "#666", fontSize: 13 }}>
-              No agent accounts yet.
-            </div>
+            <div style={{ border: `2px dashed ${COLORS.ink}55`, borderRadius: 12, padding: 24, textAlign: "center", color: "#666", fontSize: 13 }}>No agent accounts yet.</div>
           ) : (
             <div style={{ border: `2px solid ${COLORS.ink}`, borderRadius: 12, overflow: "hidden" }}>
               {agents.map((a, i) => {
@@ -431,48 +477,25 @@ export default function AdminDashboard() {
                 const isExpanded = expandedAgentId === a.id;
                 return (
                   <div key={a.id} style={{ borderTop: i === 0 ? "none" : `1px solid ${COLORS.ink}22`, background: "#fff" }}>
-                    <div
-                      onClick={() => setExpandedAgentId(isExpanded ? null : a.id)}
-                      style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", cursor: "pointer" }}
-                    >
+                    <div onClick={() => setExpandedAgentId(isExpanded ? null : a.id)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", cursor: "pointer" }}>
                       <div style={{ minWidth: 0 }}>
                         <div style={{ fontWeight: 700, fontSize: 14, color: COLORS.ink }}>{a.name || a.id}</div>
-                        <div style={{ fontSize: 11.5, color: "#777" }}>
-                          {stores.length} store{stores.length === 1 ? "" : "s"} · {premiumCount} premium
-                          {stores.length - premiumCount > 0 ? ` · ${stores.length - premiumCount} not yet premium` : ""}
-                        </div>
+                        <div style={{ fontSize: 11.5, color: "#777" }}>{stores.length} store{stores.length === 1 ? "" : "s"} · {premiumCount} premium{stores.length - premiumCount > 0 ? ` · ${stores.length - premiumCount} not yet premium` : ""}</div>
                       </div>
-                      <span style={{ fontSize: 10, fontWeight: 700, color: stores.length > 0 ? COLORS.teal : COLORS.brick }}>
-                        {stores.length > 0 ? "ACTIVE" : "INACTIVE"}
-                      </span>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: stores.length > 0 ? COLORS.teal : COLORS.brick }}>{stores.length > 0 ? "ACTIVE" : "INACTIVE"}</span>
                     </div>
                     {isExpanded && (
                       <div style={{ borderTop: `1px solid ${COLORS.ink}15`, background: "#fafafa" }}>
-                        {stores.length === 0 ? (
-                          <div style={{ padding: "10px 16px", fontSize: 12, color: "#777" }}>No stores added yet.</div>
-                        ) : (
-                          stores.map((v) => {
-                            const isPremium = !!(v.ownerId && premiumMap[v.ownerId]);
-                            const commission = commissionByVendorId[v.id];
-                            return (
-                              <div key={v.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 16px 8px 28px", borderTop: `1px solid ${COLORS.ink}10` }}>
-                                <div style={{ minWidth: 0 }}>
-                                  <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.ink }}>{v.name}</div>
-                                  <div style={{ fontSize: 11, color: "#777" }}>
-                                    {v.ownerId ? "Claimed" : "Unclaimed"}{isPremium ? " · Premium" : v.ownerId ? " · Not yet premium" : ""}
-                                  </div>
-                                </div>
-                                {commission ? (
-                                  <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 20, background: COMMISSION_BG[commission.status], color: COMMISSION_COLOR[commission.status] }}>
-                                    ₹{commission.amount} {commission.status}
-                                  </span>
-                                ) : (
-                                  <span style={{ fontSize: 10.5, color: "#aaa" }}>—</span>
-                                )}
-                              </div>
-                            );
-                          })
-                        )}
+                        {stores.length === 0 ? <div style={{ padding: "10px 16px", fontSize: 12, color: "#777" }}>No stores added yet.</div> : stores.map((v) => {
+                          const isPremium = !!(v.ownerId && premiumMap[v.ownerId]);
+                          const commission = commissionByVendorId[v.id];
+                          return (
+                            <div key={v.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 16px 8px 28px", borderTop: `1px solid ${COLORS.ink}10` }}>
+                              <div style={{ minWidth: 0 }}><div style={{ fontSize: 13, fontWeight: 600, color: COLORS.ink }}>{v.name}</div><div style={{ fontSize: 11, color: "#777" }}>{v.ownerId ? "Claimed" : "Unclaimed"}{isPremium ? " · Premium" : v.ownerId ? " · Not yet premium" : ""}</div></div>
+                              {commission ? <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 20, background: COMMISSION_BG[commission.status], color: COMMISSION_COLOR[commission.status] }}>₹{commission.amount} {commission.status}</span> : <span style={{ fontSize: 10.5, color: "#aaa" }}>—</span>}
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -485,12 +508,8 @@ export default function AdminDashboard() {
         <div className="font-display" style={{ fontSize: 19, fontWeight: 700, marginBottom: 4 }}>All listings</div>
         <div style={{ fontSize: 12, color: "#666", marginBottom: 12 }}>{vendors.length} total</div>
 
-        {loading ? (
-          <div style={{ fontSize: 13, color: "#666" }}>Loading…</div>
-        ) : vendors.length === 0 ? (
-          <div style={{ border: `2px dashed ${COLORS.ink}55`, borderRadius: 12, padding: 30, textAlign: "center", color: "#666", fontSize: 13 }}>
-            No vendors yet.
-          </div>
+        {loading ? <div style={{ fontSize: 13, color: "#666" }}>Loading…</div> : vendors.length === 0 ? (
+          <div style={{ border: `2px dashed ${COLORS.ink}55`, borderRadius: 12, padding: 30, textAlign: "center", color: "#666", fontSize: 13 }}>No vendors yet.</div>
         ) : (
           <div style={{ border: `2px solid ${COLORS.ink}`, borderRadius: 12, overflow: "hidden" }}>
             {vendors.map((v, i) => (
@@ -498,79 +517,28 @@ export default function AdminDashboard() {
                 <div style={{ minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                     <span style={{ fontWeight: 700, fontSize: 14, color: COLORS.ink }}>{v.name}</span>
-                    <span style={{ fontSize: 10, textTransform: "uppercase", fontWeight: 700, color: "#fff", background: CATEGORY_COLORS[v.category] || COLORS.ink, padding: "2px 7px", borderRadius: 999 }}>
-                      {v.category}
-                    </span>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: v.ownerId ? COLORS.teal : COLORS.brick }}>
-                      {v.ownerId ? "CLAIMED" : "UNCLAIMED"}
-                    </span>
+                    <span style={{ fontSize: 10, textTransform: "uppercase", fontWeight: 700, color: "#fff", background: CATEGORY_COLORS[v.category] || COLORS.ink, padding: "2px 7px", borderRadius: 999 }}>{v.category}</span>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: v.ownerId ? COLORS.teal : COLORS.brick }}>{v.ownerId ? "CLAIMED" : "UNCLAIMED"}</span>
                     {v.ownerId && (() => {
                       const isPremium = premiumMap[v.ownerId];
                       const gbpConnected = gbpMap[v.ownerId];
                       const boost = boostMap[v.id];
-                      if (!isPremium) return null; // non-premium vendors have no Boost state to show
-                      const bandColors = {
-                        strong: COLORS.green,
-                        needs_work: COLORS.marigold,
-                        at_risk: COLORS.brick,
-                      };
-                      const label = !gbpConnected
-                        ? "Boost: not connected"
-                        : !boost
-                        ? "Boost: not scanned"
-                        : `Boost: ${boost.score} (${boost.band?.replace("_", " ")})`;
+                      if (!isPremium) return null;
+                      const bandColors = { strong: COLORS.green, needs_work: COLORS.marigold, at_risk: COLORS.brick };
+                      const label = !gbpConnected ? "Boost: not connected" : !boost ? "Boost: not scanned" : `Boost: ${boost.score} (${boost.band?.replace("_", " ")})`;
                       const color = !gbpConnected || !boost ? COLORS.muted : (bandColors[boost.band] || COLORS.muted);
-                      return (
-                        <span style={{ fontSize: 10, fontWeight: 700, color, display: "flex", alignItems: "center", gap: 3 }}>
-                          <Sparkles size={10} /> {label}
-                        </span>
-                      );
+                      return <span style={{ fontSize: 10, fontWeight: 700, color, display: "flex", alignItems: "center", gap: 3 }}><Sparkles size={10} /> {label}</span>;
                     })()}
-                    {v.rating != null && (
-                      <span style={{ fontSize: 11, color: "#666", display: "flex", alignItems: "center", gap: 3 }}>
-                        <Star size={11} fill={COLORS.marigold} color={COLORS.marigold} />
-                        {v.rating.toFixed(1)}{v.ratingsCount != null ? ` (${v.ratingsCount})` : ""}
-                      </span>
-                    )}
+                    {v.rating != null && <span style={{ fontSize: 11, color: "#666", display: "flex", alignItems: "center", gap: 3 }}><Star size={11} fill={COLORS.marigold} color={COLORS.marigold} /> {v.rating.toFixed(1)}{v.ratingsCount != null ? ` (${v.ratingsCount})` : ""}</span>}
                   </div>
-                  <div style={{ fontSize: 11.5, color: "#777" }}>
-                    {v.address} · <span className="font-mono">{v.lat?.toFixed?.(4)}, {v.lng?.toFixed?.(4)}</span>
-                    {!v.ownerId && v.claimCode && <> · code <span className="font-mono">{v.claimCode}</span></>}
-                  </div>
+                  <div style={{ fontSize: 11.5, color: "#777" }}>{v.address} · <span className="font-mono">{v.lat?.toFixed?.(4)}, {v.lng?.toFixed?.(4)}</span>{!v.ownerId && v.claimCode && <> · code <span className="font-mono">{v.claimCode}</span></>}</div>
                   {v.phone && <div style={{ fontSize: 11.5, color: "#777" }}>{v.phone}</div>}
                 </div>
                 <div style={{ display: "flex", gap: 4, flexShrink: 0, alignItems: "center" }}>
-                  {v.placeId && isRatingStale(v) && (
-                    <span title="Rating/phone will sync from Google automatically" style={{ color: "#bbb", padding: 6, display: "flex" }}>
-                      <RefreshCw size={14} />
-                    </span>
-                  )}
-                  {v.ownerId && (
-                    <button
-                      onClick={() => togglePremium(v)}
-                      title={premiumMap[v.ownerId] ? "Remove premium access" : "Manually grant premium access"}
-                      className="stall-btn"
-                      style={{
-                        display: "flex", alignItems: "center", gap: 4,
-                        background: premiumMap[v.ownerId] ? COLORS.marigold : "transparent",
-                        border: `1.5px solid ${COLORS.marigold}`,
-                        color: premiumMap[v.ownerId] ? COLORS.ink : COLORS.marigold,
-                        borderRadius: 7, padding: "5px 9px", fontSize: 11, fontWeight: 700, cursor: "pointer",
-                      }}
-                    >
-                      <Crown size={12} /> {premiumMap[v.ownerId] ? "Premium" : "Grant"}
-                    </button>
-                  )}
-                  <button
-                    onClick={() => startEdit(v)}
-                    className="stall-btn"
-                    style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 7, padding: "5px 10px", fontSize: 12, fontWeight: 600 }}
-                  >
-                    Edit
-                  </button>
-                  <button onClick={() => remove(v.id)} title="Remove vendor" style={{ background: "none", border: "none", cursor: "pointer", color: COLORS.brick, padding: 6 }}>
-                    <Trash2 size={16} />
-                  </button>
+                  {v.placeId && isRatingStale(v) && <span title="Rating/phone will sync from Google automatically" style={{ color: "#bbb", padding: 6, display: "flex" }}><RefreshCw size={14} /></span>}
+                  {v.ownerId && <button onClick={() => togglePremium(v)} title={premiumMap[v.ownerId] ? "Remove premium access" : "Manually grant premium access"} className="stall-btn" style={{ display: "flex", alignItems: "center", gap: 4, background: premiumMap[v.ownerId] ? COLORS.marigold : "transparent", border: `1.5px solid ${COLORS.marigold}`, color: premiumMap[v.ownerId] ? COLORS.ink : COLORS.marigold, borderRadius: 7, padding: "5px 9px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}><Crown size={12} /> {premiumMap[v.ownerId] ? "Premium" : "Grant"}</button>}
+                  <button onClick={() => startEdit(v)} className="stall-btn" style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 7, padding: "5px 10px", fontSize: 12, fontWeight: 600 }}>Edit</button>
+                  <button onClick={() => remove(v.id)} title="Remove vendor" style={{ background: "none", border: "none", cursor: "pointer", color: COLORS.brick, padding: 6 }}><Trash2 size={16} /></button>
                 </div>
               </div>
             ))}
