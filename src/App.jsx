@@ -5,7 +5,7 @@ import { auth, db } from "./firebase";
 import Header from "./Header";
 import FindView from "./FindView";
 import AuthPage from "./AuthPage";
-import VendorDashboard from "./VendorDashboard";
+import VendorEntry from "./VendorEntry";
 import AdminDashboard from "./AdminDashboard";
 import DiscoverNearby from "./DiscoverNearby";
 import AgentDashboard from "./AgentDashboard";
@@ -85,7 +85,7 @@ export default function App() {
         ) : mode === "auth" ? (
           <AuthPage onSignedIn={() => setMode("mine")} />
         ) : mode === "mine" && user ? (
-          <VendorDashboard user={user} agent={agent} />
+          <VendorEntry user={user} agent={agent} />
         ) : mode === "agent" && user && agent ? (
           <AgentDashboard user={user} agent={agent} />
         ) : mode === "admin" && isAdmin ? (
