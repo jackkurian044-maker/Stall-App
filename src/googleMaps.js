@@ -1,85 +1,73 @@
-// Loads the Google Maps JavaScript API (with the Places library) exactly once.
-// Discover Nearby uses the current Places API (New) Place class directly.
+// Shared Google Maps JavaScript API loader.
+// Uses Google's importLibrary bootstrap pattern so Places API (New) can be
+// loaded reliably without depending on script onload timing.
 
 let loadPromise = null;
 
 export function loadGoogleMaps(apiKey) {
   if (loadPromise) return loadPromise;
 
-  loadPromise = new Promise((resolve, reject) => {
-    let settled = false;
-    let pollTimer = null;
-    let timeoutTimer = null;
-
-    const cleanup = () => {
-      if (pollTimer) clearInterval(pollTimer);
-      if (timeoutTimer) clearTimeout(timeoutTimer);
-      if (window.__stallGoogleMapsReady) delete window.__stallGoogleMapsReady;
-    };
-
-    const fail = (error) => {
-      if (settled) return;
-      settled = true;
-      cleanup();
-      reject(error instanceof Error ? error : new Error(String(error)));
-    };
-
-    const finish = () => {
-      if (settled) return;
-      if (!window.google?.maps) {
-        fail(new Error("Google Maps JavaScript API did not load correctly."));
-        return;
-      }
-      settled = true;
-      cleanup();
-      resolve(window.google);
-    };
-
-    window.__stallGoogleMapsReady = finish;
-
+  loadPromise = (async () => {
     if (!apiKey && !window.google?.maps) {
-      fail(new Error("Google Maps API key is not configured."));
-      return;
+      throw new Error("Google Maps API key is not configured.");
     }
 
-    // If another component already loaded Google Maps, use it immediately.
-    if (window.google?.maps) {
-      finish();
-      return;
+    // Already loaded by another part of the app.
+    if (window.google?.maps?.importLibrary) {
+      await window.google.maps.importLibrary("places");
+      return window.google;
     }
 
+    // If a Maps script is already being loaded by another component, wait for
+    // the namespace/importLibrary to become available rather than attaching
+    // another script or relying on a script load event.
     const existing = document.getElementById("google-maps-script");
-
     if (existing) {
-      // The Google loader with loading=async does not guarantee a useful
-      // script load event. Poll briefly for the Maps namespace instead.
-      pollTimer = setInterval(() => {
-        if (window.google?.maps) finish();
-      }, 100);
-      timeoutTimer = setTimeout(() => {
-        fail(new Error("Google Maps JavaScript API timed out while loading."));
-      }, 15000);
-      return;
+      const started = Date.now();
+      while (Date.now() - started < 15000) {
+        if (window.google?.maps?.importLibrary) {
+          await window.google.maps.importLibrary("places");
+          return window.google;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      throw new Error("Google Maps JavaScript API timed out while loading.");
     }
 
+    // Google's recommended bootstrap loader. It creates google.maps.importLibrary
+    // immediately and loads the requested libraries asynchronously.
     const script = document.createElement("script");
     script.id = "google-maps-script";
-    script.src =
-      `https://maps.googleapis.com/maps/api/js` +
-      `?key=${encodeURIComponent(apiKey)}` +
-      `&libraries=places` +
-      `&callback=__stallGoogleMapsReady`;
     script.async = true;
     script.defer = true;
-    script.onerror = () => fail(new Error("Failed to load Google Maps script"));
 
-    timeoutTimer = setTimeout(() => {
-      fail(new Error("Google Maps JavaScript API timed out while loading."));
-    }, 15000);
+    const params = new URLSearchParams({
+      key: apiKey,
+      v: "weekly",
+      loading: "async",
+    });
+
+    script.src = `https://maps.googleapis.com/maps/api/js?${params.toString()}`;
+
+    const scriptLoad = new Promise((resolve, reject) => {
+      script.addEventListener("load", resolve, { once: true });
+      script.addEventListener("error", () => reject(new Error("Failed to load Google Maps JavaScript API.")), { once: true });
+    });
 
     document.head.appendChild(script);
-  }).catch((error) => {
-    // Allow a later attempt if the initial Google script load failed.
+
+    await Promise.race([
+      scriptLoad,
+      new Promise((_, reject) => setTimeout(() => reject(new Error("Google Maps JavaScript API timed out while loading.")), 15000)),
+    ]);
+
+    if (!window.google?.maps?.importLibrary) {
+      throw new Error("Google Maps loaded, but importLibrary is unavailable.");
+    }
+
+    await window.google.maps.importLibrary("places");
+    return window.google;
+  })().catch((error) => {
     loadPromise = null;
     throw error;
   });
