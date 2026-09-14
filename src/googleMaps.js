@@ -7,24 +7,42 @@ export function loadGoogleMaps(apiKey) {
   if (loadPromise) return loadPromise;
 
   loadPromise = new Promise((resolve, reject) => {
-    const finish = async () => {
-      try {
-        if (!window.google?.maps) {
-          throw new Error("Google Maps JavaScript API did not load correctly.");
-        }
+    let settled = false;
+    let pollTimer = null;
+    let timeoutTimer = null;
 
-        // Ensure the Places library is available before resolving.
-        const places = await window.google.maps.importLibrary("places");
-        if (!places?.Place) {
-          throw new Error("Google Places library did not load correctly.");
-        }
-
-        resolve(window.google);
-      } catch (error) {
-        reject(error);
-      }
+    const cleanup = () => {
+      if (pollTimer) clearInterval(pollTimer);
+      if (timeoutTimer) clearTimeout(timeoutTimer);
+      if (window.__stallGoogleMapsReady) delete window.__stallGoogleMapsReady;
     };
 
+    const fail = (error) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(error instanceof Error ? error : new Error(String(error)));
+    };
+
+    const finish = () => {
+      if (settled) return;
+      if (!window.google?.maps) {
+        fail(new Error("Google Maps JavaScript API did not load correctly."));
+        return;
+      }
+      settled = true;
+      cleanup();
+      resolve(window.google);
+    };
+
+    window.__stallGoogleMapsReady = finish;
+
+    if (!apiKey && !window.google?.maps) {
+      fail(new Error("Google Maps API key is not configured."));
+      return;
+    }
+
+    // If another component already loaded Google Maps, use it immediately.
     if (window.google?.maps) {
       finish();
       return;
@@ -33,17 +51,14 @@ export function loadGoogleMaps(apiKey) {
     const existing = document.getElementById("google-maps-script");
 
     if (existing) {
-      existing.addEventListener("load", finish, { once: true });
-      existing.addEventListener(
-        "error",
-        () => reject(new Error("Failed to load Google Maps script")),
-        { once: true }
-      );
-      return;
-    }
-
-    if (!apiKey) {
-      reject(new Error("Google Maps API key is not configured."));
+      // The Google loader with loading=async does not guarantee a useful
+      // script load event. Poll briefly for the Maps namespace instead.
+      pollTimer = setInterval(() => {
+        if (window.google?.maps) finish();
+      }, 100);
+      timeoutTimer = setTimeout(() => {
+        fail(new Error("Google Maps JavaScript API timed out while loading."));
+      }, 15000);
       return;
     }
 
@@ -53,10 +68,15 @@ export function loadGoogleMaps(apiKey) {
       `https://maps.googleapis.com/maps/api/js` +
       `?key=${encodeURIComponent(apiKey)}` +
       `&libraries=places` +
-      `&loading=async`;
+      `&callback=__stallGoogleMapsReady`;
     script.async = true;
-    script.onload = finish;
-    script.onerror = () => reject(new Error("Failed to load Google Maps script"));
+    script.defer = true;
+    script.onerror = () => fail(new Error("Failed to load Google Maps script"));
+
+    timeoutTimer = setTimeout(() => {
+      fail(new Error("Google Maps JavaScript API timed out while loading."));
+    }, 15000);
+
     document.head.appendChild(script);
   }).catch((error) => {
     // Allow a later attempt if the initial Google script load failed.
