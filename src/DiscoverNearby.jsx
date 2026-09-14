@@ -2,13 +2,15 @@ import React, { useState } from "react";
 import { collection, doc, writeBatch, serverTimestamp } from "firebase/firestore";
 import { MapPin, Locate, Search, Copy, Loader2 } from "lucide-react";
 import { db } from "./firebase";
-import { CATEGORIES, COLORS, DEFAULT_LOC, CITIES } from "./constants";
+import { CATEGORIES, CATEGORY_COLORS, COLORS, DEFAULT_LOC, CITIES } from "./constants";
 import { uid, haversineKm } from "./geo";
 import { loadGoogleMaps } from "./googleMaps";
 import { findExistingPlaceIds } from "./duplicateCheck";
 
 const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_PLACES_API_KEY;
 
+// Best-effort mapping from Google's place "types" to our own categories.
+// Admins can always override per-result before adding.
 const TYPE_CATEGORY_MAP = [
   [["restaurant", "food", "bakery", "grocery_or_supermarket", "meal_takeaway", "meal_delivery", "cafe"], "Food & Produce"],
   [["clothing_store", "shoe_store", "jewelry_store"], "Clothing & Accessories"],
@@ -31,35 +33,6 @@ function guessCategory(types = []) {
   return "Other";
 }
 
-function latLngValue(location) {
-  if (!location) return { lat: null, lng: null };
-  return {
-    lat: typeof location.lat === "function" ? location.lat() : location.lat,
-    lng: typeof location.lng === "function" ? location.lng() : location.lng,
-  };
-}
-
-function mapPlace(place) {
-  const { lat, lng } = latLngValue(place.location);
-  return {
-    placeId: place.id,
-    name: place.displayName || "Unnamed business",
-    vicinity: place.formattedAddress || "",
-    lat,
-    lng,
-    rating: typeof place.rating === "number" ? place.rating : null,
-    ratingsCount: typeof place.userRatingCount === "number" ? place.userRatingCount : null,
-    types: Array.isArray(place.types) ? place.types : [],
-    category: guessCategory(place.types),
-    website: place.websiteURI || null,
-    mapsUrl: place.googleMapsURI || null,
-    phone: place.nationalPhoneNumber || "",
-    hours: place.regularOpeningHours?.weekdayDescriptions?.length
-      ? place.regularOpeningHours.weekdayDescriptions.join("\n")
-      : "",
-  };
-}
-
 export default function DiscoverNearby() {
   const [centerLoc, setCenterLoc] = useState(null);
   const [centerCityName, setCenterCityName] = useState(null);
@@ -71,7 +44,7 @@ export default function DiscoverNearby() {
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState("");
   const [results, setResults] = useState([]);
-  const [selected, setSelected] = useState({});
+  const [selected, setSelected] = useState({}); // placeId -> bool
   const [adding, setAdding] = useState(false);
   const [importResults, setImportResults] = useState(null);
   const [importError, setImportError] = useState("");
@@ -100,9 +73,13 @@ export default function DiscoverNearby() {
       },
       (err) => {
         setLocating(false);
-        if (err.code === err.PERMISSION_DENIED) setLocateError("Location access was denied — pick a city above, or enter coordinates below.");
-        else if (err.code === err.TIMEOUT) setLocateError("Location took too long to find — try again, pick a city, or enter coordinates below.");
-        else setLocateError("Couldn't get your location — try again, pick a city, or enter coordinates below.");
+        if (err.code === err.PERMISSION_DENIED) {
+          setLocateError("Location access was denied — pick a city above, or enter coordinates below.");
+        } else if (err.code === err.TIMEOUT) {
+          setLocateError("Location took too long to find — try again, pick a city, or enter coordinates below.");
+        } else {
+          setLocateError("Couldn't get your location — try again, pick a city, or enter coordinates below.");
+        }
       },
       { timeout: 12000, enableHighAccuracy: true, maximumAge: 0 }
     );
@@ -111,13 +88,22 @@ export default function DiscoverNearby() {
   const useManualLoc = () => {
     const lat = parseFloat(manualLat);
     const lng = parseFloat(manualLng);
-    if (Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
       setCenterLoc({ lat, lng });
       setCenterCityName(null);
-      setSearchError("");
-    } else {
-      setSearchError("Enter a valid latitude (-90 to 90) and longitude (-180 to 180).");
     }
+  };
+
+  const runSearch = async (svc, request) => {
+    return new Promise((resolve) => {
+      svc.nearbySearch(request, (res, status) => {
+        if (status === window.google.maps.places.PlacesServiceStatus.OK && res) {
+          resolve(res);
+        } else {
+          resolve([]);
+        }
+      });
+    });
   };
 
   const search = async () => {
@@ -134,48 +120,31 @@ export default function DiscoverNearby() {
     setResults([]);
     setSelected({});
     setImportResults(null);
-
     try {
       await loadGoogleMaps(GOOGLE_API_KEY);
-      const { Place, SearchNearbyRankPreference } = await window.google.maps.importLibrary("places");
-      const radius = Math.max(500, Math.min(Math.round(radiusKm * 1000), 50000));
-      const fields = ["id", "displayName", "formattedAddress", "location", "rating", "userRatingCount", "types", "googleMapsURI"];
-      let response;
-
-      if (keyword.trim()) {
-        response = await Place.searchByText({
-          textQuery: keyword.trim(),
-          fields,
-          locationBias: { center: centerLoc, radius },
-          maxResultCount: 20,
-          language: "en",
-          region: "in",
-        });
-      } else {
-        response = await Place.searchNearby({
-          fields,
-          locationRestriction: { center: centerLoc, radius },
-          maxResultCount: 20,
-          rankPreference: SearchNearbyRankPreference?.DISTANCE || "DISTANCE",
-          language: "en",
-          region: "in",
-        });
-      }
-
-      const places = Array.isArray(response?.places) ? response.places : [];
-      if (!places.length) {
-        setSearchError("No nearby businesses found. Try a broader keyword or larger radius.");
-        return;
-      }
-
-      const mapped = places
-        .map(mapPlace)
-        .filter((p) => p.placeId && Number.isFinite(p.lat) && Number.isFinite(p.lng));
-      const existingPlaceIds = await findExistingPlaceIds(db, mapped.map((p) => p.placeId));
-      setResults(mapped.map((p) => ({ ...p, alreadyListed: existingPlaceIds.has(p.placeId) })));
-    } catch (error) {
-      console.error("[STall] Discover Nearby search failed:", error);
-      setSearchError(`Google Places search failed: ${error?.message || "Unknown error"}`);
+      const svc = new window.google.maps.places.PlacesService(document.createElement("div"));
+      const request = {
+        location: new window.google.maps.LatLng(centerLoc.lat, centerLoc.lng),
+        radius: Math.round(radiusKm * 1000),
+        keyword: keyword.trim() || undefined,
+      };
+      const res = await runSearch(svc, request);
+      const existingPlaceIds = await findExistingPlaceIds(db, res.map((p) => p.place_id));
+      const mapped = res.map((p) => ({
+        placeId: p.place_id,
+        name: p.name,
+        vicinity: p.vicinity || "",
+        lat: p.geometry?.location?.lat(),
+        lng: p.geometry?.location?.lng(),
+        rating: typeof p.rating === "number" ? p.rating : null,
+        ratingsCount: typeof p.user_ratings_total === "number" ? p.user_ratings_total : null,
+        types: p.types || [],
+        category: guessCategory(p.types),
+        alreadyListed: existingPlaceIds.has(p.place_id),
+      }));
+      setResults(mapped);
+    } catch {
+      setSearchError("Search failed — try again.");
     } finally {
       setSearching(false);
     }
@@ -183,7 +152,7 @@ export default function DiscoverNearby() {
 
   const toggleSelect = (placeId) => {
     const r = results.find((res) => res.placeId === placeId);
-    if (r?.alreadyListed) return;
+    if (r?.alreadyListed) return; // already on Stall — can't be re-added
     setSelected((s) => ({ ...s, [placeId]: !s[placeId] }));
   };
 
@@ -199,56 +168,51 @@ export default function DiscoverNearby() {
     setImportError("");
     try {
       await loadGoogleMaps(GOOGLE_API_KEY);
-      const { Place } = await window.google.maps.importLibrary("places");
+      const svc = new window.google.maps.places.PlacesService(document.createElement("div"));
+      const detailsFor = (placeId) =>
+        new Promise((resolve) => {
+          svc.getDetails({ placeId, fields: ["formatted_address", "website", "url", "opening_hours", "formatted_phone_number"] }, (place, status) => {
+            if (status === window.google.maps.places.PlacesServiceStatus.OK && place) resolve(place);
+            else resolve({});
+          });
+        });
+
       const batch = writeBatch(db);
       const created = [];
-
       for (const r of selectedResults) {
-        let details = r;
-        try {
-          const place = new Place({ id: r.placeId });
-          await place.fetchFields({
-            fields: ["id", "displayName", "formattedAddress", "location", "websiteURI", "googleMapsURI", "regularOpeningHours", "nationalPhoneNumber"],
-          });
-          details = { ...r, ...mapPlace(place) };
-        } catch (detailError) {
-          console.warn("[STall] Could not fetch place details; using search data:", detailError);
-        }
-
+        const details = await detailsFor(r.placeId);
         const ref = doc(collection(db, "vendors"));
         const code = uid(6);
         batch.set(ref, {
-          name: details.name,
-          category: details.category,
+          name: r.name,
+          category: r.category,
           description: "",
           products: "",
-          address: details.vicinity || "",
-          phone: details.phone || "",
-          lat: details.lat,
-          lng: details.lng,
+          address: details.formatted_address || r.vicinity || "",
+          phone: details.formatted_phone_number || "",
+          lat: r.lat,
+          lng: r.lng,
           website: details.website || null,
-          mapsUrl: details.mapsUrl || null,
-          placeId: details.placeId,
-          rating: details.rating,
-          ratingsCount: details.ratingsCount,
-          hours: details.hours || "",
+          mapsUrl: details.url || null,
+          placeId: r.placeId,
+          rating: r.rating,
+          ratingsCount: r.ratingsCount,
+          hours: details.opening_hours?.weekday_text?.length ? details.opening_hours.weekday_text.join("\n") : "",
           photos: [],
           ownerId: null,
           claimCode: code,
           createdAt: serverTimestamp(),
-          ratingUpdatedAt: details.placeId ? serverTimestamp() : null,
+          ratingUpdatedAt: r.placeId ? serverTimestamp() : null,
         });
-        created.push({ name: details.name, code });
-        await new Promise((res) => setTimeout(res, 150));
+        created.push({ name: r.name, code });
+        await new Promise((res) => setTimeout(res, 150)); // gentle pacing
       }
-
       await batch.commit();
       setImportResults(created);
       setResults([]);
       setSelected({});
-    } catch (error) {
-      console.error("[STall] Vendor import failed:", error);
-      setImportError(`Import failed: ${error?.message || "check your admin access and try again."}`);
+    } catch {
+      setImportError("Import failed — check your admin doc exists and try again.");
     } finally {
       setAdding(false);
     }
@@ -259,19 +223,42 @@ export default function DiscoverNearby() {
     navigator.clipboard?.writeText(text);
   };
 
-  const inputStyle = { padding: "9px 10px", borderRadius: 14, border: `1.5px solid ${COLORS.ink}`, fontSize: 13, background: "#fff", boxSizing: "border-box" };
+  const inputStyle = {
+    padding: "9px 10px", borderRadius: 14,
+    border: `1.5px solid ${COLORS.ink}`, fontSize: 13, background: "#fff", boxSizing: "border-box",
+  };
 
   if (importResults) {
     return (
       <div className="stall-page" style={{ maxWidth: 640 }}>
-        <div className="font-display" style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Added {importResults.length} vendor{importResults.length === 1 ? "" : "s"}</div>
-        <div style={{ fontSize: 12.5, color: "#666", marginBottom: 14 }}>Share each claim code with that business — they enter it under "Claim a listing" in My Listings to take over editing.</div>
+        <div className="font-display" style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>
+          Added {importResults.length} vendor{importResults.length === 1 ? "" : "s"}
+        </div>
+        <div style={{ fontSize: 12.5, color: "#666", marginBottom: 14 }}>
+          Share each claim code with that business — they enter it under
+          "Claim a listing" in My Listings to take over editing.
+        </div>
         <div style={{ background: "#fff", border: "1px solid rgba(15,26,36,0.08)", boxShadow: "0 8px 24px rgba(15,26,36,0.08)", borderRadius: 20, padding: 16, marginBottom: 14 }}>
-          {importResults.map((r, i) => <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderTop: i === 0 ? "none" : `1px solid ${COLORS.ink}15`, fontSize: 13 }}><span>{r.name}</span><span className="font-mono" style={{ fontWeight: 700 }}>{r.code}</span></div>)}
+          {importResults.map((r, i) => (
+            <div
+              key={i}
+              style={{
+                display: "flex", justifyContent: "space-between", padding: "8px 0",
+                borderTop: i === 0 ? "none" : `1px solid ${COLORS.ink}15`, fontSize: 13,
+              }}
+            >
+              <span>{r.name}</span>
+              <span className="font-mono" style={{ fontWeight: 700 }}>{r.code}</span>
+            </div>
+          ))}
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={copyResults} className="stall-btn" style={{ background: COLORS.navy, color: "#fff", border: "none", borderRadius: 999, padding: "9px 14px", fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}><Copy size={14} /> Copy all as text</button>
-          <button onClick={() => setImportResults(null)} className="stall-btn" style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 14, padding: "9px 14px", fontSize: 13, fontWeight: 600 }}>Search again</button>
+          <button onClick={copyResults} className="stall-btn" style={{ background: COLORS.navy, color: "#fff", border: "none", borderRadius: 999, padding: "9px 14px", fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
+            <Copy size={14} /> Copy all as text
+          </button>
+          <button onClick={() => setImportResults(null)} className="stall-btn" style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 14, padding: "9px 14px", fontSize: 13, fontWeight: 600 }}>
+            Search again
+          </button>
         </div>
       </div>
     );
@@ -280,23 +267,71 @@ export default function DiscoverNearby() {
   return (
     <div className="stall-page" style={{ maxWidth: 900 }}>
       <div className="font-display" style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>Discover nearby vendors</div>
-      <div style={{ fontSize: 12.5, color: "#666", marginBottom: 16, lineHeight: 1.5 }}>Set a center point, search a category (e.g. "medical store", "bakery"), and pick which real nearby results to add — nothing is added until you select it and click Add. Shows up to ~20 nearest matches per search; narrow the keyword or shrink the radius for a more specific set if you don't see what you're after.</div>
+      <div style={{ fontSize: 12.5, color: "#666", marginBottom: 16, lineHeight: 1.5 }}>
+        Set a center point, search a category (e.g. "medical store", "bakery"),
+        and pick which real nearby results to add — nothing is added until
+        you select it and click Add. Shows up to ~20 nearest matches per
+        search; narrow the keyword or shrink the radius for a more specific
+        set if you don't see what you're after.
+      </div>
 
       <div style={{ background: "#fff", border: "1px solid rgba(15,26,36,0.08)", boxShadow: "0 8px 24px rgba(15,26,36,0.08)", borderRadius: 20, padding: 16, marginBottom: 16 }}>
         {!centerLoc ? (
           <div>
             <div style={{ fontSize: 11, color: "#555", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>Jump to a market</div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>{CITIES.map((city) => <button key={city.name} onClick={() => pickCity(city)} className="stall-btn" style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 999, padding: "7px 14px", fontSize: 12.5, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}><MapPin size={13} /> {city.name}</button>)}</div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
+              {CITIES.map((city) => (
+                <button
+                  key={city.name}
+                  onClick={() => pickCity(city)}
+                  className="stall-btn"
+                  style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 999, padding: "7px 14px", fontSize: 12.5, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}
+                >
+                  <MapPin size={13} /> {city.name}
+                </button>
+              ))}
+            </div>
             <div style={{ fontSize: 13, marginBottom: 10 }}>Or set your own point:</div>
-            <button onClick={locate} className="stall-btn" style={{ background: COLORS.navy, color: "#fff", border: "none", borderRadius: 999, padding: "10px 14px", display: "flex", alignItems: "center", gap: 8, fontWeight: 600, fontSize: 13, marginBottom: 10 }}><Locate size={16} /> {locating ? "Locating…" : "Use my location"}</button>
-            {locateError && <div style={{ fontSize: 11.5, color: COLORS.brick, marginBottom: 10 }}>{locateError}</div>}
+            <button onClick={locate} className="stall-btn" style={{ background: COLORS.navy, color: "#fff", border: "none", borderRadius: 999, padding: "10px 14px", display: "flex", alignItems: "center", gap: 8, fontWeight: 600, fontSize: 13, marginBottom: 10 }}>
+              <Locate size={16} /> {locating ? "Locating…" : "Use my location"}
+            </button>
+            {locateError && (
+              <div style={{ fontSize: 11.5, color: COLORS.brick, marginBottom: 10 }}>{locateError}</div>
+            )}
             <div style={{ fontSize: 11, color: "#555", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>or enter coordinates</div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><input placeholder="Latitude" value={manualLat} onChange={(e) => setManualLat(e.target.value)} className="font-mono" style={{ ...inputStyle, flex: "1 1 120px" }} /><input placeholder="Longitude" value={manualLng} onChange={(e) => setManualLng(e.target.value)} className="font-mono" style={{ ...inputStyle, flex: "1 1 120px" }} /><button onClick={useManualLoc} className="stall-btn" style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 14, padding: "0 14px", fontSize: 12.5, fontWeight: 600, flexShrink: 0 }}>Set</button></div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <input placeholder="Latitude" value={manualLat} onChange={(e) => setManualLat(e.target.value)} className="font-mono" style={{ ...inputStyle, flex: "1 1 120px" }} />
+              <input placeholder="Longitude" value={manualLng} onChange={(e) => setManualLng(e.target.value)} className="font-mono" style={{ ...inputStyle, flex: "1 1 120px" }} />
+              <button onClick={useManualLoc} className="stall-btn" style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 14, padding: "0 14px", fontSize: 12.5, fontWeight: 600, flexShrink: 0 }}>Set</button>
+            </div>
           </div>
         ) : (
           <div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 8 }}><div style={{ fontSize: 12, color: COLORS.green, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}><MapPin size={14} /> CENTER SET{centerCityName ? ` · ${centerCityName}` : ""} · <span className="font-mono">{centerLoc.lat.toFixed(4)}, {centerLoc.lng.toFixed(4)}</span></div><div style={{ display: "flex", gap: 10, alignItems: "center" }}><button onClick={() => { setCenterLoc(null); setCenterCityName(null); }} style={{ background: "none", border: "none", fontSize: 11, textDecoration: "underline", cursor: "pointer" }}>change market</button><button onClick={locate} style={{ background: "none", border: "none", fontSize: 11, textDecoration: "underline", cursor: "pointer" }}>{locating ? "…" : "re-locate"}</button></div></div>
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}><div style={{ flex: "1 1 200px" }}><label style={{ display: "block", fontSize: 11, textTransform: "uppercase", fontWeight: 700, marginBottom: 5 }}>Search for</label><input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="e.g. medical store, bakery, salon" style={{ ...inputStyle, width: "100%" }} /></div><div style={{ flex: "1 1 160px" }}><div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, textTransform: "uppercase", fontWeight: 700, marginBottom: 5, color: COLORS.ink }}><span>Radius</span><span className="font-mono" style={{ color: COLORS.ink }}>{radiusKm} km</span></div><input type="range" min={0.5} max={10} step={0.5} value={radiusKm} onChange={(e) => setRadiusKm(parseFloat(e.target.value))} style={{ width: "100%", accentColor: COLORS.brick }} /></div><button onClick={search} disabled={searching} className="stall-btn" style={{ background: COLORS.navy, color: "#fff", border: "none", borderRadius: 999, padding: "10px 16px", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}><Search size={15} /> {searching ? "Searching…" : "Search nearby"}</button></div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
+              <div style={{ fontSize: 12, color: COLORS.green, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
+                <MapPin size={14} /> CENTER SET{centerCityName ? ` · ${centerCityName}` : ""} · <span className="font-mono">{centerLoc.lat.toFixed(4)}, {centerLoc.lng.toFixed(4)}</span>
+              </div>
+              <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                <button onClick={() => { setCenterLoc(null); setCenterCityName(null); }} style={{ background: "none", border: "none", fontSize: 11, textDecoration: "underline", cursor: "pointer" }}>change market</button>
+                <button onClick={locate} style={{ background: "none", border: "none", fontSize: 11, textDecoration: "underline", cursor: "pointer" }}>{locating ? "…" : "re-locate"}</button>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
+              <div style={{ flex: "1 1 200px" }}>
+                <label style={{ display: "block", fontSize: 11, textTransform: "uppercase", fontWeight: 700, marginBottom: 5 }}>Search for</label>
+                <input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="e.g. medical store, bakery, salon" style={{ ...inputStyle, width: "100%" }} />
+              </div>
+              <div style={{ flex: "1 1 160px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, textTransform: "uppercase", fontWeight: 700, marginBottom: 5, color: COLORS.ink }}>
+                  <span>Radius</span>
+                  <span className="font-mono" style={{ color: COLORS.ink }}>{radiusKm} km</span>
+                </div>
+                <input type="range" min={0.5} max={10} step={0.5} value={radiusKm} onChange={(e) => setRadiusKm(parseFloat(e.target.value))} style={{ width: "100%", accentColor: COLORS.brick }} />
+              </div>
+              <button onClick={search} disabled={searching} className="stall-btn" style={{ background: COLORS.navy, color: "#fff", border: "none", borderRadius: 999, padding: "10px 16px", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
+                <Search size={15} /> {searching ? "Searching…" : "Search nearby"}
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -304,13 +339,56 @@ export default function DiscoverNearby() {
       {searchError && <div style={{ color: COLORS.brick, fontSize: 12.5, marginBottom: 12 }}>{searchError}</div>}
       {importError && <div style={{ color: COLORS.brick, fontSize: 12.5, marginBottom: 12 }}>{importError}</div>}
 
-      {results.length > 0 && <>
-        <div style={{ fontSize: 12.5, color: "#666", marginBottom: 8 }}>{results.length} result{results.length === 1 ? "" : "s"} · {selectedResults.length} selected{results.some((r) => r.alreadyListed) && ` · ${results.filter((r) => r.alreadyListed).length} already on Stall`}</div>
-        <div style={{ border: "1px solid rgba(15,26,36,0.08)", boxShadow: "0 8px 24px rgba(15,26,36,0.08)", borderRadius: 20, overflow: "hidden", marginBottom: 16 }}>
-          {results.map((r, i) => { const dist = centerLoc && Number.isFinite(r.lat) && Number.isFinite(r.lng) ? haversineKm(centerLoc, { lat: r.lat, lng: r.lng }) : null; return <div key={r.placeId} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "12px 16px", borderTop: i === 0 ? "none" : `1px solid ${COLORS.ink}15`, background: r.alreadyListed ? "#f5f5f5" : selected[r.placeId] ? `${COLORS.marigold}15` : "#fff", opacity: r.alreadyListed ? 0.6 : 1 }}><input type="checkbox" checked={!!selected[r.placeId]} disabled={r.alreadyListed} onChange={() => toggleSelect(r.placeId)} style={{ marginTop: 4, width: 16, height: 16, accentColor: COLORS.brick, flexShrink: 0, cursor: r.alreadyListed ? "not-allowed" : "pointer" }} /><div style={{ flex: 1, minWidth: 0 }}><div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}><span style={{ fontWeight: 700, fontSize: 13.5, color: COLORS.ink }}>{r.name}</span>{r.alreadyListed && <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 16, background: COLORS.ink, color: "#fff" }}>Already listed</span>}{r.rating != null && <span style={{ fontSize: 11, color: "#666" }}>★ {r.rating.toFixed(1)}{r.ratingsCount != null ? ` (${r.ratingsCount})` : ""}</span>}{dist != null && <span className="font-mono" style={{ fontSize: 11, color: "#999" }}>{dist.toFixed(1)} km</span>}</div><div style={{ fontSize: 11.5, color: "#777", marginBottom: 4 }}>{r.vicinity}</div><select value={r.category} onChange={(e) => updateResultCategory(r.placeId, e.target.value)} style={{ fontSize: 11, padding: "3px 6px", borderRadius: 20, border: `1px solid ${COLORS.ink}55`, background: "#fff" }}>{CATEGORIES.map((c) => <option key={c}>{c}</option>)}</select></div></div>; })}
-        </div>
-        <button onClick={addSelected} disabled={adding || selectedResults.length === 0} className="stall-btn" style={{ background: COLORS.brick, color: "#fff", border: "none", borderRadius: 14, padding: "10px 16px", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>{adding && <Loader2 size={14} className="spin" />}{adding ? "Adding…" : `Add ${selectedResults.length} selected`}</button>
-      </>}
+      {results.length > 0 && (
+        <>
+          <div style={{ fontSize: 12.5, color: "#666", marginBottom: 8 }}>
+            {results.length} result{results.length === 1 ? "" : "s"} · {selectedResults.length} selected
+            {results.some((r) => r.alreadyListed) && ` · ${results.filter((r) => r.alreadyListed).length} already on Stall`}
+          </div>
+          <div style={{ border: "1px solid rgba(15,26,36,0.08)", boxShadow: "0 8px 24px rgba(15,26,36,0.08)", borderRadius: 20, overflow: "hidden", marginBottom: 16 }}>
+            {results.map((r, i) => {
+              const dist = centerLoc ? haversineKm(centerLoc, { lat: r.lat, lng: r.lng }) : null;
+              return (
+                <div key={r.placeId} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "12px 16px", borderTop: i === 0 ? "none" : `1px solid ${COLORS.ink}15`, background: r.alreadyListed ? "#f5f5f5" : selected[r.placeId] ? `${COLORS.marigold}15` : "#fff", opacity: r.alreadyListed ? 0.6 : 1 }}>
+                  <input type="checkbox" checked={!!selected[r.placeId]} disabled={r.alreadyListed} onChange={() => toggleSelect(r.placeId)} style={{ marginTop: 4, width: 16, height: 16, accentColor: COLORS.brick, flexShrink: 0, cursor: r.alreadyListed ? "not-allowed" : "pointer" }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <span style={{ fontWeight: 700, fontSize: 13.5, color: COLORS.ink }}>{r.name}</span>
+                      {r.alreadyListed && (
+                        <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 16, background: COLORS.ink, color: "#fff" }}>
+                          Already listed
+                        </span>
+                      )}
+                      {r.rating != null && (
+                        <span style={{ fontSize: 11, color: "#666" }}>★ {r.rating.toFixed(1)}{r.ratingsCount != null ? ` (${r.ratingsCount})` : ""}</span>
+                      )}
+                      {dist != null && <span className="font-mono" style={{ fontSize: 11, color: "#999" }}>{dist.toFixed(1)} km</span>}
+                    </div>
+                    <div style={{ fontSize: 11.5, color: "#777", marginBottom: 4 }}>{r.vicinity}</div>
+                    <select
+                      value={r.category}
+                      onChange={(e) => updateResultCategory(r.placeId, e.target.value)}
+                      style={{ fontSize: 11, padding: "3px 6px", borderRadius: 20, border: `1px solid ${COLORS.ink}55`, background: "#fff" }}
+                    >
+                      {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+                    </select>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <button
+            onClick={addSelected}
+            disabled={adding || selectedResults.length === 0}
+            className="stall-btn"
+            style={{ background: COLORS.brick, color: "#fff", border: "none", borderRadius: 14, padding: "10px 16px", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}
+          >
+            {adding && <Loader2 size={14} className="spin" />}
+            {adding ? "Adding…" : `Add ${selectedResults.length} selected`}
+          </button>
+        </>
+      )}
     </div>
   );
 }

@@ -1,63 +1,32 @@
-// Shared Google Maps JavaScript API loader.
-// Uses Google's documented importLibrary bootstrap pattern.
+// Loads the Google Maps JavaScript API (with the Places library) exactly
+// once, no matter how many components ask for it, and returns a promise
+// that resolves once `window.google.maps.places` is ready to use.
 
 let loadPromise = null;
 
 export function loadGoogleMaps(apiKey) {
   if (loadPromise) return loadPromise;
 
-  loadPromise = (async () => {
-    if (!apiKey && !window.google?.maps) {
-      throw new Error("Google Maps API key is not configured.");
+  loadPromise = new Promise((resolve, reject) => {
+    if (window.google && window.google.maps && window.google.maps.places) {
+      resolve(window.google);
+      return;
     }
 
-    const google = (window.google = window.google || {});
-    const maps = (google.maps = google.maps || {});
-
-    if (!maps.importLibrary) {
-      const g = {
-        key: apiKey,
-        v: "weekly",
-      };
-
-      let h;
-      const r = new Set();
-      const p = "The Google Maps JavaScript API";
-      const c = "google";
-      const l = "importLibrary";
-      const q = "__ib__";
-      const m = document;
-      const b = window;
-
-      maps.importLibrary = (library, ...rest) => {
-        r.add(library);
-        return (h || (h = new Promise((resolve, reject) => {
-          const script = m.createElement("script");
-          const params = new URLSearchParams();
-
-          params.set("libraries", [...r] + "");
-          for (const key in g) {
-            params.set(key.replace(/[A-Z]/g, (t) => "_" + t[0].toLowerCase()), g[key]);
-          }
-          params.set("callback", c + ".maps." + q);
-
-          maps[q] = resolve;
-          script.id = "google-maps-script";
-          script.src = "https://maps." + c + "apis.com/maps/api/js?" + params.toString();
-          script.onerror = () => reject(new Error(p + " could not load."));
-          script.nonce = m.querySelector("script[nonce]")?.nonce || "";
-          m.head.appendChild(script);
-
-          setTimeout(() => reject(new Error(p + " timed out while loading.")), 15000);
-        }))).then(() => maps.importLibrary(library, ...rest));
-      };
+    const existing = document.getElementById("google-maps-script");
+    if (existing) {
+      existing.addEventListener("load", () => resolve(window.google));
+      existing.addEventListener("error", () => reject(new Error("Failed to load Google Maps script")));
+      return;
     }
 
-    await maps.importLibrary("places");
-    return google;
-  })().catch((error) => {
-    loadPromise = null;
-    throw error;
+    const script = document.createElement("script");
+    script.id = "google-maps-script";
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&loading=async`;
+    script.async = true;
+    script.onload = () => resolve(window.google);
+    script.onerror = () => reject(new Error("Failed to load Google Maps script"));
+    document.head.appendChild(script);
   });
 
   return loadPromise;
