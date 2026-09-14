@@ -66,10 +66,24 @@ export default function AuthPage({ onSignedIn, audience = "vendor" }) {
       let cred;
       if (mode === "signup") {
         cred = await createUserWithEmailAndPassword(auth, email, password);
-        await grantWelcomeBonus(cred.user.uid);
+
+        // Vendor authentication must not fail just because the optional
+        // points profile write fails. Customer welcome points retain their
+        // existing behavior, but the points write is intentionally best-effort.
+        if (isCustomer) {
+          try {
+            await grantWelcomeBonus(cred.user.uid);
+          } catch (pointsErr) {
+            console.warn("Welcome points could not be created:", pointsErr);
+          }
+        }
       } else {
         cred = await signInWithEmailAndPassword(auth, email, password);
-        await backfillPointsDocIfMissing(cred.user.uid);
+        try {
+          await backfillPointsDocIfMissing(cred.user.uid);
+        } catch (pointsErr) {
+          console.warn("Points profile backfill failed:", pointsErr);
+        }
       }
       onSignedIn?.();
     } catch (err) {
@@ -86,9 +100,13 @@ export default function AuthPage({ onSignedIn, audience = "vendor" }) {
       const cred = await signInWithPopup(auth, new GoogleAuthProvider());
       const isNewUser = getAdditionalUserInfo(cred)?.isNewUser;
       if (isNewUser) {
-        await grantWelcomeBonus(cred.user.uid);
+        if (isCustomer) {
+          try { await grantWelcomeBonus(cred.user.uid); }
+          catch (pointsErr) { console.warn("Welcome points could not be created:", pointsErr); }
+        }
       } else {
-        await backfillPointsDocIfMissing(cred.user.uid);
+        try { await backfillPointsDocIfMissing(cred.user.uid); }
+        catch (pointsErr) { console.warn("Points profile backfill failed:", pointsErr); }
       }
       onSignedIn?.();
     } catch (err) {
