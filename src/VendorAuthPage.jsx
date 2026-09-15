@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
   GoogleAuthProvider,
-  signInWithRedirect,
+  signInWithCredential,
 } from "firebase/auth";
 import { auth } from "./firebase";
 import { COLORS } from "./constants";
@@ -16,43 +16,88 @@ export default function VendorAuthPage({ initialError = "" }) {
   const [error, setError] = useState(initialError);
   const [busy, setBusy] = useState(false);
   const [googleBusy, setGoogleBusy] = useState(false);
+  const [googleReady, setGoogleReady] = useState(false);
   const [resetSent, setResetSent] = useState(false);
+  const googleButtonRef = useRef(null);
 
   useEffect(() => {
     if (initialError) setError(initialError);
   }, [initialError]);
+
+  // Use Google Identity Services directly and exchange its ID token for a
+  // Firebase credential. This deliberately avoids Firebase's popup/redirect
+  // resolver, which is problematic on a GitHub Pages custom domain because
+  // of browser cross-origin opener/storage restrictions.
+  useEffect(() => {
+    let cancelled = false;
+    let timer;
+
+    const setupGoogle = () => {
+      if (cancelled || !googleButtonRef.current) return true;
+      const google = window.google;
+      const clientId = import.meta.env.VITE_GOOGLE_OAUTH_CLIENT_ID;
+      if (!google?.accounts?.id || !clientId) return false;
+
+      google.accounts.id.initialize({
+        client_id: clientId,
+        callback: async (response) => {
+          if (cancelled) return;
+          setError("");
+          setGoogleBusy(true);
+          try {
+            const credential = GoogleAuthProvider.credential(response.credential);
+            await signInWithCredential(auth, credential);
+          } catch (err) {
+            setError(friendlyError(err?.code));
+          } finally {
+            if (!cancelled) setGoogleBusy(false);
+          }
+        },
+        auto_select: false,
+        cancel_on_tap_outside: true,
+      });
+
+      googleButtonRef.current.innerHTML = "";
+      google.accounts.id.renderButton(googleButtonRef.current, {
+        type: "standard",
+        theme: "outline",
+        size: "large",
+        text: "continue_with",
+        shape: "pill",
+        width: 330,
+      });
+      setGoogleReady(true);
+      return true;
+    };
+
+    if (!setupGoogle()) {
+      timer = window.setInterval(() => {
+        if (setupGoogle()) window.clearInterval(timer);
+      }, 100);
+    }
+
+    return () => {
+      cancelled = true;
+      if (timer) window.clearInterval(timer);
+    };
+  }, []);
 
   const submit = async (e) => {
     e.preventDefault();
     setError("");
     setBusy(true);
     try {
-      // IMPORTANT: App.jsx/onAuthStateChanged is the only login handoff.
-      // Do not manually change the route here. Firebase may resolve the
-      // credential before React's auth listener has published `user`, and a
-      // manual route change can race with App's unauthenticated guard.
+      // Firebase auth state is the only login handoff. App.jsx watches
+      // onAuthStateChanged and moves the authenticated vendor to the workspace.
       if (mode === "signup") {
         await createUserWithEmailAndPassword(auth, email.trim(), password);
       } else {
         await signInWithEmailAndPassword(auth, email.trim(), password);
       }
-      // Keep this screen mounted only until Firebase publishes auth state.
-      // App.jsx then switches directly to the vendor workspace.
     } catch (err) {
       setError(friendlyError(err.code));
     } finally {
       setBusy(false);
-    }
-  };
-
-  const signInWithGoogle = async () => {
-    setError("");
-    setGoogleBusy(true);
-    try {
-      await signInWithRedirect(auth, new GoogleAuthProvider());
-    } catch (err) {
-      setGoogleBusy(false);
-      setError(friendlyError(err.code));
     }
   };
 
@@ -75,9 +120,10 @@ export default function VendorAuthPage({ initialError = "" }) {
           {mode === "signup" ? "Vendors sign up here, then list or claim their stall." : "Sign in to manage your listing."}
         </div>
 
-        <button type="button" onClick={signInWithGoogle} disabled={googleBusy || busy} style={{ width: "100%", background: "#fff", color: COLORS.ink, border: `1.5px solid ${COLORS.ink}`, borderRadius: 999, padding: "10px", fontSize: 13, fontWeight: 700, marginBottom: 14, cursor: "pointer" }}>
-          {googleBusy ? "Redirecting to Google…" : "Continue with Google"}
-        </button>
+        <div style={{ minHeight: 44, display: "flex", justifyContent: "center", marginBottom: 14, opacity: googleBusy ? 0.6 : 1 }}>
+          <div ref={googleButtonRef} aria-label="Continue with Google" />
+        </div>
+        {!googleReady && <div style={{ textAlign: "center", fontSize: 11, color: "#999", marginTop: -8, marginBottom: 12 }}>Loading Google sign-in…</div>}
 
         <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "0 0 14px" }}>
           <div style={{ flex: 1, height: 1, background: "rgba(15,26,36,0.12)" }} />
@@ -125,8 +171,10 @@ function friendlyError(code) {
     case "auth/wrong-password":
     case "auth/invalid-credential": return "Incorrect email or password.";
     case "auth/user-not-found": return "No account found with that email.";
+    case "auth/account-exists-with-different-credential": return "An account already exists with a different sign-in method. Try email and password instead.";
+    case "auth/credential-already-in-use": return "This Google account is already linked to another account.";
     case "auth/too-many-requests": return "Too many attempts — please wait a moment and try again.";
-    case "auth/popup-blocked": return "Your browser blocked the sign-in popup — please allow popups and try again.";
-    default: return "Something went wrong. Please try again.";
+    case "auth/network-request-failed": return "Network error during Google sign-in. Please try again.";
+    default: return code ? `Sign-in failed (${code}). Please try again.` : "Something went wrong. Please try again.";
   }
 }
