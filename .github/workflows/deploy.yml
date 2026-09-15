@@ -53,12 +53,3 @@ jobs:
           channelId: live
           entryPoint: .
           firebaseToolsVersion: latest
-
-      # Premium checkout depends on these callable Cloud Functions being deployed too.
-      - name: Deploy Firebase Cloud Functions
-        env:
-          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-        run: |
-          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-service-account.json"
-          GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase-service-account.json" npx --yes firebase-tools@latest deploy --only functions --project stall-app-1aab7 --non-interactive
-          rm -f "$RUNNER_TEMP/firebase-service-account.json"
