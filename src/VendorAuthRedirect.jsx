@@ -5,11 +5,12 @@ import {
   sendPasswordResetEmail,
   GoogleAuthProvider,
   signInWithRedirect,
+  browserPopupRedirectResolver,
 } from "firebase/auth";
 import { auth } from "./firebase";
 import { COLORS } from "./constants";
 
-const AUTH_TRACE = "[STALL-AUTH v5]";
+const AUTH_TRACE = "[STALL-AUTH v6]";
 const trace = (...args) => console.info(AUTH_TRACE, ...args);
 
 export default function VendorAuthRedirect({ initialError = "" }) {
@@ -30,11 +31,11 @@ export default function VendorAuthRedirect({ initialError = "" }) {
     setError("");
     setAuthStatus("Opening Google sign-in…");
     setGoogleBusy(true);
-    trace("Google redirect started");
+    trace("Google redirect started — resolver supplied only for this redirect");
     try {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: "select_account" });
-      await signInWithRedirect(auth, provider);
+      await signInWithRedirect(auth, provider, browserPopupRedirectResolver);
     } catch (err) {
       console.error(AUTH_TRACE, "Google redirect start failed", err?.code, err?.message);
       setError(friendlyError(err?.code));
