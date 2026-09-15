@@ -275,11 +275,11 @@ export default function AdminDashboard() {
     return digits;
   };
 
-  const ownerMessage = lastCode ? `Hi 👋
+  const buildOwnerMessage = ({ name, code }) => `Hi 👋
 
 We’re reaching out from STall — your local business discovery platform.
 
-Good news! 🎉 We’ve already created a business listing for “${lastCode.name}” on STall so customers can discover your business online.
+Good news! 🎉 We’ve already created a business listing for “${name}” on STall so customers can discover your business online.
 
 Your STall listing can help you:
 • Get discovered by local customers searching for businesses like yours
@@ -288,7 +288,7 @@ Your STall listing can help you:
 • Build your online presence on STall
 • Understand how customers are discovering and interacting with your listing
 
-Your STall Claim ID: ${lastCode.code}
+Your STall Claim ID: ${code}
 
 Your listing is already created. Now it’s your turn to claim it and take control of your business profile.
 
@@ -297,12 +297,14 @@ Your listing is already created. Now it’s your turn to claim it and take contr
 2. Sign in / create your business account
 3. Go to My Listings
 4. Select “Claim a listing”
-5. Enter your Claim ID: ${lastCode.code}
+5. Enter your Claim ID: ${code}
 
 Once claimed, you can review and update your business information so customers see the correct details.
 
 Welcome to STall! 🚀
-STall — Find what’s around the corner.` : "";
+STall — Find what’s around the corner.`;
+
+  const ownerMessage = lastCode ? buildOwnerMessage(lastCode) : "";
 
   const copyOwnerMessage = async () => {
     if (!ownerMessage) return;
@@ -314,24 +316,32 @@ STall — Find what’s around the corner.` : "";
     }
   };
 
-  const shareOwnerMessage = () => {
-    if (!ownerMessage || !lastCode?.phone) return;
+  const openOwnerWhatsApp = (contact) => {
+    if (!contact?.code || !contact?.name) {
+      setOwnerMessageStatus("This listing does not have a valid claim ID.");
+      return;
+    }
 
-    const phone = normalizeWhatsAppPhone(lastCode.phone);
+    const phone = normalizeWhatsAppPhone(contact.phone);
     if (!phone) {
       setOwnerMessageStatus("No valid business phone number is available for WhatsApp.");
       return;
     }
 
-    const encodedMessage = encodeURIComponent(ownerMessage);
+    const message = buildOwnerMessage(contact);
+    const encodedMessage = encodeURIComponent(message);
     const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
     const whatsappUrl = isMobile
       ? `https://wa.me/${phone}?text=${encodedMessage}`
       : `https://web.whatsapp.com/send?phone=${phone}&text=${encodedMessage}`;
 
     setOwnerMessageStatus("Opening WhatsApp…");
-
     window.location.assign(whatsappUrl);
+  };
+
+  const shareOwnerMessage = () => {
+    if (!lastCode) return;
+    openOwnerWhatsApp(lastCode);
   };
 
   return (
@@ -567,10 +577,12 @@ STall — Find what’s around the corner.` : "";
                   {!v.ownerId && v.claimCode && (
                     <button
                       onClick={() => {
-                        setLastCode({ name: v.name, code: v.claimCode, phone: v.phone || "" });
+                        const contact = { name: v.name, code: v.claimCode, phone: v.phone || "" };
+                        setLastCode(contact);
                         setOwnerMessageStatus("");
+                        openOwnerWhatsApp(contact);
                       }}
-                      title={v.phone ? "Contact the business owner using the listed business number" : "No business phone number available"}
+                      title={v.phone ? "Open WhatsApp with the correct claim message for this business" : "No business phone number available"}
                       className="stall-btn"
                       style={{
                         background: v.phone ? COLORS.ink : "transparent",
