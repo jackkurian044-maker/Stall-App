@@ -13,17 +13,17 @@ import AdminAgents from "./AdminAgents";
 import PrivacyPolicy from "./PrivacyPolicy";
 import Footer from "./Footer";
 
+const AUTH_TRACE = "[STALL-AUTH v3]";
+const trace = (...args) => console.info(AUTH_TRACE, ...args);
+
 export default function App() {
   const [user, setUser] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [agent, setAgent] = useState(null); // agents/{uid} doc data, or null if not an agent
+  const [agent, setAgent] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [mode, setMode] = useState("find");
 
   useEffect(() => {
-    // If we just landed back from the Google Business Profile OAuth
-    // redirect, jump straight into the vendor dashboard and strip the
-    // query param so it doesn't linger in the URL / re-trigger on refresh.
     const params = new URLSearchParams(window.location.search);
     if (params.get("gbp") === "connected") {
       setMode("mine");
@@ -32,19 +32,25 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    trace("auth listener attached");
     const unsub = onAuthStateChanged(auth, async (u) => {
+      trace("onAuthStateChanged", u ? { uid: u.uid, providerIds: u.providerData?.map(p => p.providerId) } : "SIGNED_OUT");
       setUser(u);
       if (u) {
         try {
           const adminSnap = await getDoc(doc(db, "admins", u.uid));
           setIsAdmin(adminSnap.exists());
-        } catch {
+          trace("admin lookup", adminSnap.exists());
+        } catch (err) {
+          console.warn(AUTH_TRACE, "admin lookup failed", err?.code);
           setIsAdmin(false);
         }
         try {
           const agentSnap = await getDoc(doc(db, "agents", u.uid));
           setAgent(agentSnap.exists() ? agentSnap.data() : null);
-        } catch {
+          trace("agent lookup", agentSnap.exists());
+        } catch (err) {
+          console.warn(AUTH_TRACE, "agent lookup failed", err?.code);
           setAgent(null);
         }
       } else {
@@ -52,11 +58,13 @@ export default function App() {
         setAgent(null);
       }
       setAuthLoading(false);
+      trace("authLoading=false", { mode, authenticated: !!u });
     });
     return unsub;
   }, []);
 
   useEffect(() => {
+    trace("route observer", { mode, authenticated: !!user, agent: !!agent });
     if (!user) {
       if (["mine", "admin", "bulk", "agent", "agents"].includes(mode)) setMode("find");
       return;
@@ -66,11 +74,13 @@ export default function App() {
     if (!agent && mode === "agent") setMode("find");
 
     if (mode === "auth") {
+      trace("authenticated vendor leaving auth screen", { destination: agent ? "agent" : "mine" });
       setMode(agent ? "agent" : "mine");
     }
   }, [user, isAdmin, agent, mode]);
 
   const handleSignOut = async () => {
+    trace("sign out requested");
     await signOut(auth);
     setMode("find");
   };
