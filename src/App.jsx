@@ -13,8 +13,19 @@ import AdminAgents from "./AdminAgents";
 import PrivacyPolicy from "./PrivacyPolicy";
 import Footer from "./Footer";
 
-const AUTH_TRACE = "[STALL-AUTH v3]";
+const AUTH_TRACE = "[STALL-AUTH v4]";
 const trace = (...args) => console.info(AUTH_TRACE, ...args);
+
+// Never allow an auxiliary Firestore role lookup to leave the whole app on
+// the auth loading screen indefinitely. Firebase Auth remains the source of
+// truth for whether the user is signed in.
+const withTimeout = (promise, ms, label) => Promise.race([
+  promise,
+  new Promise((resolve) => setTimeout(() => {
+    console.warn(AUTH_TRACE, `${label} lookup timed out`);
+    resolve(null);
+  }, ms)),
+]);
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -36,35 +47,36 @@ export default function App() {
     const unsub = onAuthStateChanged(auth, async (u) => {
       trace("onAuthStateChanged", u ? { uid: u.uid, providerIds: u.providerData?.map(p => p.providerId) } : "SIGNED_OUT");
       setUser(u);
-      if (u) {
-        try {
-          const adminSnap = await getDoc(doc(db, "admins", u.uid));
-          setIsAdmin(adminSnap.exists());
-          trace("admin lookup", adminSnap.exists());
-        } catch (err) {
-          console.warn(AUTH_TRACE, "admin lookup failed", err?.code);
-          setIsAdmin(false);
-        }
-        try {
-          const agentSnap = await getDoc(doc(db, "agents", u.uid));
-          setAgent(agentSnap.exists() ? agentSnap.data() : null);
-          trace("agent lookup", agentSnap.exists());
-        } catch (err) {
-          console.warn(AUTH_TRACE, "agent lookup failed", err?.code);
-          setAgent(null);
-        }
-      } else {
+
+      if (!u) {
         setIsAdmin(false);
         setAgent(null);
+        setAuthLoading(false);
+        trace("authLoading=false", { authenticated: false });
+        return;
       }
+
+      // Role lookups are independent. One failing/hanging lookup must not
+      // block the other role or the authenticated app from rendering.
+      const [adminSnap, agentSnap] = await Promise.all([
+        withTimeout(getDoc(doc(db, "admins", u.uid)), 5000, "admin"),
+        withTimeout(getDoc(doc(db, "agents", u.uid)), 5000, "agent"),
+      ]);
+
+      const admin = !!adminSnap?.exists();
+      const agentData = agentSnap?.exists() ? agentSnap.data() : null;
+
+      setIsAdmin(admin);
+      setAgent(agentData);
       setAuthLoading(false);
-      trace("authLoading=false", { mode, authenticated: !!u });
+      trace("role lookups complete", { admin, agent: !!agentData });
+      trace("authLoading=false", { authenticated: true });
     });
     return unsub;
   }, []);
 
   useEffect(() => {
-    trace("route observer", { mode, authenticated: !!user, agent: !!agent });
+    trace("route observer", { mode, authenticated: !!user, admin: isAdmin, agent: !!agent });
     if (!user) {
       if (["mine", "admin", "bulk", "agent", "agents"].includes(mode)) setMode("find");
       return;
@@ -74,8 +86,11 @@ export default function App() {
     if (!agent && mode === "agent") setMode("find");
 
     if (mode === "auth") {
-      trace("authenticated vendor leaving auth screen", { destination: agent ? "agent" : "mine" });
-      setMode(agent ? "agent" : "mine");
+      // Admin takes priority, then agent, then vendor. This fixes the
+      // authenticated Admin account being sent into the vendor workspace.
+      const destination = isAdmin ? "admin" : agent ? "agent" : "mine";
+      trace("authenticated user leaving auth screen", { destination });
+      setMode(destination);
     }
   }, [user, isAdmin, agent, mode]);
 
@@ -96,7 +111,7 @@ export default function App() {
           <FindView user={user} isAdmin={isAdmin} onRequestSignIn={() => setMode("auth")} />
         ) : mode === "auth" ? (
           user ? (
-            agent ? <AgentDashboard user={user} agent={agent} /> : <VendorEntry user={user} agent={agent} />
+            isAdmin ? <AdminDashboard /> : agent ? <AgentDashboard user={user} agent={agent} /> : <VendorEntry user={user} agent={agent} />
           ) : (
             <VendorAuthPage />
           )
