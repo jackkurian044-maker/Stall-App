@@ -54,6 +54,10 @@ jobs:
           entryPoint: .
           firebaseToolsVersion: latest
 
+      # Install Cloud Functions dependencies before Firebase analyzes the functions source.
+      - name: Install Firebase Cloud Functions dependencies
+        run: npm ci --prefix functions
+
       # Deploy Cloud Functions with the same Firebase service account after IAM Service Account User grant.
       - name: Prepare Firebase CLI credentials
         run: node -e 'require("fs").writeFileSync(process.env.GOOGLE_APPLICATION_CREDENTIALS, process.env.FIREBASE_SERVICE_ACCOUNT_JSON)'
