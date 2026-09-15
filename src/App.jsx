@@ -7,6 +7,7 @@ import FindView from "./FindView";
 import VendorAuthPage from "./VendorAuthRedirect";
 import VendorEntry from "./VendorEntry";
 import AdminDashboard from "./AdminDashboard";
+import AdminOperationsCentre from "./AdminOperationsCentre";
 import DiscoverNearby from "./DiscoverNearby";
 import AgentDashboard from "./AgentDashboard";
 import AdminAgents from "./AdminAgents";
@@ -27,6 +28,11 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     if (params.get("gbp") === "connected") {
       setMode("mine");
+      window.history.replaceState({}, "", window.location.pathname);
+      return;
+    }
+    if (params.get("admin") === "operations") {
+      setMode("admin-operations");
       window.history.replaceState({}, "", window.location.pathname);
     }
   }, []);
@@ -68,11 +74,11 @@ export default function App() {
     if (authLoading) return;
 
     if (!user) {
-      if (["mine", "admin", "bulk", "agent", "agents"].includes(mode)) setMode("find");
+      if (["mine", "admin", "admin-operations", "bulk", "agent", "agents"].includes(mode)) setMode("find");
       return;
     }
 
-    if (!isAdmin && ["admin", "bulk", "agents"].includes(mode)) setMode("find");
+    if (!isAdmin && ["admin", "admin-operations", "bulk", "agents"].includes(mode)) setMode("find");
     if (!agent && mode === "agent") setMode("find");
 
     if (mode === "auth") {
@@ -104,10 +110,12 @@ export default function App() {
           )
         ) : mode === "mine" && user ? (
           <VendorEntry user={user} agent={agent} />
-        ) : mode === "agent" && user && agent ? (
-          <AgentDashboard user={user} agent={agent} />
         ) : mode === "admin" && isAdmin ? (
           <AdminDashboard />
+        ) : mode === "admin-operations" && isAdmin ? (
+          <AdminOperationsCentre />
+        ) : mode === "agent" && user && agent ? (
+          <AgentDashboard user={user} agent={agent} />
         ) : mode === "bulk" && isAdmin ? (
           <DiscoverNearby />
         ) : mode === "agents" && isAdmin ? (
