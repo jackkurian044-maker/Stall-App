@@ -1,4 +1,4 @@
-name: Deploy to GitHub Pages
+name: Deploy STall to Firebase
 
 on:
   push:
@@ -7,15 +7,13 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: "pages"
+  group: "firebase-production"
   cancel-in-progress: true
 
 jobs:
-  build:
+  build_and_deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -27,6 +25,7 @@ jobs:
 
       - run: npm ci
 
+      # Build the exact production artifact from this Git commit.
       - run: npm run build
         env:
           VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
@@ -39,16 +38,18 @@ jobs:
           VITE_GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.VITE_GOOGLE_OAUTH_CLIENT_ID }}
           VITE_GOOGLE_OAUTH_REDIRECT_URI: ${{ secrets.VITE_GOOGLE_OAUTH_REDIRECT_URI }}
 
-      - uses: actions/upload-pages-artifact@v3
+      # Keep a copy of the exact build artifact in GitHub Actions for rollback/debugging.
+      - uses: actions/upload-artifact@v4
         with:
+          name: stall-production-build
           path: dist
+          retention-days: 7
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - uses: actions/deploy-pages@v5
-        id: deployment
+      # Production is Firebase Hosting. GitHub remains the source-of-truth copy and CI/test system.
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}"
+          projectId: stall-app-1aab7
+          channelId: live
+          entryPoint: .
+          firebaseToolsVersion: latest
