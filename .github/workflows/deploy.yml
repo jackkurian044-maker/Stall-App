@@ -53,3 +53,15 @@ jobs:
           channelId: live
           entryPoint: .
           firebaseToolsVersion: latest
+
+      # Deploy Cloud Functions with the same Firebase service account after IAM Service Account User grant.
+      - name: Prepare Firebase CLI credentials
+        run: node -e 'require("fs").writeFileSync(process.env.GOOGLE_APPLICATION_CREDENTIALS, process.env.FIREBASE_SERVICE_ACCOUNT_JSON)'
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
+      - name: Deploy Firebase Cloud Functions
+        run: npx --yes firebase-tools@latest deploy --only functions --project stall-app-1aab7 --non-interactive
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
