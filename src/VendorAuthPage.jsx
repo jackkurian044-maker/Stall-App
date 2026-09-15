@@ -18,20 +18,25 @@ export default function VendorAuthPage({ onSignedIn }) {
   const [googleBusy, setGoogleBusy] = useState(false);
   const [resetSent, setResetSent] = useState(false);
 
+  const completeVendorAuth = () => {
+    // The Firebase auth listener in App.jsx is the single source of truth.
+    // Do not render the auth page again after credentials are accepted.
+    onSignedIn?.();
+  };
+
   const submit = async (e) => {
     e.preventDefault();
     setError("");
     setBusy(true);
     try {
       if (mode === "signup") {
-        await createUserWithEmailAndPassword(auth, email, password);
+        await createUserWithEmailAndPassword(auth, email.trim(), password);
       } else {
-        await signInWithEmailAndPassword(auth, email, password);
+        await signInWithEmailAndPassword(auth, email.trim(), password);
       }
-      onSignedIn?.();
+      completeVendorAuth();
     } catch (err) {
       setError(friendlyError(err.code));
-    } finally {
       setBusy(false);
     }
   };
@@ -51,7 +56,7 @@ export default function VendorAuthPage({ onSignedIn }) {
     if (!email) return setError("Enter your email above first, then tap reset.");
     setError("");
     try {
-      await sendPasswordResetEmail(auth, email);
+      await sendPasswordResetEmail(auth, email.trim());
       setResetSent(true);
     } catch (err) {
       setError(friendlyError(err.code));
@@ -61,7 +66,7 @@ export default function VendorAuthPage({ onSignedIn }) {
   return (
     <div style={{ padding: 24, display: "flex", justifyContent: "center" }}>
       <div style={{ width: "100%", maxWidth: 380, background: "#fff", border: "1px solid rgba(15,26,36,0.08)", boxShadow: "0 8px 24px rgba(15,26,36,0.08)", borderRadius: 20, padding: 24 }}>
-        <div className="font-display" style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}> {mode === "signup" ? "Create your account" : "Sign in"}</div>
+        <div className="font-display" style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>{mode === "signup" ? "Create your account" : "Sign in"}</div>
         <div style={{ fontSize: 12, color: "#666", marginBottom: 16 }}>
           {mode === "signup" ? "Vendors sign up here, then list or claim their stall." : "Sign in to manage your listing."}
         </div>
@@ -79,24 +84,24 @@ export default function VendorAuthPage({ onSignedIn }) {
         <form onSubmit={submit}>
           <div style={{ marginBottom: 12 }}>
             <label style={{ display: "block", fontSize: 11, textTransform: "uppercase", fontWeight: 700, marginBottom: 5 }}>Email</label>
-            <input style={inputStyle} type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
+            <input style={inputStyle} type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" />
           </div>
           <div style={{ marginBottom: 12 }}>
             <label style={{ display: "block", fontSize: 11, textTransform: "uppercase", fontWeight: 700, marginBottom: 5 }}>Password</label>
-            <input style={inputStyle} type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 6 characters" />
+            <input style={inputStyle} type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 6 characters" autoComplete={mode === "signup" ? "new-password" : "current-password"} />
           </div>
           {error && <div style={{ color: COLORS.brick, fontSize: 12, marginBottom: 10 }}>{error}</div>}
           {resetSent && <div style={{ color: COLORS.green, fontSize: 12, marginBottom: 10 }}>Password reset email sent.</div>}
           <button type="submit" disabled={busy || googleBusy} className="stall-btn" style={{ width: "100%", background: COLORS.navy, color: "#fff", border: "none", borderRadius: 999, padding: "10px", fontSize: 13, fontWeight: 700, marginBottom: 10 }}>
-            {busy ? "Please wait…" : mode === "signup" ? "Create account" : "Sign in"}
+            {busy ? "Signing you in…" : mode === "signup" ? "Create account" : "Sign in"}
           </button>
         </form>
 
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
-          <button onClick={() => { setMode(mode === "signup" ? "signin" : "signup"); setError(""); }} style={{ background: "none", border: "none", color: COLORS.green, cursor: "pointer", textDecoration: "underline", padding: 0 }}>
+          <button type="button" onClick={() => { setMode(mode === "signup" ? "signin" : "signup"); setError(""); setResetSent(false); }} style={{ background: "none", border: "none", color: COLORS.green, cursor: "pointer", textDecoration: "underline", padding: 0 }}>
             {mode === "signup" ? "Already have an account? Sign in" : "New vendor? Create an account"}
           </button>
-          {mode === "signin" && <button onClick={resetPassword} style={{ background: "none", border: "none", color: "#777", cursor: "pointer", padding: 0 }}>Forgot password?</button>}
+          {mode === "signin" && <button type="button" onClick={resetPassword} style={{ background: "none", border: "none", color: "#777", cursor: "pointer", padding: 0 }}>Forgot password?</button>}
         </div>
       </div>
     </div>
@@ -117,6 +122,7 @@ function friendlyError(code) {
     case "auth/invalid-credential": return "Incorrect email or password.";
     case "auth/user-not-found": return "No account found with that email.";
     case "auth/too-many-requests": return "Too many attempts — please wait a moment and try again.";
+    case "auth/popup-blocked": return "Your browser blocked the sign-in popup — please allow popups and try again.";
     default: return "Something went wrong. Please try again.";
   }
 }
