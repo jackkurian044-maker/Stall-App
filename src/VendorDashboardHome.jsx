@@ -4,7 +4,6 @@ import { BarChart2, Eye, MessageCircle, Navigation, Phone, Plus, Zap } from "luc
 import { db } from "./firebase";
 import { COLORS } from "./constants";
 import VendorDashboard from "./VendorDashboard";
-import VendorPremiumWorkspace from "./VendorPremiumWorkspace";
 
 export default function VendorDashboardHome({ user, agent }) {
   const [listings, setListings] = useState([]);
@@ -36,10 +35,6 @@ export default function VendorDashboardHome({ user, agent }) {
 
   const scrollToWorkspace = () => {
     document.getElementById("vendor-dashboard-workspace")?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
-
-  const scrollToPremium = () => {
-    document.getElementById("vendor-premium-workspace")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   return (
@@ -77,7 +72,7 @@ export default function VendorDashboardHome({ user, agent }) {
               </button>
             )}
             {primary && (
-              <button onClick={scrollToPremium} className="stall-btn" style={{ background: "#fff", color: COLORS.ink, border: `1.5px solid ${COLORS.ink}`, borderRadius: 8, padding: "10px 14px", fontSize: 12.5, fontWeight: 800, display: "flex", alignItems: "center", gap: 6 }}>
+              <button onClick={scrollToWorkspace} className="stall-btn" style={{ background: "#fff", color: COLORS.ink, border: `1.5px solid ${COLORS.ink}`, borderRadius: 8, padding: "10px 14px", fontSize: 12.5, fontWeight: 800, display: "flex", alignItems: "center", gap: 6 }}>
                 <Zap size={14} /> My Premium
               </button>
             )}
@@ -100,11 +95,6 @@ export default function VendorDashboardHome({ user, agent }) {
             </div>
           )}
         </div>
-      </div>
-
-      <div id="vendor-premium-workspace" style={{ maxWidth: 1180, margin: "18px auto 0", padding: "0 20px", scrollMarginTop: 90 }}>
-        <div style={{ marginBottom: 9, fontSize: 11, textTransform: "uppercase", letterSpacing: ".08em", fontWeight: 800, color: COLORS.teal }}>Premium workspace</div>
-        <VendorPremiumWorkspace user={user} listing={primary} />
       </div>
 
       <div id="vendor-dashboard-workspace" style={{ scrollMarginTop: 90 }}>
