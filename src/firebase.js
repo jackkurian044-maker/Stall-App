@@ -4,6 +4,7 @@ import {
   indexedDBLocalPersistence,
   browserLocalPersistence,
   browserSessionPersistence,
+  browserPopupRedirectResolver,
 } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
@@ -19,12 +20,12 @@ const firebaseConfig = {
 
 export const app = initializeApp(firebaseConfig);
 
-// Do not initialize Firebase's popup/redirect resolver globally.
-// The vendor Google redirect supplies its resolver only at sign-in time.
-// This keeps popup machinery out of the normal application startup path
-// while preserving persistent vendor sessions.
+// Firebase Google sign-in uses the standard browser redirect resolver.
+// Keep it on the Auth instance so the redirect can be completed reliably
+// when the browser returns to the production STall domain.
 export const auth = initializeAuth(app, {
   persistence: [indexedDBLocalPersistence, browserLocalPersistence, browserSessionPersistence],
+  popupRedirectResolver: browserPopupRedirectResolver,
 });
 
 export const db = getFirestore(app);
