@@ -9,7 +9,7 @@ import {
 import { auth } from "./firebase";
 import { COLORS } from "./constants";
 
-export default function VendorAuthPage({ onSignedIn }) {
+export default function VendorAuthPage() {
   const [mode, setMode] = useState("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -18,25 +18,25 @@ export default function VendorAuthPage({ onSignedIn }) {
   const [googleBusy, setGoogleBusy] = useState(false);
   const [resetSent, setResetSent] = useState(false);
 
-  const completeVendorAuth = () => {
-    // The Firebase auth listener in App.jsx is the single source of truth.
-    // Do not render the auth page again after credentials are accepted.
-    onSignedIn?.();
-  };
-
   const submit = async (e) => {
     e.preventDefault();
     setError("");
     setBusy(true);
     try {
+      // IMPORTANT: App.jsx/onAuthStateChanged is the only login handoff.
+      // Do not manually change the route here. Firebase may resolve the
+      // credential before React's auth listener has published `user`, and a
+      // manual route change can race with App's unauthenticated guard.
       if (mode === "signup") {
         await createUserWithEmailAndPassword(auth, email.trim(), password);
       } else {
         await signInWithEmailAndPassword(auth, email.trim(), password);
       }
-      completeVendorAuth();
+      // Keep this screen mounted only until Firebase publishes auth state.
+      // App.jsx then switches directly to the vendor workspace.
     } catch (err) {
       setError(friendlyError(err.code));
+    } finally {
       setBusy(false);
     }
   };
