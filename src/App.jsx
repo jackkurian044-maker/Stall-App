@@ -13,7 +13,7 @@ import AdminAgents from "./AdminAgents";
 import PrivacyPolicy from "./PrivacyPolicy";
 import Footer from "./Footer";
 
-const AUTH_TRACE = "[STALL-AUTH v3]";
+const AUTH_TRACE = "[STALL-AUTH v4]";
 const trace = (...args) => console.info(AUTH_TRACE, ...args);
 
 export default function App() {
@@ -58,13 +58,15 @@ export default function App() {
         setAgent(null);
       }
       setAuthLoading(false);
-      trace("authLoading=false", { mode, authenticated: !!u });
+      trace("authLoading=false", { authenticated: !!u });
     });
     return unsub;
   }, []);
 
   useEffect(() => {
-    trace("route observer", { mode, authenticated: !!user, agent: !!agent });
+    trace("route observer", { mode, authenticated: !!user, admin: isAdmin, agent: !!agent, authLoading });
+    if (authLoading) return;
+
     if (!user) {
       if (["mine", "admin", "bulk", "agent", "agents"].includes(mode)) setMode("find");
       return;
@@ -74,10 +76,11 @@ export default function App() {
     if (!agent && mode === "agent") setMode("find");
 
     if (mode === "auth") {
-      trace("authenticated vendor leaving auth screen", { destination: agent ? "agent" : "mine" });
-      setMode(agent ? "agent" : "mine");
+      const destination = isAdmin ? "admin" : agent ? "agent" : "mine";
+      trace("authenticated user leaving auth screen", { destination });
+      setMode(destination);
     }
-  }, [user, isAdmin, agent, mode]);
+  }, [user, isAdmin, agent, mode, authLoading]);
 
   const handleSignOut = async () => {
     trace("sign out requested");
@@ -88,7 +91,6 @@ export default function App() {
   return (
     <div style={{ minHeight: "100vh", background: "#0a0a0a", display: "flex", flexDirection: "column" }}>
       <Header mode={mode} setMode={setMode} user={user} isAdmin={isAdmin} isAgent={!!agent} onSignOut={handleSignOut} />
-
       <div style={{ flex: 1 }}>
         {authLoading ? (
           <div style={{ padding: 40, textAlign: "center", color: "#9c9c9c", fontSize: 14 }}>Loading…</div>
@@ -96,7 +98,7 @@ export default function App() {
           <FindView user={user} isAdmin={isAdmin} onRequestSignIn={() => setMode("auth")} />
         ) : mode === "auth" ? (
           user ? (
-            agent ? <AgentDashboard user={user} agent={agent} /> : <VendorEntry user={user} agent={agent} />
+            isAdmin ? <AdminDashboard /> : agent ? <AgentDashboard user={user} agent={agent} /> : <VendorEntry user={user} agent={agent} />
           ) : (
             <VendorAuthPage />
           )
@@ -116,7 +118,6 @@ export default function App() {
           <FindView user={user} isAdmin={isAdmin} onRequestSignIn={() => setMode("auth")} />
         )}
       </div>
-
       {mode !== "privacy" && <Footer onNavigatePrivacy={() => setMode("privacy")} />}
     </div>
   );
