@@ -11,6 +11,32 @@ const PRICING = {
   in: { symbol: "₹", monthly: 499, annual: 4999 },
   ae: { symbol: "AED ", monthly: 100, annual: 999 },
 };
+const RAZORPAY_CHECKOUT_URL = "https://checkout.razorpay.com/v1/checkout.js";
+
+function loadRazorpayCheckout() {
+  return new Promise((resolve) => {
+    if (window.Razorpay) return resolve(true);
+    const existing = document.querySelector(`script[src="${RAZORPAY_CHECKOUT_URL}"]`);
+    const script = existing || document.createElement("script");
+    let settled = false;
+    const finish = (ok) => { if (!settled) { settled = true; resolve(ok); } };
+    script.addEventListener("load", () => finish(Boolean(window.Razorpay)), { once: true });
+    script.addEventListener("error", () => finish(false), { once: true });
+    if (!existing) {
+      script.src = RAZORPAY_CHECKOUT_URL;
+      script.async = true;
+      document.head.appendChild(script);
+    }
+    window.setTimeout(() => finish(Boolean(window.Razorpay)), 10000);
+  });
+}
+
+function withTimeout(promise, ms, message) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => window.setTimeout(() => reject(new Error(message)), ms)),
+  ]);
+}
 
 export default function VendorPremiumWorkspace({ user, listing }) {
   const [premium, setPremium] = useState(null);
@@ -69,11 +95,19 @@ export default function VendorPremiumWorkspace({ user, listing }) {
   async function subscribe() {
     setError(""); setWorking(true);
     try {
+      const razorpayReady = await loadRazorpayCheckout();
+      if (!razorpayReady) throw new Error("Razorpay checkout could not load. Please check your internet connection and try again.");
+
       const functions = getFunctions();
       const createSubscription = httpsCallable(functions, "createSubscription");
-      const { data } = await createSubscription({ vendorId: user.uid, vendorName: listing.name || user.displayName || "Vendor", vendorEmail: user.email || "", billingCycle });
+      const { data } = await withTimeout(
+        createSubscription({ vendorId: user.uid, vendorName: listing.name || user.displayName || "Vendor", vendorEmail: user.email || "", billingCycle }),
+        20000,
+        "Premium payment setup timed out. Please try again."
+      );
       if (!data?.subscriptionId || !data?.keyId) throw new Error("Payment setup is incomplete. Please try again.");
-      if (!window.Razorpay) throw new Error("Payment checkout is still loading. Please try again.");
+      if (!window.Razorpay) throw new Error("Razorpay checkout is unavailable. Please refresh and try again.");
+
       const rzp = new window.Razorpay({
         key: data.keyId,
         subscription_id: data.subscriptionId,
@@ -85,9 +119,13 @@ export default function VendorPremiumWorkspace({ user, listing }) {
         handler: async (response) => {
           try {
             const verifySubscription = httpsCallable(functions, "verifySubscription");
-            await verifySubscription({ razorpay_payment_id: response.razorpay_payment_id, razorpay_subscription_id: response.razorpay_subscription_id, razorpay_signature: response.razorpay_signature, vendorId: user.uid });
+            await withTimeout(
+              verifySubscription({ razorpay_payment_id: response.razorpay_payment_id, razorpay_subscription_id: response.razorpay_subscription_id, razorpay_signature: response.razorpay_signature, vendorId: user.uid }),
+              20000,
+              "Payment verification timed out. Please contact STall support if you were charged."
+            );
             setError("");
-          } catch (err) { setError("Payment succeeded, but activation could not be verified. Please contact STall support."); }
+          } catch (err) { setError(err?.message || "Payment succeeded, but activation could not be verified. Please contact STall support."); }
           finally { setWorking(false); }
         },
         modal: { ondismiss: () => setWorking(false) },
