@@ -65,9 +65,9 @@ export default function App() {
     if (!isAdmin && ["admin", "bulk", "agents"].includes(mode)) setMode("find");
     if (!agent && mode === "agent") setMode("find");
 
-    // After either email/password login or Google redirect login, Firebase
-    // restores the authenticated user. Route authenticated vendors away
-    // from the sign-in page automatically.
+    // Keep the route synchronized with Firebase auth. The render path below
+    // also handles the authenticated+auth state directly, so there is no
+    // intermediate render of the sign-in screen after a successful login.
     if (mode === "auth") {
       setMode(agent ? "agent" : "mine");
     }
@@ -87,8 +87,12 @@ export default function App() {
           <div style={{ padding: 40, textAlign: "center", color: "#9c9c9c", fontSize: 14 }}>Loading…</div>
         ) : mode === "find" ? (
           <FindView user={user} isAdmin={isAdmin} onRequestSignIn={() => setMode("auth")} />
-        ) : mode === "auth" && !user ? (
-          <VendorAuthPage onSignedIn={() => setMode("mine")} />
+        ) : mode === "auth" ? (
+          user ? (
+            agent ? <AgentDashboard user={user} agent={agent} /> : <VendorEntry user={user} agent={agent} />
+          ) : (
+            <VendorAuthPage onSignedIn={() => setMode("mine")} />
+          )
         ) : mode === "mine" && user ? (
           <VendorEntry user={user} agent={agent} />
         ) : mode === "agent" && user && agent ? (
