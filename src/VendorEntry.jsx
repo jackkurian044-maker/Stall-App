@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "./firebase";
-import VendorDashboard from "./VendorDashboard";
+import VendorDashboardHome from "./VendorDashboardHome";
 import VendorOnboarding from "./VendorOnboarding";
 
 export default function VendorEntry({ user, agent }) {
@@ -17,6 +17,6 @@ export default function VendorEntry({ user, agent }) {
   }
 
   return hasListings
-    ? <VendorDashboard user={user} agent={agent} />
+    ? <VendorDashboardHome user={user} agent={agent} />
     : <VendorOnboarding user={user} onComplete={() => { /* Firestore ownership update causes this entry to switch automatically. */ }} />;
 }
