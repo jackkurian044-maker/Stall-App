@@ -10,12 +10,8 @@ import LocationSearch from "./LocationSearch";
 import ImageUpload from "./ImageUpload";
 import { autoRefreshStale, isRatingStale } from "./ratingSync";
 import { uid, toDateInputValue } from "./geo";
-import PremiumGate from "./PremiumGate";
-import ReviewAutoResponder from "./ReviewAutoResponder";
-import BoostTab from "./BoostTab";
 import { findDuplicateVendor } from "./duplicateCheck";
 import QuickOfferModal from "./QuickOfferModal";
-import { payWebsiteBuildFee } from "./websiteBuildCheckout";
 import { encodeGeohash } from "./geohash";
 
 const emptyForm = {
@@ -45,7 +41,6 @@ export default function VendorDashboard({ user, agent }) {
   const [dashTab, setDashTab] = useState("listings");
   const [quickOfferListing, setQuickOfferListing] = useState(null);
   const [vendorDigests, setVendorDigests] = useState({});
-  const [buildLoading, setBuildLoading] = useState(null);
   const refreshedRef = useRef(new Set());
 
   useEffect(() => {
@@ -146,15 +141,6 @@ export default function VendorDashboard({ user, agent }) {
     } catch { setClaimMsg("Couldn't claim that listing — check the code and try again."); }
   };
 
-  const handleBuildPayment = async (tier) => {
-    setBuildLoading(tier);
-    try {
-      await payWebsiteBuildFee(tier);
-      alert("Payment successful — we'll be in touch to start your website build.");
-    } catch (err) { alert(err.message || "Payment failed. Please try again."); }
-    finally { setBuildLoading(null); }
-  };
-
   const premiumListing = listings[0];
 
   return (
@@ -213,28 +199,46 @@ export default function VendorDashboard({ user, agent }) {
 
         {dashTab === "premium" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div style={{ ...cardStyle, background: COLORS.ink, color: "#fff", border: "none", padding: 20 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ width: 40, height: 40, borderRadius: 10, background: COLORS.marigold, color: COLORS.ink, display: "flex", alignItems: "center", justifyContent: "center" }}><Zap size={20} /></div>
-                <div><div className="font-display" style={{ fontSize: 20, fontWeight: 700 }}>Stall Premium</div><div style={{ fontSize: 12, opacity: 0.78 }}>Everything you need to manage reviews and improve Google visibility.</div></div>
+            <div style={{ ...cardStyle, background: COLORS.ink, color: "#fff", border: "none", padding: 22 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ width: 44, height: 44, borderRadius: 12, background: COLORS.marigold, color: COLORS.ink, display: "flex", alignItems: "center", justifyContent: "center" }}><Zap size={21} /></div>
+                <div style={{ minWidth: 0 }}>
+                  <div className="font-display" style={{ fontSize: 22, fontWeight: 700 }}>Stall Premium</div>
+                  <div style={{ fontSize: 12.5, opacity: 0.78 }}>A new growth workspace for businesses on STall.</div>
+                </div>
               </div>
-              {premiumListing && <div style={{ fontSize: 11.5, opacity: 0.72, marginTop: 12 }}>Business: {premiumListing.name}</div>}
+              {premiumListing && <div style={{ fontSize: 11.5, opacity: 0.72, marginTop: 14 }}>Business: {premiumListing.name}</div>}
             </div>
+
             {!premiumListing ? (
-              <div style={{ ...cardStyle, textAlign: "center", color: "#666" }}>Create or claim a listing first to use Premium features.</div>
+              <div style={{ ...cardStyle, textAlign: "center", padding: 34 }}>
+                <div className="font-display" style={{ fontSize: 18, fontWeight: 700, color: COLORS.ink }}>Premium starts with your business listing</div>
+                <div style={{ fontSize: 12.5, color: "#666", marginTop: 7 }}>Create or claim a listing first. Your new Premium workspace will appear here.</div>
+              </div>
             ) : (
               <>
-                <section><div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".06em", color: "#777", margin: "2px 0 7px" }}>1 · Premium plan</div><PremiumGate user={user} listing={premiumListing} /></section>
-                <section><div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".06em", color: "#777", margin: "2px 0 7px" }}>2 · Google review automation</div><ReviewAutoResponder listing={premiumListing} /></section>
-                <section><div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".06em", color: "#777", margin: "2px 0 7px" }}>3 · Google visibility boost</div><BoostTab user={user} listing={premiumListing} /></section>
                 <section style={cardStyle}>
-                  <div className="font-display" style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>🌐 Get a website built</div>
-                  <div style={{ fontSize: 12, color: "#666", marginBottom: 14 }}>One-time website build. Separate from the recurring Premium subscription.</div>
-                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                    <button disabled={buildLoading === "in_basic"} onClick={() => handleBuildPayment("in_basic")} className="stall-btn" style={{ flex: 1, minWidth: 180, background: COLORS.ink, color: "#fff", border: "none", borderRadius: 7, padding: 10, fontSize: 13, fontWeight: 700 }}>{buildLoading === "in_basic" ? "Processing…" : "Basic — ₹2,999"}</button>
-                    <button disabled={buildLoading === "in_advanced"} onClick={() => handleBuildPayment("in_advanced")} className="stall-btn" style={{ flex: 1, minWidth: 180, background: COLORS.ink, color: "#fff", border: "none", borderRadius: 7, padding: 10, fontSize: 13, fontWeight: 700 }}>{buildLoading === "in_advanced" ? "Processing…" : "Advanced — ₹7,999"}</button>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+                    <div>
+                      <div style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: ".08em", fontWeight: 800, color: "#777" }}>Premium workspace</div>
+                      <div className="font-display" style={{ fontSize: 19, fontWeight: 700, marginTop: 3 }}>Your growth tools are being rebuilt</div>
+                      <div style={{ fontSize: 12.5, color: "#666", marginTop: 6, maxWidth: 680 }}>We are replacing the old Premium experience with a simpler system built around reputation, visibility and business growth.</div>
+                    </div>
+                    <span style={{ fontSize: 11, fontWeight: 800, padding: "6px 10px", borderRadius: 20, background: premiumListing.isPremium ? `${COLORS.teal}18` : "#F3F1EC", color: premiumListing.isPremium ? COLORS.teal : "#777", whiteSpace: "nowrap" }}>{premiumListing.isPremium ? "PREMIUM ACTIVE" : "PREMIUM NOT ACTIVE"}</span>
                   </div>
                 </section>
+
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
+                  <PremiumModule title="Reputation" text="A focused system for turning customer feedback into stronger trust." />
+                  <PremiumModule title="Visibility" text="A focused system for helping your business get discovered." />
+                  <PremiumModule title="Growth" text="A focused system for measuring actions that can become customers." />
+                </div>
+
+                <div style={{ ...cardStyle, background: "#F7F6F2", border: "1.5px solid #ddd" }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".06em", color: "#777" }}>Next phase</div>
+                  <div className="font-display" style={{ fontSize: 16, fontWeight: 700, marginTop: 3 }}>One Premium system. One clear status. One place to manage it.</div>
+                  <div style={{ fontSize: 12, color: "#666", marginTop: 5 }}>The new vendor controls and the Admin Premium Control Centre will be connected to the same Premium system.</div>
+                </div>
               </>
             )}
           </div>
@@ -242,6 +246,17 @@ export default function VendorDashboard({ user, agent }) {
       </div>
 
       {quickOfferListing && <QuickOfferModal listing={quickOfferListing} onClose={() => setQuickOfferListing(null)} />}
+    </div>
+  );
+}
+
+function PremiumModule({ title, text }) {
+  return (
+    <div style={{ ...cardStyle, padding: 16 }}>
+      <div style={{ width: 30, height: 30, borderRadius: 8, background: COLORS.ink, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800 }}>✦</div>
+      <div className="font-display" style={{ fontSize: 15, fontWeight: 700, marginTop: 10 }}>{title}</div>
+      <div style={{ fontSize: 11.5, color: "#666", lineHeight: 1.5, marginTop: 4 }}>{text}</div>
+      <div style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".05em", color: "#aaa", marginTop: 12 }}>New module</div>
     </div>
   );
 }
