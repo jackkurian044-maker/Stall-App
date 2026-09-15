@@ -61,11 +61,17 @@ export default function App() {
       if (["mine", "admin", "bulk", "agent", "agents"].includes(mode)) setMode("find");
       return;
     }
+
     if (!isAdmin && ["admin", "bulk", "agents"].includes(mode)) setMode("find");
     if (!agent && mode === "agent") setMode("find");
-    // Right after sign-in, route agents straight to their dashboard instead
-    // of the (likely empty) vendor "My Listings" view.
-    if (agent && mode === "auth") setMode("agent");
+
+    // A successful Firebase sign-in can restore the auth session even when
+    // the AuthPage callback is not the thing that changed the session (for
+    // example after a refresh or a provider redirect). Never leave an
+    // authenticated vendor sitting on the sign-in screen.
+    if (mode === "auth") {
+      setMode(agent ? "agent" : "mine");
+    }
   }, [user, isAdmin, agent, mode]);
 
   const handleSignOut = async () => {
