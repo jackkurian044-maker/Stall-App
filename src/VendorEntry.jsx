@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "./firebase";
-import VendorDashboardHome from "./VendorDashboardHome";
+import VendorDashboardHome from "./VendorDashboardHomeV2";
 import VendorOnboarding from "./VendorOnboarding";
 
 export default function VendorEntry({ user, agent }) {
