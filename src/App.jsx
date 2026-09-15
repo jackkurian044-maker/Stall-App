@@ -4,7 +4,7 @@ import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "./firebase";
 import Header from "./Header";
 import FindView from "./FindView";
-import AuthPage from "./AuthPage";
+import VendorAuthPage from "./VendorAuthPage";
 import VendorEntry from "./VendorEntry";
 import AdminDashboard from "./AdminDashboard";
 import DiscoverNearby from "./DiscoverNearby";
@@ -65,10 +65,9 @@ export default function App() {
     if (!isAdmin && ["admin", "bulk", "agents"].includes(mode)) setMode("find");
     if (!agent && mode === "agent") setMode("find");
 
-    // A successful Firebase sign-in can restore the auth session even when
-    // the AuthPage callback is not the thing that changed the session (for
-    // example after a refresh or a provider redirect). Never leave an
-    // authenticated vendor sitting on the sign-in screen.
+    // After either email/password login or Google redirect login, Firebase
+    // restores the authenticated user. Route authenticated vendors away
+    // from the sign-in page automatically.
     if (mode === "auth") {
       setMode(agent ? "agent" : "mine");
     }
@@ -89,7 +88,7 @@ export default function App() {
         ) : mode === "find" ? (
           <FindView user={user} isAdmin={isAdmin} onRequestSignIn={() => setMode("auth")} />
         ) : mode === "auth" ? (
-          <AuthPage onSignedIn={() => setMode("mine")} />
+          <VendorAuthPage onSignedIn={() => setMode("mine")} />
         ) : mode === "mine" && user ? (
           <VendorEntry user={user} agent={agent} />
         ) : mode === "agent" && user && agent ? (
