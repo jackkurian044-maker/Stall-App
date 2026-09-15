@@ -6,6 +6,7 @@ export default function Header({ mode, setMode, user, isAdmin, isAgent, onSignOu
     { id: "find", label: "Find" },
     ...(user ? [{ id: "mine", label: "My Listings" }] : []),
     ...(isAdmin ? [{ id: "admin", label: "Admin" }] : []),
+    ...(isAdmin ? [{ id: "admin-operations", label: "Operations" }] : []),
     ...(isAdmin ? [{ id: "bulk", label: "Discover Nearby" }] : []),
     ...(isAdmin ? [{ id: "agents", label: "Agents" }] : []),
     ...(isAgent ? [{ id: "agent", label: "My Dashboard" }] : []),
@@ -30,50 +31,22 @@ export default function Header({ mode, setMode, user, isAdmin, isAgent, onSignOu
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-  <img
-    src={stallLogoMark}
-    alt="Stall"
-    style={{ width: 40, height: "auto", flexShrink: 0 }}
-  />
-  <div style={{ display: "flex", flexDirection: "column", lineHeight: 1 }}>
-    <div style={{ fontWeight: 700, fontSize: "1.28rem", color: "#fff" }}>
-      all
-    </div>
-    <div
-      style={{
-        fontSize: "0.55rem",
-        letterSpacing: "0.22em",
-        color: "#9c9c9c",
-        fontWeight: 600,
-        marginTop: 2,
-      }}
-    >
-      THAT'S ALL
-    </div>
-  </div>
-  <div
-    style={{
-      fontSize: 11,
-      letterSpacing: "0.04em",
-      color: "#9c9c9c",
-      fontWeight: 600,
-      marginLeft: 10,
-    }}
-  >
-    what's around the corner
-  </div>
-</div>
+        <img
+          src={stallLogoMark}
+          alt="Stall"
+          style={{ width: 40, height: "auto", flexShrink: 0 }}
+        />
+        <div style={{ display: "flex", flexDirection: "column", lineHeight: 1 }}>
+          <div style={{ fontWeight: 700, fontSize: "1.28rem", color: "#fff" }}>all</div>
+          <div style={{ fontSize: "0.55rem", letterSpacing: "0.22em", color: "#9c9c9c", fontWeight: 600, marginTop: 2 }}>THAT'S ALL</div>
+        </div>
+        <div style={{ fontSize: 11, letterSpacing: "0.04em", color: "#9c9c9c", fontWeight: 600, marginLeft: 10 }}>
+          what's around the corner
+        </div>
+      </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-        <div
-          style={{
-            display: "flex",
-            background: "#111111",
-            borderRadius: 999,
-            padding: 4,
-            gap: 2,
-          }}
-        >
+        <div style={{ display: "flex", background: "#111111", borderRadius: 999, padding: 4, gap: 2 }}>
           {tabs.map((t) => (
             <button
               key={t.id}
@@ -96,11 +69,7 @@ export default function Header({ mode, setMode, user, isAdmin, isAgent, onSignOu
           ))}
         </div>
         {user && (
-          <button
-            onClick={onSignOut}
-            className="stall-btn stall-pill stall-pill-gold"
-            style={{ padding: "9px 18px", fontSize: 13 }}
-          >
+          <button onClick={onSignOut} className="stall-btn stall-pill stall-pill-gold" style={{ padding: "9px 18px", fontSize: 13 }}>
             Sign out
           </button>
         )}
