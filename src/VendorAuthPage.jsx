@@ -1,15 +1,16 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
   GoogleAuthProvider,
-  signInWithCredential,
+  signInWithRedirect,
+  getRedirectResult,
 } from "firebase/auth";
 import { auth } from "./firebase";
 import { COLORS } from "./constants";
 
-const AUTH_TRACE = "[STALL-AUTH v3]";
+const AUTH_TRACE = "[STALL-AUTH v4]";
 const trace = (...args) => console.info(AUTH_TRACE, ...args);
 
 export default function VendorAuthPage({ initialError = "" }) {
@@ -19,10 +20,8 @@ export default function VendorAuthPage({ initialError = "" }) {
   const [error, setError] = useState(initialError);
   const [busy, setBusy] = useState(false);
   const [googleBusy, setGoogleBusy] = useState(false);
-  const [googleReady, setGoogleReady] = useState(false);
   const [authStatus, setAuthStatus] = useState("");
   const [resetSent, setResetSent] = useState(false);
-  const googleButtonRef = useRef(null);
 
   useEffect(() => {
     if (initialError) setError(initialError);
@@ -30,65 +29,40 @@ export default function VendorAuthPage({ initialError = "" }) {
 
   useEffect(() => {
     let cancelled = false;
-    let timer;
-
-    const setupGoogle = () => {
-      if (cancelled || !googleButtonRef.current) return true;
-      const google = window.google;
-      const clientId = import.meta.env.VITE_GOOGLE_OAUTH_CLIENT_ID;
-      if (!google?.accounts?.id || !clientId) return false;
-
-      trace("GIS initializing");
-      google.accounts.id.initialize({
-        client_id: clientId,
-        callback: async (response) => {
-          if (cancelled) return;
-          trace("Google callback received; exchanging ID token with Firebase");
-          setError("");
-          setAuthStatus("Google verified. Signing you into STall…");
-          setGoogleBusy(true);
-          try {
-            const credential = GoogleAuthProvider.credential(response.credential);
-            const result = await signInWithCredential(auth, credential);
-            trace("Firebase Google credential succeeded", { uid: result.user?.uid });
-            setAuthStatus("Signed in. Opening your workspace…");
-          } catch (err) {
-            console.error(AUTH_TRACE, "Firebase Google credential failed", err?.code, err?.message);
-            setError(friendlyError(err?.code));
-            setAuthStatus("");
-          } finally {
-            if (!cancelled) setGoogleBusy(false);
-          }
-        },
-        auto_select: false,
-        cancel_on_tap_outside: true,
+    trace("checking Google redirect result");
+    getRedirectResult(auth)
+      .then((result) => {
+        if (cancelled) return;
+        if (result?.user) {
+          trace("Google redirect completed", { uid: result.user.uid });
+          setAuthStatus("Signed in. Opening your workspace…");
+        }
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error(AUTH_TRACE, "Google redirect failed", err?.code, err?.message);
+        setError(friendlyError(err?.code));
+        setAuthStatus("");
       });
-
-      googleButtonRef.current.innerHTML = "";
-      google.accounts.id.renderButton(googleButtonRef.current, {
-        type: "standard",
-        theme: "outline",
-        size: "large",
-        text: "continue_with",
-        shape: "pill",
-        width: 330,
-      });
-      trace("GIS button rendered");
-      setGoogleReady(true);
-      return true;
-    };
-
-    if (!setupGoogle()) {
-      timer = window.setInterval(() => {
-        if (setupGoogle()) window.clearInterval(timer);
-      }, 100);
-    }
-
-    return () => {
-      cancelled = true;
-      if (timer) window.clearInterval(timer);
-    };
+    return () => { cancelled = true; };
   }, []);
+
+  const signInWithGoogle = async () => {
+    setError("");
+    setAuthStatus("Opening Google sign-in…");
+    setGoogleBusy(true);
+    trace("Google redirect started");
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: "select_account" });
+      await signInWithRedirect(auth, provider);
+    } catch (err) {
+      console.error(AUTH_TRACE, "Google redirect start failed", err?.code, err?.message);
+      setError(friendlyError(err?.code));
+      setAuthStatus("");
+      setGoogleBusy(false);
+    }
+  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -107,7 +81,7 @@ export default function VendorAuthPage({ initialError = "" }) {
       setAuthStatus("Signed in. Opening your workspace…");
     } catch (err) {
       console.error(AUTH_TRACE, "Email auth failed", err?.code, err?.message);
-      setError(friendlyError(err.code));
+      setError(friendlyError(err?.code));
       setAuthStatus("");
     } finally {
       setBusy(false);
@@ -133,10 +107,9 @@ export default function VendorAuthPage({ initialError = "" }) {
           {mode === "signup" ? "Vendors sign up here, then list or claim their stall." : "Sign in to manage your listing."}
         </div>
 
-        <div style={{ minHeight: 44, display: "flex", justifyContent: "center", marginBottom: 14, opacity: googleBusy ? 0.6 : 1 }}>
-          <div ref={googleButtonRef} aria-label="Continue with Google" />
-        </div>
-        {!googleReady && <div style={{ textAlign: "center", fontSize: 11, color: "#999", marginTop: -8, marginBottom: 12 }}>Loading Google sign-in…</div>}
+        <button type="button" onClick={signInWithGoogle} disabled={busy || googleBusy} className="stall-btn" style={{ width: "100%", background: "#fff", color: COLORS.ink, border: "1.5px solid rgba(15,26,36,0.18)", borderRadius: 999, padding: "10px", fontSize: 13, fontWeight: 700, marginBottom: 14, cursor: busy || googleBusy ? "default" : "pointer" }}>
+          {googleBusy ? "Opening Google…" : "Continue with Google"}
+        </button>
 
         <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "0 0 14px" }}>
           <div style={{ flex: 1, height: 1, background: "rgba(15,26,36,0.12)" }} />
@@ -189,6 +162,7 @@ function friendlyError(code) {
     case "auth/credential-already-in-use": return "This Google account is already linked to another account.";
     case "auth/too-many-requests": return "Too many attempts — please wait a moment and try again.";
     case "auth/network-request-failed": return "Network error during Google sign-in. Please try again.";
+    case "auth/popup-blocked": return "Google sign-in was blocked. Please allow redirects and try again.";
     default: return code ? `Sign-in failed (${code}). Please try again.` : "Something went wrong. Please try again.";
   }
 }
