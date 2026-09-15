@@ -4,7 +4,7 @@ import stallLogoMark from "./logo-cropped.png";
 export default function Header({ mode, setMode, user, isAdmin, isAgent, onSignOut }) {
   const tabs = [
     { id: "find", label: "Find" },
-    ...(user ? [{ id: "mine", label: "My Listings" }] : []),
+    ...(user && !isAdmin && !isAgent ? [{ id: "mine", label: "My Dashboard" }] : []),
     ...(isAdmin ? [{ id: "admin", label: "Admin" }] : []),
     ...(isAdmin ? [{ id: "admin-operations", label: "Operations" }] : []),
     ...(isAdmin ? [{ id: "bulk", label: "Discover Nearby" }] : []),
