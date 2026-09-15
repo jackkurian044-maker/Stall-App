@@ -87,7 +87,7 @@ export default function App() {
           <div style={{ padding: 40, textAlign: "center", color: "#9c9c9c", fontSize: 14 }}>Loading…</div>
         ) : mode === "find" ? (
           <FindView user={user} isAdmin={isAdmin} onRequestSignIn={() => setMode("auth")} />
-        ) : mode === "auth" ? (
+        ) : mode === "auth" && !user ? (
           <VendorAuthPage onSignedIn={() => setMode("mine")} />
         ) : mode === "mine" && user ? (
           <VendorEntry user={user} agent={agent} />
