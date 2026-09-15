@@ -9,6 +9,9 @@ import {
 import { auth } from "./firebase";
 import { COLORS } from "./constants";
 
+const AUTH_TRACE = "[STALL-AUTH v3]";
+const trace = (...args) => console.info(AUTH_TRACE, ...args);
+
 export default function VendorAuthPage({ initialError = "" }) {
   const [mode, setMode] = useState("signin");
   const [email, setEmail] = useState("");
@@ -17,6 +20,7 @@ export default function VendorAuthPage({ initialError = "" }) {
   const [busy, setBusy] = useState(false);
   const [googleBusy, setGoogleBusy] = useState(false);
   const [googleReady, setGoogleReady] = useState(false);
+  const [authStatus, setAuthStatus] = useState("");
   const [resetSent, setResetSent] = useState(false);
   const googleButtonRef = useRef(null);
 
@@ -24,10 +28,6 @@ export default function VendorAuthPage({ initialError = "" }) {
     if (initialError) setError(initialError);
   }, [initialError]);
 
-  // Use Google Identity Services directly and exchange its ID token for a
-  // Firebase credential. This deliberately avoids Firebase's popup/redirect
-  // resolver, which is problematic on a GitHub Pages custom domain because
-  // of browser cross-origin opener/storage restrictions.
   useEffect(() => {
     let cancelled = false;
     let timer;
@@ -38,17 +38,24 @@ export default function VendorAuthPage({ initialError = "" }) {
       const clientId = import.meta.env.VITE_GOOGLE_OAUTH_CLIENT_ID;
       if (!google?.accounts?.id || !clientId) return false;
 
+      trace("GIS initializing");
       google.accounts.id.initialize({
         client_id: clientId,
         callback: async (response) => {
           if (cancelled) return;
+          trace("Google callback received; exchanging ID token with Firebase");
           setError("");
+          setAuthStatus("Google verified. Signing you into STall…");
           setGoogleBusy(true);
           try {
             const credential = GoogleAuthProvider.credential(response.credential);
-            await signInWithCredential(auth, credential);
+            const result = await signInWithCredential(auth, credential);
+            trace("Firebase Google credential succeeded", { uid: result.user?.uid });
+            setAuthStatus("Signed in. Opening your workspace…");
           } catch (err) {
+            console.error(AUTH_TRACE, "Firebase Google credential failed", err?.code, err?.message);
             setError(friendlyError(err?.code));
+            setAuthStatus("");
           } finally {
             if (!cancelled) setGoogleBusy(false);
           }
@@ -66,6 +73,7 @@ export default function VendorAuthPage({ initialError = "" }) {
         shape: "pill",
         width: 330,
       });
+      trace("GIS button rendered");
       setGoogleReady(true);
       return true;
     };
@@ -85,17 +93,22 @@ export default function VendorAuthPage({ initialError = "" }) {
   const submit = async (e) => {
     e.preventDefault();
     setError("");
+    setAuthStatus(mode === "signup" ? "Creating your vendor account…" : "Signing you in…");
     setBusy(true);
+    trace(mode === "signup" ? "Email signup started" : "Email signin started");
     try {
-      // Firebase auth state is the only login handoff. App.jsx watches
-      // onAuthStateChanged and moves the authenticated vendor to the workspace.
       if (mode === "signup") {
-        await createUserWithEmailAndPassword(auth, email.trim(), password);
+        const result = await createUserWithEmailAndPassword(auth, email.trim(), password);
+        trace("Email signup succeeded", { uid: result.user?.uid });
       } else {
-        await signInWithEmailAndPassword(auth, email.trim(), password);
+        const result = await signInWithEmailAndPassword(auth, email.trim(), password);
+        trace("Email signin succeeded", { uid: result.user?.uid });
       }
+      setAuthStatus("Signed in. Opening your workspace…");
     } catch (err) {
+      console.error(AUTH_TRACE, "Email auth failed", err?.code, err?.message);
       setError(friendlyError(err.code));
+      setAuthStatus("");
     } finally {
       setBusy(false);
     }
@@ -140,6 +153,7 @@ export default function VendorAuthPage({ initialError = "" }) {
             <label style={{ display: "block", fontSize: 11, textTransform: "uppercase", fontWeight: 700, marginBottom: 5 }}>Password</label>
             <input style={inputStyle} type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 6 characters" autoComplete={mode === "signup" ? "new-password" : "current-password"} />
           </div>
+          {authStatus && <div style={{ color: COLORS.green, fontSize: 12, marginBottom: 10 }}>{authStatus}</div>}
           {error && <div style={{ color: COLORS.brick, fontSize: 12, marginBottom: 10 }}>{error}</div>}
           {resetSent && <div style={{ color: COLORS.green, fontSize: 12, marginBottom: 10 }}>Password reset email sent.</div>}
           <button type="submit" disabled={busy || googleBusy} className="stall-btn" style={{ width: "100%", background: COLORS.navy, color: "#fff", border: "none", borderRadius: 999, padding: "10px", fontSize: 13, fontWeight: 700, marginBottom: 10 }}>
@@ -148,7 +162,7 @@ export default function VendorAuthPage({ initialError = "" }) {
         </form>
 
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
-          <button type="button" onClick={() => { setMode(mode === "signup" ? "signin" : "signup"); setError(""); setResetSent(false); }} style={{ background: "none", border: "none", color: COLORS.green, cursor: "pointer", textDecoration: "underline", padding: 0 }}>
+          <button type="button" onClick={() => { setMode(mode === "signup" ? "signin" : "signup"); setError(""); setAuthStatus(""); setResetSent(false); }} style={{ background: "none", border: "none", color: COLORS.green, cursor: "pointer", textDecoration: "underline", padding: 0 }}>
             {mode === "signup" ? "Already have an account? Sign in" : "New vendor? Create an account"}
           </button>
           {mode === "signin" && <button type="button" onClick={resetPassword} style={{ background: "none", border: "none", color: "#777", cursor: "pointer", padding: 0 }}>Forgot password?</button>}
