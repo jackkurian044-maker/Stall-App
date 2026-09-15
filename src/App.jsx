@@ -26,6 +26,12 @@ export default function App() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    if (params.get("premium") === "1") {
+      try { window.sessionStorage.setItem("stallPremiumIntent", "1"); } catch {}
+      setMode("auth");
+      window.history.replaceState({}, "", window.location.pathname);
+      return;
+    }
     if (params.get("gbp") === "connected") {
       setMode("mine");
       window.history.replaceState({}, "", window.location.pathname);
