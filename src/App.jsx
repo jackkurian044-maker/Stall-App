@@ -4,7 +4,7 @@ import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "./firebase";
 import Header from "./Header";
 import FindView from "./FindView";
-import VendorAuthPage from "./VendorAuthPage";
+import VendorAuthPage from "./VendorAuthRedirect";
 import VendorEntry from "./VendorEntry";
 import AdminDashboard from "./AdminDashboard";
 import DiscoverNearby from "./DiscoverNearby";
