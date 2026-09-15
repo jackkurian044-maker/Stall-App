@@ -582,7 +582,7 @@ STall — Find what’s around the corner.`;
                         setOwnerMessageStatus("");
                         openOwnerWhatsApp(contact);
                       }}
-                      title={v.phone ? "Open WhatsApp with the correct claim message for this business" : "No business phone number available"}
+                      title={v.phone ? "Open WhatsApp with the correct claim message for this business" : "No business phone number available — click to see the status"}
                       className="stall-btn"
                       style={{
                         background: v.phone ? COLORS.ink : "transparent",
@@ -592,9 +592,8 @@ STall — Find what’s around the corner.`;
                         padding: "5px 9px",
                         fontSize: 11,
                         fontWeight: 700,
-                        cursor: v.phone ? "pointer" : "not-allowed",
+                        cursor: "pointer",
                       }}
-                      disabled={!v.phone}
                     >
                       💬 Contact Owner
                     </button>
