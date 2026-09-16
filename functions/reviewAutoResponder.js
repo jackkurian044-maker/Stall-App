@@ -10,6 +10,7 @@ const axios = require("axios");
 if (!admin.apps.length) admin.initializeApp();
 const db = admin.firestore();
 const googleOAuthConfig = defineSecret("GOOGLE_OAUTH_CONFIG");
+const anthropicApiKey = defineSecret("ANTHROPIC_API_KEY");
 
 function getGoogleOAuthConfig() {
   let cfg;
@@ -22,6 +23,12 @@ function getGoogleOAuthConfig() {
     throw new Error("GOOGLE_OAUTH_CONFIG is missing client_id, client_secret, or redirect_uri");
   }
   return cfg;
+}
+
+function getAnthropicApiKey() {
+  const apiKey = anthropicApiKey.value();
+  if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not configured");
+  return apiKey;
 }
 
 async function refreshAccessToken(vendorId, connectionData) {
@@ -49,15 +56,6 @@ async function getValidToken(vendorId, connectionData) {
   if (isExpired) return refreshAccessToken(vendorId, connectionData);
   if (!connectionData.accessToken) return refreshAccessToken(vendorId, connectionData);
   return connectionData.accessToken;
-}
-
-function getAnthropicApiKey() {
-  // Keep the existing configured Anthropic credential path for now so this
-  // fix does not require a new secret to be created or pasted into chat.
-  const cfg = functions.config().anthropic;
-  const apiKey = process.env.ANTHROPIC_API_KEY || cfg?.api_key;
-  if (!apiKey) throw new Error("Anthropic API key is not configured");
-  return apiKey;
 }
 
 async function generateAIResponse(review, listing, settings) {
@@ -230,7 +228,7 @@ async function processVendor(vendorId, connectionData) {
   }, { merge: true });
 }
 
-exports.pollReviews = functions.runWith({ secrets: [googleOAuthConfig] }).pubsub.schedule("every 30 minutes").timeZone("Asia/Kolkata").onRun(async () => {
+exports.pollReviews = functions.runWith({ secrets: [googleOAuthConfig, anthropicApiKey] }).pubsub.schedule("every 30 minutes").timeZone("Asia/Kolkata").onRun(async () => {
   console.log("pollReviews: starting secure review responder");
   const connectionsSnap = await db.collection("gbp_connections").where("connected", "==", true).get();
   if (connectionsSnap.empty) {
