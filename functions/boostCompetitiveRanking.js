@@ -5,9 +5,11 @@
 // scans (on-demand health score vs weekly competitive rank) never collide.
 
 const functions = require("firebase-functions");
+const { defineSecret } = require("firebase-functions/params");
 const admin = require("firebase-admin");
 const axios = require("axios");
 const db = admin.firestore();
+const googleOAuthConfig = defineSecret("GOOGLE_OAUTH_CONFIG");
 
 const DEFAULT_RADIUS_METERS = 3000;
 const CLUSTER_RADIUS_METERS = DEFAULT_RADIUS_METERS / 2;
@@ -56,12 +58,18 @@ async function searchClusterCompetitors(cluster) {
   return (res.data.places || []).map((p, index) => ({ rank: index + 1, placeId: p.id, name: p.displayName?.text, rating: p.rating ?? null, reviewCount: p.userRatingCount ?? null }));
 }
 
+function getGoogleOAuthConfig() {
+  let cfg;
+  try { cfg = JSON.parse(googleOAuthConfig.value()); }
+  catch (err) { throw new Error("GOOGLE_OAUTH_CONFIG is missing or invalid"); }
+  if (!cfg.client_id || !cfg.client_secret || !cfg.redirect_uri) {
+    throw new Error("GOOGLE_OAUTH_CONFIG is missing client_id, client_secret, or redirect_uri");
+  }
+  return cfg;
+}
+
 async function refreshAccessToken(vendorId, connectionData) {
-  const cfg = {
-    client_id: functions.config().google.client_id,
-    client_secret: functions.config().google.client_secret,
-    redirect_uri: functions.config().google.redirect_uri,
-  };
+  const cfg = getGoogleOAuthConfig();
   const res = await axios.post("https://oauth2.googleapis.com/token", {
     refresh_token: connectionData.refreshToken,
     client_id: cfg.client_id,
@@ -109,7 +117,7 @@ async function getGbpPerformanceStats(vendorId) {
   }
 }
 
-exports.weeklyBoostRankingScan = functions.pubsub.schedule("every monday 08:00").timeZone("Asia/Kolkata").onRun(async () => {
+exports.weeklyBoostRankingScan = functions.runWith({ secrets: [googleOAuthConfig] }).pubsub.schedule("every monday 08:00").timeZone("Asia/Kolkata").onRun(async () => {
   console.log("weeklyBoostRankingScan: starting");
   const vendorsSnap = await db.collection("vendors").get();
   const vendors = vendorsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
@@ -133,7 +141,7 @@ exports.weeklyBoostRankingScan = functions.pubsub.schedule("every monday 08:00")
   return null;
 });
 
-exports.getGbpReputation = functions.https.onCall(async (data, context) => {
+exports.getGbpReputation = functions.runWith({ secrets: [googleOAuthConfig] }).https.onCall(async (data, context) => {
   if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Login required");
   const vendorId = context.auth.uid;
   const [connDoc, premiumDoc] = await Promise.all([
@@ -166,7 +174,7 @@ exports.getGbpReputation = functions.https.onCall(async (data, context) => {
 // Override the legacy trigger exported from index.js with the same callable
 // name. This keeps the existing frontend contract intact while correcting
 // the Google Reviews resource path required by the GBP API.
-exports.triggerPollForVendor = functions.https.onCall(async (data, context) => {
+exports.triggerPollForVendor = functions.runWith({ secrets: [googleOAuthConfig] }).https.onCall(async (data, context) => {
   if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Login required");
   const vendorId = context.auth.uid;
   try {
