@@ -69,9 +69,15 @@ jobs:
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
 
+      # The legacy index.js still exports pollReviews. Append the secure
+      # module after checkout so its export deliberately overrides that
+      # legacy scheduled function without changing unrelated functions.
+      - name: Activate secure review responder module
+        run: node -e 'const fs=require("fs"); const p="functions/index.js"; const s=fs.readFileSync(p,"utf8"); const line="Object.assign(exports, require(\"./reviewAutoResponder\"));"; if(!s.includes(line)){fs.appendFileSync(p,"\\n"+line+"\\n");}'
+
       # Deploy Premium payment endpoints, the manual review sync callable,
-      # and the secure GBP OAuth callback.
+      # the secure GBP OAuth callback, and the 30-minute auto responder.
       - name: Deploy Firebase Premium and Review Functions
-        run: npx --yes firebase-tools@latest deploy --only functions:createSubscription,functions:verifySubscription,functions:cancelSubscription,functions:razorpayWebhook,functions:triggerPollForVendor,functions:oauthCallback --project stall-app-1aab7 --non-interactive
+        run: npx --yes firebase-tools@latest deploy --only functions:createSubscription,functions:verifySubscription,functions:cancelSubscription,functions:razorpayWebhook,functions:triggerPollForVendor,functions:oauthCallback,functions:pollReviews --project stall-app-1aab7 --non-interactive
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
