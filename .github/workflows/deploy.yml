@@ -66,13 +66,19 @@ jobs:
 
       # Gemini is called through Vertex AI by the 1st-gen Firebase function
       # runtime, which uses the App Engine default service account.
-      - name: Enable Vertex AI and grant runtime access
+      # Admin-level service enable/IAM changes may not be allowed to the
+      # deployment service account, so these checks are deliberately non-blocking.
+      - name: Check Vertex AI runtime prerequisites
         run: |
-          gcloud services enable aiplatform.googleapis.com --project stall-app-1aab7
+          if gcloud services list --enabled --filter='config.name=aiplatform.googleapis.com' --format='value(config.name)' --project stall-app-1aab7 | grep -q '^aiplatform.googleapis.com$'; then
+            echo "Vertex AI API is enabled."
+          else
+            echo "::warning::Vertex AI API is not enabled. Enable aiplatform.googleapis.com in Google Cloud Console."
+          fi
           gcloud projects add-iam-policy-binding stall-app-1aab7 \
             --member="serviceAccount:stall-app-1aab7@appspot.gserviceaccount.com" \
             --role="roles/aiplatform.user" \
-            --quiet
+            --quiet || echo "::warning::Could not grant roles/aiplatform.user automatically. Grant this role to stall-app-1aab7@appspot.gserviceaccount.com in IAM."
         env:
           CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE: ${{ runner.temp }}/firebase-service-account.json
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
