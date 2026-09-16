@@ -12,8 +12,8 @@ if (!source.includes('defineSecret("RAZORPAY_CONFIG")')) {
   );
 }
 
-const legacyRazorpayConfig = 'functions.config().razorpay';
-const legacyCount = (source.match(new RegExp(legacyRazorpayConfig.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&"), "g")) || []).length;
+const legacyRazorpayConfig = "functions.config().razorpay";
+const legacyCount = source.split(legacyRazorpayConfig).length - 1;
 if (legacyCount === 0) throw new Error("Premium prepare: legacy Razorpay config references not found");
 source = source.replace(/functions\.config\(\)\.razorpay/g, "getRazorpayConfig()");
 
