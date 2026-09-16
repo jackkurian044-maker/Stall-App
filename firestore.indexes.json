@@ -7,6 +7,14 @@
         { "fieldPath": "type", "order": "ASCENDING" },
         { "fieldPath": "dayBucket", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "review_responses",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "vendorId", "order": "ASCENDING" },
+        { "fieldPath": "receivedAt", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
