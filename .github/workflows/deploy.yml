@@ -23,9 +23,9 @@ jobs:
           node-version: 22
           cache: npm
 
+      # Build the exact production artifact from this Git commit.
       - run: npm ci
 
-      # Build the exact production artifact from this Git commit.
       - run: npm run build
         env:
           VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
@@ -38,14 +38,12 @@ jobs:
           VITE_GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.VITE_GOOGLE_OAUTH_CLIENT_ID }}
           VITE_GOOGLE_OAUTH_REDIRECT_URI: ${{ secrets.VITE_GOOGLE_OAUTH_REDIRECT_URI }}
 
-      # Keep a copy of the exact build artifact in GitHub Actions for rollback/debugging.
       - uses: actions/upload-artifact@v4
         with:
           name: stall-production-build
           path: dist
           retention-days: 7
 
-      # Production is Firebase Hosting. GitHub remains the source-of-truth copy and CI/test system.
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}"
@@ -54,27 +52,26 @@ jobs:
           entryPoint: .
           firebaseToolsVersion: latest
 
-      # Install Cloud Functions dependencies before Firebase analyzes the functions source.
       - name: Install Firebase Cloud Functions dependencies
         run: npm ci --prefix functions
 
-      # Premium payment source is migrated from legacy functions.config() to the
-      # existing RAZORPAY_CONFIG Secret Manager secret at deploy time. This keeps
-      # the change isolated to the four Premium functions without touching the
-      # working Google/weekly-digest/Boost functions in index.js.
       - name: Prepare secure Premium payment functions
         run: node functions/prepare-premium.js
 
-      # Production function deployment is limited to the four Premium payment endpoints.
-      # GBP OAuth/review infrastructure already exists in functions/index.js and is not
-      # replaced or duplicated by this workflow.
       - name: Prepare Firebase CLI credentials
         run: node -e 'require("fs").writeFileSync(process.env.GOOGLE_APPLICATION_CREDENTIALS, process.env.FIREBASE_SERVICE_ACCOUNT_JSON)'
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
           FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
 
-      - name: Deploy Firebase Premium Payment Functions
-        run: npx --yes firebase-tools@latest deploy --only functions:createSubscription,functions:verifySubscription,functions:cancelSubscription,functions:razorpayWebhook --project stall-app-1aab7 --non-interactive
+      - name: Deploy Firestore rules
+        run: npx --yes firebase-tools@latest deploy --only firestore:rules --project stall-app-1aab7 --non-interactive
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
+
+      # Deploy the four Premium payment endpoints plus the existing on-demand
+      # GBP reputation callable used by the Premium workspace.
+      - name: Deploy Firebase Premium and GBP Functions
+        run: npx --yes firebase-tools@latest deploy --only functions:createSubscription,functions:verifySubscription,functions:cancelSubscription,functions:razorpayWebhook,functions:getGbpReputation --project stall-app-1aab7 --non-interactive
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
