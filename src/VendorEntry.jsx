@@ -6,17 +6,29 @@ import VendorOnboarding from "./VendorOnboarding";
 
 export default function VendorEntry({ user, agent }) {
   const [hasListings, setHasListings] = useState(null);
+  const [openDashboard, setOpenDashboard] = useState(false);
 
   useEffect(() => {
     const q = query(collection(db, "vendors"), where("ownerId", "==", user.uid));
-    return onSnapshot(q, (snap) => setHasListings(!snap.empty), () => setHasListings(false));
+    return onSnapshot(q, (snap) => {
+      setHasListings(!snap.empty);
+      if (!snap.empty) setOpenDashboard(true);
+    }, () => setHasListings(false));
   }, [user.uid]);
+
+  useEffect(() => {
+    const handleOpenDashboard = () => setOpenDashboard(true);
+    window.addEventListener("stall:open-vendor-dashboard", handleOpenDashboard);
+    return () => window.removeEventListener("stall:open-vendor-dashboard", handleOpenDashboard);
+  }, []);
 
   if (hasListings === null) {
     return <div style={{ padding: 40, textAlign: "center", color: "#999", fontSize: 14 }}>Loading your business workspace…</div>;
   }
 
-  return hasListings
-    ? <VendorDashboardHome user={user} agent={agent} />
-    : <VendorOnboarding user={user} onComplete={() => { /* Firestore ownership update causes this entry to switch automatically. */ }} />;
+  if (hasListings || openDashboard) {
+    return <VendorDashboardHome user={user} agent={agent} />;
+  }
+
+  return <VendorOnboarding user={user} onComplete={() => setOpenDashboard(true)} />;
 }
