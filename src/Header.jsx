@@ -5,6 +5,7 @@ export default function Header({ mode, setMode, user, isAdmin, isAgent, onSignOu
   const tabs = [
     { id: "find", label: "Find" },
     ...(user && !isAdmin && !isAgent ? [{ id: "mine", label: "My Dashboard" }] : []),
+    ...(user && !isAdmin && !isAgent ? [{ id: "reviews", label: "Reviews" }] : []),
     ...(isAdmin ? [{ id: "admin", label: "Admin" }] : []),
     ...(isAdmin ? [{ id: "admin-operations", label: "Operations" }] : []),
     ...(isAdmin ? [{ id: "bulk", label: "Discover Nearby" }] : []),
