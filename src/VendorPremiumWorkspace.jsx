@@ -63,6 +63,25 @@ export default function VendorPremiumWorkspace({ user, listing }) {
     }, () => setGbp(null));
   }, [user?.uid]);
 
+  // Once GBP is connected, ask the existing secure server-side integration
+  // for Google's authoritative aggregate rating/count. The result is also
+  // written into gbp_connections, so the listener above refreshes the card
+  // without exposing Google access tokens to the browser.
+  useEffect(() => {
+    if (!user?.uid || !gbp?.connected) return;
+    let cancelled = false;
+    const syncReputation = async () => {
+      try {
+        const getGbpReputation = httpsCallable(getFunctions(), "getGbpReputation");
+        await getGbpReputation();
+      } catch (err) {
+        if (!cancelled) console.error("GBP reputation sync failed:", err);
+      }
+    };
+    syncReputation();
+    return () => { cancelled = true; };
+  }, [user?.uid, gbp?.connected]);
+
   useEffect(() => {
     if (!listing?.id) { setBoost(null); return undefined; }
     return onSnapshot(doc(db, "vendors", listing.id, "boost", "latest"), (snap) => setBoost(snap.exists() ? snap.data() : null), () => setBoost(null));
@@ -90,6 +109,9 @@ export default function VendorPremiumWorkspace({ user, listing }) {
   const boostActive = Boolean(boost?.isActive || boost?.active || boost?.status === "active");
   const gbpConnected = Boolean(gbp?.connected || gbp?.isConnected || gbp?.status === "connected" || gbp?.placeId || gbp?.locationId);
   const directActions = stats.calls + stats.whatsapp;
+  const reputationRating = Number(gbp?.reputation?.averageRating || listing.rating || 0);
+  const reputationCount = Number(gbp?.reputation?.totalReviewCount || listing.userRatingsTotal || listing.reviewCount || 0);
+  const reputationSynced = Boolean(gbp?.reputation?.totalReviewCount || gbp?.reputation?.averageRating);
   const region = regionFromLatLng(listing.lat, listing.lng);
   const price = PRICING[region][billingCycle];
   const currency = PRICING[region].symbol;
@@ -228,7 +250,7 @@ export default function VendorPremiumWorkspace({ user, listing }) {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 10 }}>
-        <Module icon={<Star size={17} />} title="Reputation" value={`${Number(listing.rating || 0).toFixed(1)} rating`} detail={`${Number(listing.userRatingsTotal || listing.reviewCount || 0).toLocaleString("en-IN")} ratings are reflected on your listing.`} />
+        <Module icon={<Star size={17} />} title="Reputation" value={reputationSynced ? `${reputationRating.toFixed(1)} rating` : "SYNCING…"} detail={reputationSynced ? `${reputationCount.toLocaleString("en-IN")} ratings are reflected on your Google Business Profile.` : "Google Business Profile is connected. Loading the authoritative rating and review count…"} />
         <Module icon={<Globe2 size={17} />} title="Google Visibility" value={gbpConnected ? "CONNECTED" : "ACTION NEEDED"} detail={gbpConnected ? "Google Business Profile connection is active." : "Connect your Google Business Profile to unlock visibility workflows."} action={!gbpConnected ? <button type="button" onClick={connectGBP} disabled={gbpWorking} style={{ padding: "9px 12px", border: "none", borderRadius: 9, background: COLORS.teal, color: "#fff", fontWeight: 900, cursor: gbpWorking ? "wait" : "pointer" }}>{gbpWorking ? "Connecting…" : "Connect with Google"}</button> : null} />
         <Module icon={<Zap size={17} />} title="Store Boost" value={boostActive ? "ACTIVE" : "READY"} detail={boostActive ? "Your store boost is currently active." : "Store-specific boosting will be available here when enabled."} />
         <Module icon={<TrendingUp size={17} />} title="Growth" value={`${directActions} DIRECT ACTIONS`} detail="Calls and WhatsApp actions show whether attention is turning into enquiries." />
