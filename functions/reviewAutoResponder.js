@@ -10,7 +10,6 @@ const axios = require("axios");
 if (!admin.apps.length) admin.initializeApp();
 const db = admin.firestore();
 const googleOAuthConfig = defineSecret("GOOGLE_OAUTH_CONFIG");
-const anthropicApiKey = defineSecret("ANTHROPIC_API_KEY");
 
 function getGoogleOAuthConfig() {
   let cfg;
@@ -25,10 +24,61 @@ function getGoogleOAuthConfig() {
   return cfg;
 }
 
-function getAnthropicApiKey() {
-  const apiKey = anthropicApiKey.value();
-  if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not configured");
-  return apiKey;
+async function getVertexAccessToken() {
+  const credential = admin.app().options.credential;
+  if (!credential || typeof credential.getAccessToken !== "function") {
+    throw new Error("Firebase Admin credential cannot provide a Google access token");
+  }
+  const token = await credential.getAccessToken();
+  if (!token?.access_token) throw new Error("Google did not return a Vertex AI access token");
+  return token.access_token;
+}
+
+async function generateAIResponse(review, listing, settings) {
+  const projectId = process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT || admin.app().options.projectId;
+  if (!projectId) throw new Error("Google Cloud project ID is not available");
+
+  const accessToken = await getVertexAccessToken();
+  const toneMap = {
+    friendly: "warm, friendly, and personable",
+    professional: "professional and formal",
+    casual: "casual and conversational",
+    grateful: "deeply grateful and appreciative",
+  };
+  const ratingGuidance = {
+    5: "5-star glowing review. Express genuine gratitude, highlight what they praised, invite them back.",
+    4: "4-star positive review. Thank them warmly, acknowledge feedback, mention you strive for 5 stars.",
+    3: "3-star neutral review. Acknowledge their experience, show commitment to improvement, invite back.",
+    2: "2-star negative review. Be empathetic, apologise sincerely, offer to make it right.",
+    1: "1-star critical review. Be empathetic, take responsibility, apologise, urgently offer resolution.",
+  };
+
+  const prompt = `Write a Google Business review response for a local business.\n\nBUSINESS: ${listing?.name || "Our Business"} | ${listing?.category || "Local Business"} | ${listing?.address || "India"}\nREVIEWER: ${review.reviewerName || "Valued Customer"}\nRATING: ${review.starRating}/5\nREVIEW: "${review.reviewText || "(No text — star rating only)"}"\n\nRULES:\n- Tone: ${toneMap[settings?.tone] || "warm and friendly"}\n- Language: ${settings?.language || "English"}\n- ${ratingGuidance[review.starRating] || ratingGuidance[3]}\n- Sign off as: ${settings?.signOff || `The ${listing?.name || "Team"}`}\n- 50-120 words only\n- Address reviewer by name\n- Never use "Thank you for your review" as opening\n- Make it personal and specific\n${settings?.customInstructions ? `- ${settings.customInstructions}` : ""}\n\nWrite ONLY the response. No quotes, no labels.`;
+
+  const endpoint = `https://aiplatform.googleapis.com/v1/projects/${projectId}/locations/global/publishers/google/models/gemini-2.5-flash:generateContent`;
+  const response = await axios.post(
+    endpoint,
+    {
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: { maxOutputTokens: 300, temperature: 0.4 },
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  return response.data.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("").trim() || "";
+}
+
+function reviewUrl(connectionData, reviewId) {
+  return `https://mybusiness.googleapis.com/v4/${connectionData.accountName}/${connectionData.locationId}/reviews/${reviewId}`;
+}
+
+function reviewsUrl(connectionData) {
+  return `https://mybusiness.googleapis.com/v4/${connectionData.accountName}/${connectionData.locationId}/reviews`;
 }
 
 async function refreshAccessToken(vendorId, connectionData) {
@@ -56,51 +106,6 @@ async function getValidToken(vendorId, connectionData) {
   if (isExpired) return refreshAccessToken(vendorId, connectionData);
   if (!connectionData.accessToken) return refreshAccessToken(vendorId, connectionData);
   return connectionData.accessToken;
-}
-
-async function generateAIResponse(review, listing, settings) {
-  const apiKey = getAnthropicApiKey();
-  const toneMap = {
-    friendly: "warm, friendly, and personable",
-    professional: "professional and formal",
-    casual: "casual and conversational",
-    grateful: "deeply grateful and appreciative",
-  };
-  const ratingGuidance = {
-    5: "5-star glowing review. Express genuine gratitude, highlight what they praised, invite them back.",
-    4: "4-star positive review. Thank them warmly, acknowledge feedback, mention you strive for 5 stars.",
-    3: "3-star neutral review. Acknowledge their experience, show commitment to improvement, invite back.",
-    2: "2-star negative review. Be empathetic, apologise sincerely, offer to make it right.",
-    1: "1-star critical review. Be empathetic, take responsibility, apologise, urgently offer resolution.",
-  };
-
-  const prompt = `Write a Google Business review response for a local business.\n\nBUSINESS: ${listing?.name || "Our Business"} | ${listing?.category || "Local Business"} | ${listing?.address || "India"}\nREVIEWER: ${review.reviewerName || "Valued Customer"}\nRATING: ${review.starRating}/5\nREVIEW: "${review.reviewText || "(No text — star rating only)"}"\n\nRULES:\n- Tone: ${toneMap[settings?.tone] || "warm and friendly"}\n- Language: ${settings?.language || "English"}\n- ${ratingGuidance[review.starRating] || ratingGuidance[3]}\n- Sign off as: ${settings?.signOff || `The ${listing?.name || "Team"}`}\n- 50-120 words only\n- Address reviewer by name\n- Never use "Thank you for your review" as opening\n- Make it personal and specific\n${settings?.customInstructions ? `- ${settings.customInstructions}` : ""}\n\nWrite ONLY the response. No quotes, no labels.`;
-
-  const response = await axios.post(
-    "https://api.anthropic.com/v1/messages",
-    {
-      model: "claude-sonnet-4-6",
-      max_tokens: 300,
-      messages: [{ role: "user", content: prompt }],
-    },
-    {
-      headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "Content-Type": "application/json",
-      },
-    }
-  );
-
-  return response.data.content?.[0]?.text?.trim() || "";
-}
-
-function reviewUrl(connectionData, reviewId) {
-  return `https://mybusiness.googleapis.com/v4/${connectionData.accountName}/${connectionData.locationId}/reviews/${reviewId}`;
-}
-
-function reviewsUrl(connectionData) {
-  return `https://mybusiness.googleapis.com/v4/${connectionData.accountName}/${connectionData.locationId}/reviews`;
 }
 
 async function markGoogleReply(ref, review) {
@@ -148,20 +153,16 @@ async function processVendor(vendorId, connectionData) {
     const existing = await ref.get();
     const existingData = existing.exists ? existing.data() : {};
 
-    // Hard stop: Google already has a reply. Never generate or post another.
     if (review.reviewReply) {
       await markGoogleReply(ref, review);
       continue;
     }
 
-    // A previously completed STall response is also terminal.
     if (existingData.status === "posted") continue;
 
     const starRating = ratingMap[review.starRating] || 3;
     if (settings[`replyTo${starRating}Star`] === false) continue;
 
-    // Prevent overlapping scheduler invocations from generating two replies.
-    // A stale processing lock older than 15 minutes is safe to retry.
     const processingAt = existingData.processingAt?.toDate?.();
     if (existingData.status === "processing" && processingAt && Date.now() - processingAt.getTime() < 15 * 60 * 1000) {
       continue;
@@ -183,10 +184,8 @@ async function processVendor(vendorId, connectionData) {
 
     try {
       const aiResponse = await generateAIResponse(reviewData, listing, settings);
-      if (!aiResponse) throw new Error("AI returned an empty response");
+      if (!aiResponse) throw new Error("Gemini returned an empty response");
 
-      // Re-read the authoritative Google review immediately before posting.
-      // This closes the race where an owner replies manually after our list call.
       const latestReviewRes = await axios.get(reviewUrl(connectionData, reviewId), {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
@@ -228,8 +227,8 @@ async function processVendor(vendorId, connectionData) {
   }, { merge: true });
 }
 
-exports.pollReviews = functions.runWith({ secrets: [googleOAuthConfig, anthropicApiKey] }).pubsub.schedule("every 30 minutes").timeZone("Asia/Kolkata").onRun(async () => {
-  console.log("pollReviews: starting secure review responder");
+exports.pollReviews = functions.runWith({ secrets: [googleOAuthConfig] }).pubsub.schedule("every 30 minutes").timeZone("Asia/Kolkata").onRun(async () => {
+  console.log("pollReviews: starting secure review responder (Gemini/Vertex AI)");
   const connectionsSnap = await db.collection("gbp_connections").where("connected", "==", true).get();
   if (connectionsSnap.empty) {
     console.log("No connected vendors");
