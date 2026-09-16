@@ -305,3 +305,63 @@ exports.weeklyBoostRankingScan = functions.pubsub
     console.log(`weeklyBoostRankingScan: complete — ${writes} vendor rankings written`);
     return null;
   });
+
+// ─────────────────────────────────────────────────────────────
+// GBP REPUTATION — on-demand sync for the Premium workspace.
+// Google’s Reviews List response provides the authoritative aggregate
+// averageRating and totalReviewCount, so STall does not calculate an
+// average from a limited page of reviews.
+// ─────────────────────────────────────────────────────────────
+
+exports.getGbpReputation = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError("unauthenticated", "Login required");
+  }
+
+  const vendorId = context.auth.uid;
+  const [connDoc, premiumDoc] = await Promise.all([
+    db.collection("gbp_connections").doc(vendorId).get(),
+    db.collection("premium_vendors").doc(vendorId).get(),
+  ]);
+
+  if (!connDoc.exists || !connDoc.data().connected) {
+    throw new functions.https.HttpsError("failed-precondition", "GBP not connected");
+  }
+  if (!premiumDoc.exists || !premiumDoc.data().isPremium) {
+    throw new functions.https.HttpsError("failed-precondition", "Premium subscription required");
+  }
+
+  try {
+    const connectionData = connDoc.data();
+    if (!connectionData.locationId) {
+      throw new Error("Connected GBP location is missing");
+    }
+
+    const accessToken = await getValidToken(vendorId, connectionData);
+    const reviewsRes = await axios.get(
+      `https://mybusiness.googleapis.com/v4/${connectionData.locationId}/reviews`,
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        params: { pageSize: 50, orderBy: "updateTime desc" },
+      }
+    );
+
+    const averageRating = Number(reviewsRes.data.averageRating || 0);
+    const totalReviewCount = Number(reviewsRes.data.totalReviewCount || 0);
+    const syncedAt = admin.firestore.FieldValue.serverTimestamp();
+
+    await db.collection("gbp_connections").doc(vendorId).set({
+      reputation: { averageRating, totalReviewCount, syncedAt },
+      lastReputationSync: syncedAt,
+    }, { merge: true });
+
+    return {
+      averageRating,
+      totalReviewCount,
+      fetchedReviewCount: reviewsRes.data.reviews?.length || 0,
+    };
+  } catch (err) {
+    console.error(`GBP reputation sync failed for vendor ${vendorId}:`, err.response?.status, err.response?.data || err.message);
+    throw new functions.https.HttpsError("internal", "Google reputation data could not be loaded right now.");
+  }
+});
