@@ -8,6 +8,7 @@ const functions = require("firebase-functions");
 const { defineSecret } = require("firebase-functions/params");
 const admin = require("firebase-admin");
 const axios = require("axios");
+const crypto = require("crypto");
 const db = admin.firestore();
 const googleOAuthConfig = defineSecret("GOOGLE_OAUTH_CONFIG");
 
@@ -168,6 +169,65 @@ exports.getGbpReputation = functions.runWith({ secrets: [googleOAuthConfig] }).h
   } catch (err) {
     console.error(`GBP reputation sync failed for vendor ${vendorId}:`, err.response?.status, err.response?.data || err.message);
     throw new functions.https.HttpsError("unavailable", "Google reputation data could not be loaded right now.");
+  }
+});
+
+// Secret-backed OAuth callback overrides the legacy callback in index.js.
+exports.oauthCallback = functions.runWith({ secrets: [googleOAuthConfig] }).https.onRequest(async (req, res) => {
+  const { code, state } = req.query;
+  if (!code || !state) return res.status(400).send("Missing OAuth code or state.");
+
+  try {
+    const stateRef = db.collection("oauth_states").doc(String(state));
+    const stateSnap = await stateRef.get();
+    if (!stateSnap.exists) return res.status(400).send("Invalid or expired OAuth state.");
+    const stateData = stateSnap.data();
+    if (stateData.expiresAt?.toDate && stateData.expiresAt.toDate() < new Date()) {
+      await stateRef.delete();
+      return res.status(400).send("OAuth state expired. Please try again.");
+    }
+    const vendorId = stateData.vendorId;
+    await stateRef.delete();
+
+    const cfg = getGoogleOAuthConfig();
+    const tokenRes = await axios.post("https://oauth2.googleapis.com/token", {
+      code: String(code),
+      client_id: cfg.client_id,
+      client_secret: cfg.client_secret,
+      redirect_uri: cfg.redirect_uri,
+      grant_type: "authorization_code",
+    });
+    const { access_token, refresh_token, expires_in } = tokenRes.data;
+    if (!access_token) throw new Error("Google did not return an access token");
+
+    const accountsRes = await axios.get("https://mybusinessaccountmanagement.googleapis.com/v1/accounts", {
+      headers: { Authorization: `Bearer ${access_token}` },
+    });
+    const account = accountsRes.data.accounts?.[0];
+    if (!account?.name) throw new Error("No Google Business Profile account was returned");
+
+    const locationsRes = await axios.get(`https://mybusinessbusinessinformation.googleapis.com/v1/${account.name}/locations`, {
+      headers: { Authorization: `Bearer ${access_token}` },
+      params: { readMask: "name,title,storefrontAddress,websiteUri,phoneNumbers,categories,metadata" },
+    });
+    const location = locationsRes.data.locations?.[0] || null;
+
+    await db.collection("gbp_connections").doc(vendorId).set({
+      connected: true,
+      accessToken: access_token,
+      refreshToken: refresh_token || null,
+      tokenExpiresAt: new Date(Date.now() + Number(expires_in || 3600) * 1000),
+      accountName: account.name,
+      locationName: location?.title || "Your Business",
+      locationId: location?.name || "",
+      connectedAt: admin.firestore.FieldValue.serverTimestamp(),
+      lastPolled: null,
+    }, { merge: true });
+
+    return res.redirect("https://stallapp.stallwale.in/?gbp=connected");
+  } catch (err) {
+    console.error("OAuth callback error:", err.response?.status, err.response?.data || err.message);
+    return res.status(500).send("Connection failed. Please try again.");
   }
 });
 
