@@ -45,6 +45,7 @@ export default function VendorPremiumWorkspace({ user, listing }) {
   const [premiumLoading, setPremiumLoading] = useState(true);
   const [billingCycle, setBillingCycle] = useState("monthly");
   const [working, setWorking] = useState(false);
+  const [gbpWorking, setGbpWorking] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -91,6 +92,33 @@ export default function VendorPremiumWorkspace({ user, listing }) {
   const region = regionFromLatLng(listing.lat, listing.lng);
   const price = PRICING[region][billingCycle];
   const currency = PRICING[region].symbol;
+
+  async function connectGBP() {
+    setError("");
+    setGbpWorking(true);
+    try {
+      const beginGbpOauth = httpsCallable(getFunctions(), "beginGbpOauth");
+      const { data } = await beginGbpOauth();
+      if (!data?.state) throw new Error("Google connection could not be started. Please try again.");
+      const clientId = import.meta.env.VITE_GOOGLE_OAUTH_CLIENT_ID;
+      const redirectUri = import.meta.env.VITE_GOOGLE_OAUTH_REDIRECT_URI;
+      if (!clientId || !redirectUri) throw new Error("Google connection is not configured in this deployment.");
+      const params = new URLSearchParams({
+        client_id: clientId,
+        redirect_uri: redirectUri,
+        response_type: "code",
+        scope: "https://www.googleapis.com/auth/business.manage",
+        access_type: "offline",
+        prompt: "consent",
+        state: data.state,
+      });
+      window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
+    } catch (err) {
+      console.error("Failed to start GBP connection:", err);
+      setError(err?.message || "Unable to start Google Business connection.");
+      setGbpWorking(false);
+    }
+  }
 
   async function subscribe() {
     setError(""); setWorking(true);
@@ -200,7 +228,7 @@ export default function VendorPremiumWorkspace({ user, listing }) {
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12 }}>
         <Module icon={<Star size={18} />} title="Reputation" status={listing.rating != null ? `${Number(listing.rating).toFixed(1)} rating` : "Needs attention"} text={listing.rating != null ? `${Number(listing.ratingsCount || 0).toLocaleString()} ratings are reflected on your listing.` : "Connect Google Business to strengthen customer trust."} />
-        <Module icon={<Globe2 size={18} />} title="Google Visibility" status={gbpConnected ? "Connected" : "Action needed"} text={gbpConnected ? "Your Google connection is ready for Premium workflows." : "Connect your Google Business Profile to unlock visibility workflows."} />
+        <Module icon={<Globe2 size={18} />} title="Google Visibility" status={gbpConnected ? "Connected" : "Action needed"} text={gbpConnected ? "Your Google connection is ready for Premium workflows." : "Connect your Google Business Profile to unlock visibility workflows."} action={!gbpConnected ? <button type="button" onClick={connectGBP} disabled={gbpWorking} style={{ marginTop: 10, padding: "9px 12px", border: "none", borderRadius: 8, background: COLORS.teal, color: "#fff", fontWeight: 800, cursor: gbpWorking ? "wait" : "pointer" }}>{gbpWorking ? "Connecting…" : "Connect with Google"}</button> : null} />
         <Module icon={<Zap size={18} />} title="Store Boost" status={boostActive ? "Boost active" : "Ready"} text={boostActive ? "Your store visibility boost is active." : "Store-specific boosting will be available here when enabled."} />
         <Module icon={<TrendingUp size={18} />} title="Growth" status={`${directActions} direct actions`} text="Calls and WhatsApp actions show whether attention is turning into enquiries." />
       </div>
@@ -221,6 +249,6 @@ export default function VendorPremiumWorkspace({ user, listing }) {
 }
 
 function Metric({ icon, label, value }) { return <div style={{ background: "#F7F6F2", borderRadius: 10, padding: "11px 12px" }}><div style={{ display: "flex", alignItems: "center", gap: 6, color: COLORS.teal, fontSize: 10.5, fontWeight: 800, textTransform: "uppercase" }}>{icon}{label}</div><div style={{ fontSize: 21, fontWeight: 800, color: COLORS.ink, marginTop: 3 }}>{value.toLocaleString()}</div></div>; }
-function Module({ icon, title, status, text }) { return <section style={{ ...cardStyle, padding: 16 }}><div style={{ width: 34, height: 34, borderRadius: 9, background: COLORS.ink, color: COLORS.marigold, display: "flex", alignItems: "center", justifyContent: "center" }}>{icon}</div><div className="font-display" style={{ fontSize: 15, fontWeight: 800, marginTop: 10 }}>{title}</div><div style={{ fontSize: 10.5, fontWeight: 900, color: COLORS.teal, textTransform: "uppercase", marginTop: 4 }}>{status}</div><div style={{ fontSize: 11.5, color: "#666", lineHeight: 1.5, marginTop: 5 }}>{text}</div></section>; }
+function Module({ icon, title, status, text, action }) { return <section style={{ ...cardStyle, padding: 16 }}><div style={{ width: 34, height: 34, borderRadius: 9, background: COLORS.ink, color: COLORS.marigold, display: "flex", alignItems: "center", justifyContent: "center" }}>{icon}</div><div className="font-display" style={{ fontSize: 15, fontWeight: 800, marginTop: 10 }}>{title}</div><div style={{ fontSize: 10.5, fontWeight: 900, color: COLORS.teal, textTransform: "uppercase", marginTop: 4 }}>{status}</div><div style={{ fontSize: 11.5, color: "#666", lineHeight: 1.5, marginTop: 5 }}>{text}</div>{action}</section>; }
 function ActionRow({ done, text }) { return <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: COLORS.ink }}><CheckCircle2 size={15} color={done ? COLORS.teal : "#aaa"} />{text}</div>; }
 function formatDate(value) { const date = value?.toDate ? value.toDate() : value?.seconds ? new Date(value.seconds * 1000) : value ? new Date(value) : null; return date && !Number.isNaN(date.getTime()) ? date.toLocaleDateString("en-IN") : "auto-renewal"; }
