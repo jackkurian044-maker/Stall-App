@@ -65,14 +65,15 @@ jobs:
       - name: Prepare secure Premium payment functions
         run: node functions/prepare-premium.js
 
-      # Production functions deployment is limited to the Premium payment endpoints.
+      # Production functions deployment is limited to the Premium payment endpoints
+      # plus the authenticated GBP reputation sync used by the Premium workspace.
       - name: Prepare Firebase CLI credentials
         run: node -e 'require("fs").writeFileSync(process.env.GOOGLE_APPLICATION_CREDENTIALS, process.env.FIREBASE_SERVICE_ACCOUNT_JSON)'
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
           FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
 
-      - name: Deploy Firebase Premium Payment Functions
-        run: npx --yes firebase-tools@latest deploy --only functions:createSubscription,functions:verifySubscription,functions:cancelSubscription,functions:razorpayWebhook --project stall-app-1aab7 --non-interactive
+      - name: Deploy Firebase Premium Payment and GBP Functions
+        run: npx --yes firebase-tools@latest deploy --only functions:createSubscription,functions:verifySubscription,functions:cancelSubscription,functions:razorpayWebhook,functions:getGbpReputation --project stall-app-1aab7 --non-interactive
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
