@@ -58,8 +58,9 @@ export default function VendorPremiumWorkspace({ user, listing }) {
 
   useEffect(() => {
     if (!user?.uid) return undefined;
-    const q = query(collection(db, "gbp_connections"), where("ownerId", "==", user.uid));
-    return onSnapshot(q, (snap) => setGbp(snap.empty ? null : snap.docs[0].data()), () => setGbp(null));
+    return onSnapshot(doc(db, "gbp_connections", user.uid), (snap) => {
+      setGbp(snap.exists() ? snap.data() : null);
+    }, () => setGbp(null));
   }, [user?.uid]);
 
   useEffect(() => {
@@ -226,29 +227,46 @@ export default function VendorPremiumWorkspace({ user, listing }) {
         <Metric icon={<Navigation size={15} />} label="Directions" value={stats.directions} />
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12 }}>
-        <Module icon={<Star size={18} />} title="Reputation" status={listing.rating != null ? `${Number(listing.rating).toFixed(1)} rating` : "Needs attention"} text={listing.rating != null ? `${Number(listing.ratingsCount || 0).toLocaleString()} ratings are reflected on your listing.` : "Connect Google Business to strengthen customer trust."} />
-        <Module icon={<Globe2 size={18} />} title="Google Visibility" status={gbpConnected ? "Connected" : "Action needed"} text={gbpConnected ? "Your Google connection is ready for Premium workflows." : "Connect your Google Business Profile to unlock visibility workflows."} action={!gbpConnected ? <button type="button" onClick={connectGBP} disabled={gbpWorking} style={{ marginTop: 10, padding: "9px 12px", border: "none", borderRadius: 8, background: COLORS.teal, color: "#fff", fontWeight: 800, cursor: gbpWorking ? "wait" : "pointer" }}>{gbpWorking ? "Connecting…" : "Connect with Google"}</button> : null} />
-        <Module icon={<Zap size={18} />} title="Store Boost" status={boostActive ? "Boost active" : "Ready"} text={boostActive ? "Your store visibility boost is active." : "Store-specific boosting will be available here when enabled."} />
-        <Module icon={<TrendingUp size={18} />} title="Growth" status={`${directActions} direct actions`} text="Calls and WhatsApp actions show whether attention is turning into enquiries." />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 10 }}>
+        <Module icon={<Star size={17} />} title="Reputation" value={`${Number(listing.rating || 0).toFixed(1)} rating`} detail={`${Number(listing.userRatingsTotal || listing.reviewCount || 0).toLocaleString("en-IN")} ratings are reflected on your listing.`} />
+        <Module icon={<Globe2 size={17} />} title="Google Visibility" value={gbpConnected ? "CONNECTED" : "ACTION NEEDED"} detail={gbpConnected ? "Google Business Profile connection is active." : "Connect your Google Business Profile to unlock visibility workflows."} action={!gbpConnected ? <button type="button" onClick={connectGBP} disabled={gbpWorking} style={{ padding: "9px 12px", border: "none", borderRadius: 9, background: COLORS.teal, color: "#fff", fontWeight: 900, cursor: gbpWorking ? "wait" : "pointer" }}>{gbpWorking ? "Connecting…" : "Connect with Google"}</button> : null} />
+        <Module icon={<Zap size={17} />} title="Store Boost" value={boostActive ? "ACTIVE" : "READY"} detail={boostActive ? "Your store boost is currently active." : "Store-specific boosting will be available here when enabled."} />
+        <Module icon={<TrendingUp size={17} />} title="Growth" value={`${directActions} DIRECT ACTIONS`} detail="Calls and WhatsApp actions show whether attention is turning into enquiries." />
       </div>
 
-      <section style={{ ...cardStyle, background: "#F7F6F2", border: "1.5px solid #ddd" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 9 }}><ShieldCheck size={17} color={COLORS.teal} /><div className="font-display" style={{ fontSize: 16, fontWeight: 800 }}>Premium health</div></div>
-        <div style={{ display: "grid", gap: 9, marginTop: 12 }}>
-          <ActionRow done={active} text={active ? "Premium access is active for this store." : "Premium access is not active yet."} />
-          <ActionRow done={gbpConnected} text={gbpConnected ? "Google Business connection is available." : "Google Business connection is still pending."} />
-          <ActionRow done={boostActive} text={boostActive ? "Store visibility boost is active." : "No store boost is currently active."} />
-          <ActionRow done={directActions > 0} text={directActions > 0 ? `${directActions} direct customer actions recorded.` : "Keep improving the listing to generate direct customer actions."} />
+      <section style={{ ...cardStyle, background: "#fff" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 900, fontSize: 13 }}><ShieldCheck size={17} /> Premium health</div>
+        <div style={{ display: "grid", gap: 8, marginTop: 12, fontSize: 12.5 }}>
+          <HealthRow ok={active} text="Premium access is active for this store." />
+          <HealthRow ok={gbpConnected} text={gbpConnected ? "Google Business connection is active." : "Google Business connection is still pending."} />
+          <HealthRow ok={boostActive} text={boostActive ? "A store boost is currently active." : "No store boost is currently active."} />
+          <HealthRow ok={directActions > 0} text={directActions > 0 ? `${directActions} direct customer actions recorded.` : "Keep improving the listing to generate direct customer actions."} />
         </div>
       </section>
-
-      {error && <div style={{ ...cardStyle, border: "1.5px solid #E24B4A", background: "#FEF3F2", color: "#991B1B", fontSize: 12, fontWeight: 700 }}>{error}</div>}
+      {error && <div style={{ ...cardStyle, borderColor: "#E24B4A", color: "#A52A29", background: "#FFF5F5", fontSize: 12 }}>{error}</div>}
     </div>
   );
 }
 
-function Metric({ icon, label, value }) { return <div style={{ background: "#F7F6F2", borderRadius: 10, padding: "11px 12px" }}><div style={{ display: "flex", alignItems: "center", gap: 6, color: COLORS.teal, fontSize: 10.5, fontWeight: 800, textTransform: "uppercase" }}>{icon}{label}</div><div style={{ fontSize: 21, fontWeight: 800, color: COLORS.ink, marginTop: 3 }}>{value.toLocaleString()}</div></div>; }
-function Module({ icon, title, status, text, action }) { return <section style={{ ...cardStyle, padding: 16 }}><div style={{ width: 34, height: 34, borderRadius: 9, background: COLORS.ink, color: COLORS.marigold, display: "flex", alignItems: "center", justifyContent: "center" }}>{icon}</div><div className="font-display" style={{ fontSize: 15, fontWeight: 800, marginTop: 10 }}>{title}</div><div style={{ fontSize: 10.5, fontWeight: 900, color: COLORS.teal, textTransform: "uppercase", marginTop: 4 }}>{status}</div><div style={{ fontSize: 11.5, color: "#666", lineHeight: 1.5, marginTop: 5 }}>{text}</div>{action}</section>; }
-function ActionRow({ done, text }) { return <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: COLORS.ink }}><CheckCircle2 size={15} color={done ? COLORS.teal : "#aaa"} />{text}</div>; }
-function formatDate(value) { const date = value?.toDate ? value.toDate() : value?.seconds ? new Date(value.seconds * 1000) : value ? new Date(value) : null; return date && !Number.isNaN(date.getTime()) ? date.toLocaleDateString("en-IN") : "auto-renewal"; }
+function Module({ icon, title, value, detail, action }) {
+  return <section style={{ ...cardStyle, minHeight: 180, display: "flex", flexDirection: "column", gap: 9 }}>
+    <div style={{ width: 38, height: 38, borderRadius: 10, background: COLORS.ink, color: COLORS.marigold, display: "flex", alignItems: "center", justifyContent: "center" }}>{icon}</div>
+    <div style={{ fontSize: 10.5, fontWeight: 900, textTransform: "uppercase", color: COLORS.teal }}>{title}</div>
+    <div style={{ fontSize: 12, fontWeight: 800 }}>{value}</div>
+    <div style={{ fontSize: 12, color: "#666", lineHeight: 1.45 }}>{detail}</div>
+    {action && <div style={{ marginTop: "auto" }}>{action}</div>}
+  </section>;
+}
+
+function Metric({ icon, label, value }) {
+  return <div style={{ ...cardStyle, border: "none", background: "#F7F6F2", display: "flex", alignItems: "center", gap: 9 }}><div style={{ color: COLORS.teal }}>{icon}</div><div><div style={{ fontSize: 10.5, textTransform: "uppercase", fontWeight: 900, color: COLORS.teal }}>{label}</div><div style={{ fontSize: 21, fontWeight: 900 }}>{value}</div></div></div>;
+}
+
+function HealthRow({ ok, text }) {
+  return <div style={{ display: "flex", alignItems: "center", gap: 8, color: ok ? COLORS.ink : "#777" }}><span style={{ width: 15, height: 15, borderRadius: "50%", border: `1.5px solid ${ok ? COLORS.teal : "#aaa"}`, display: "inline-flex", alignItems: "center", justifyContent: "center", color: COLORS.teal }}>{ok ? <CheckCircle2 size={11} /> : <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#aaa" }} />}</span>{text}</div>;
+}
+
+function formatDate(value) {
+  try { return new Date(value).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }); }
+  catch { return String(value); }
+}
