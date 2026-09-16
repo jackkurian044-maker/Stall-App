@@ -13,6 +13,7 @@ import AgentDashboard from "./AgentDashboard";
 import AdminAgents from "./AdminAgents";
 import PrivacyPolicy from "./PrivacyPolicy";
 import Footer from "./Footer";
+import ReviewAutoResponder from "./ReviewAutoResponder";
 
 const AUTH_TRACE = "[STALL-AUTH v4]";
 const trace = (...args) => console.info(AUTH_TRACE, ...args);
@@ -80,12 +81,13 @@ export default function App() {
     if (authLoading) return;
 
     if (!user) {
-      if (["mine", "admin", "admin-operations", "bulk", "agent", "agents"].includes(mode)) setMode("find");
+      if (["mine", "admin", "admin-operations", "bulk", "agent", "agents", "reviews"].includes(mode)) setMode("find");
       return;
     }
 
     if (!isAdmin && ["admin", "admin-operations", "bulk", "agents"].includes(mode)) setMode("find");
     if (!agent && mode === "agent") setMode("find");
+    if ((isAdmin || agent) && mode === "reviews") setMode(isAdmin ? "admin" : "agent");
 
     if (mode === "auth") {
       const destination = isAdmin ? "admin" : agent ? "agent" : "mine";
@@ -116,6 +118,8 @@ export default function App() {
           )
         ) : mode === "mine" && user ? (
           <VendorEntry user={user} agent={agent} />
+        ) : mode === "reviews" && user && !isAdmin && !agent ? (
+          <ReviewAutoResponder listing={null} />
         ) : mode === "admin" && isAdmin ? (
           <AdminDashboard />
         ) : mode === "admin-operations" && isAdmin ? (
