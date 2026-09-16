@@ -69,9 +69,9 @@ jobs:
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
 
-      # Deploy the four Premium payment endpoints plus the existing on-demand
-      # GBP reputation callable used by the Premium workspace.
-      - name: Deploy Firebase Premium and GBP Functions
-        run: npx --yes firebase-tools@latest deploy --only functions:createSubscription,functions:verifySubscription,functions:cancelSubscription,functions:razorpayWebhook,functions:getGbpReputation --project stall-app-1aab7 --non-interactive
+      # Deploy the four Premium payment endpoints plus the existing review
+      # polling callable used to pull reviews into STall on demand.
+      - name: Deploy Firebase Premium and Review Functions
+        run: npx --yes firebase-tools@latest deploy --only functions:createSubscription,functions:verifySubscription,functions:cancelSubscription,functions:razorpayWebhook,functions:triggerPollForVendor --project stall-app-1aab7 --non-interactive
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
