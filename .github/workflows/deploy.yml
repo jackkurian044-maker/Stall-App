@@ -64,16 +64,14 @@ jobs:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
           FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
 
-      # Gemini is called through Vertex AI by the 1st-gen Firebase function
-      # runtime, which uses the App Engine default service account.
-      # Admin-level service enable/IAM changes may not be allowed to the
-      # deployment service account, so these checks are deliberately non-blocking.
-      - name: Check Vertex AI runtime prerequisites
+      # Gemini is called through the Google Agent Platform API by the 1st-gen
+      # Firebase function runtime, which uses the App Engine default service account.
+      - name: Check Agent Platform runtime prerequisites
         run: |
           if gcloud services list --enabled --filter='config.name=aiplatform.googleapis.com' --format='value(config.name)' --project stall-app-1aab7 | grep -q '^aiplatform.googleapis.com$'; then
-            echo "Vertex AI API is enabled."
+            echo "Agent Platform API is enabled."
           else
-            echo "::warning::Vertex AI API is not enabled. Enable aiplatform.googleapis.com in Google Cloud Console."
+            echo "::warning::Agent Platform API is not enabled. Enable aiplatform.googleapis.com in Google Cloud Console."
           fi
           gcloud projects add-iam-policy-binding stall-app-1aab7 \
             --member="serviceAccount:stall-app-1aab7@appspot.gserviceaccount.com" \
@@ -88,17 +86,16 @@ jobs:
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
 
-      # The legacy index.js still exports pollReviews. Append the secure
-      # module after checkout so its export deliberately overrides that
-      # legacy scheduled function without changing unrelated functions.
-      - name: Activate secure review responder module
-        run: node -e 'const fs=require("fs"); const p="functions/index.js"; const s=fs.readFileSync(p,"utf8"); const line="Object.assign(exports, require(\"./reviewAutoResponder\"));"; if(!s.includes(line)){fs.appendFileSync(p,"\n"+line+"\n");}'
+      # The legacy index.js still exports pollReviews. Append the secure modules
+      # after checkout so their exports deliberately override the legacy scheduled
+      # function while leaving unrelated functions untouched.
+      - name: Activate secure review responder modules
+        run: node -e 'const fs=require("fs"); const p="functions/index.js"; const s=fs.readFileSync(p,"utf8"); const lines=["Object.assign(exports, require(\"./reviewAutoResponder\"));","Object.assign(exports, require(\"./seoReviewResponder\"));"]; const add=lines.filter(line=>!s.includes(line)); if(add.length) fs.appendFileSync(p,"\n"+add.join("\n")+"\n");'
 
       # Deploy Premium payment endpoints, the manual review sync callable,
-      # the secure GBP OAuth callback, and the 30-minute auto responder.
-      # Gemini is called through Vertex AI using the function's Google
-      # service-account credentials; no Anthropic credential is required.
+      # the secure GBP OAuth callback, the SEO-aware scheduled responder,
+      # and the one-click rewrite callable for existing replies.
       - name: Deploy Firebase Premium and Review Functions
-        run: npx --yes firebase-tools@latest deploy --only functions:createSubscription,functions:verifySubscription,functions:cancelSubscription,functions:razorpayWebhook,functions:triggerPollForVendor,functions:oauthCallback,functions:pollReviews --project stall-app-1aab7 --non-interactive
+        run: npx --yes firebase-tools@latest deploy --only functions:createSubscription,functions:verifySubscription,functions:cancelSubscription,functions:razorpayWebhook,functions:triggerPollForVendor,functions:oauthCallback,functions:pollReviews,functions:rewriteReviewResponse --project stall-app-1aab7 --non-interactive
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
