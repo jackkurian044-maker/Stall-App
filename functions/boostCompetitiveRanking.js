@@ -231,9 +231,10 @@ exports.oauthCallback = functions.runWith({ secrets: [googleOAuthConfig] }).http
   }
 });
 
-// Override the legacy trigger exported from index.js with the same callable
-// name. This keeps the existing frontend contract intact while correcting
-// the Google Reviews resource path required by the GBP API.
+// Manual review sync: fetch reviews from Google and persist them into the
+// existing review_responses collection so the existing responder UI can show
+// the live review list. Existing records are preserved; Google replies are
+// reflected as posted records without triggering a new reply.
 exports.triggerPollForVendor = functions.runWith({ secrets: [googleOAuthConfig] }).https.onCall(async (data, context) => {
   if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Login required");
   const vendorId = context.auth.uid;
@@ -246,18 +247,59 @@ exports.triggerPollForVendor = functions.runWith({ secrets: [googleOAuthConfig] 
     if (!premiumDoc.exists || !premiumDoc.data().isPremium) throw new functions.https.HttpsError("failed-precondition", "Premium subscription required");
     const connectionData = connDoc.data();
     if (!connectionData.accountName || !connectionData.locationId) throw new functions.https.HttpsError("failed-precondition", "GBP account or location is missing");
+
     const accessToken = await getValidToken(vendorId, connectionData);
     const reviewPath = `${connectionData.accountName}/${connectionData.locationId}/reviews`;
     const reviewsRes = await axios.get(`https://mybusiness.googleapis.com/v4/${reviewPath}`, {
       headers: { Authorization: `Bearer ${accessToken}` },
       params: { pageSize: 50, orderBy: "updateTime desc" },
     });
+
     const reviews = reviewsRes.data.reviews || [];
+    const ratingMap = { ONE: 1, TWO: 2, THREE: 3, FOUR: 4, FIVE: 5 };
+    let savedCount = 0;
+
+    for (const review of reviews) {
+      const reviewId = review.reviewId || review.name?.split("/").pop();
+      if (!reviewId) continue;
+      const ref = db.collection("review_responses").doc(`${vendorId}_${reviewId}`);
+      const existing = await ref.get();
+      const existingData = existing.exists ? existing.data() : {};
+      const starRating = ratingMap[review.starRating] || 3;
+      const googleReply = review.reviewReply?.comment || null;
+      const createDate = review.createTime ? new Date(review.createTime) : null;
+
+      const reviewData = {
+        vendorId,
+        reviewId,
+        reviewerName: review.reviewer?.displayName || "Valued Customer",
+        reviewText: review.comment || "",
+        starRating,
+        receivedAt: createDate && !Number.isNaN(createDate.getTime())
+          ? admin.firestore.Timestamp.fromDate(createDate)
+          : (existingData.receivedAt || admin.firestore.FieldValue.serverTimestamp()),
+        status: existingData.status || (googleReply ? "posted" : "pending"),
+        aiResponse: existingData.aiResponse || googleReply || null,
+        postedAt: existingData.postedAt || null,
+        googleReply: googleReply || existingData.googleReply || null,
+        syncedAt: admin.firestore.FieldValue.serverTimestamp(),
+      };
+
+      await ref.set(reviewData, { merge: true });
+      savedCount++;
+    }
+
+    await db.collection("gbp_connections").doc(vendorId).set({
+      lastPolled: admin.firestore.FieldValue.serverTimestamp(),
+      lastReviewSyncCount: reviews.length,
+    }, { merge: true });
+
     return {
       reviewCount: reviews.length,
+      savedCount,
       totalReviewCount: Number(reviewsRes.data.totalReviewCount || reviews.length),
       message: reviews.length
-        ? `Google returned ${reviews.length} reviews. The review list is ready for STall processing.`
+        ? `Google returned ${reviews.length} reviews. ${savedCount} reviews are now available in STall.`
         : "Google returned no reviews for this location.",
     };
   } catch (err) {
