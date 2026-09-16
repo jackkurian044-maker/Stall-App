@@ -63,25 +63,6 @@ export default function VendorPremiumWorkspace({ user, listing }) {
     }, () => setGbp(null));
   }, [user?.uid]);
 
-  // Once GBP is connected, ask the existing secure server-side integration
-  // for Google's authoritative aggregate rating/count. The result is also
-  // written into gbp_connections, so the listener above refreshes the card
-  // without exposing Google access tokens to the browser.
-  useEffect(() => {
-    if (!user?.uid || !gbp?.connected) return;
-    let cancelled = false;
-    const syncReputation = async () => {
-      try {
-        const getGbpReputation = httpsCallable(getFunctions(), "getGbpReputation");
-        await getGbpReputation();
-      } catch (err) {
-        if (!cancelled) console.error("GBP reputation sync failed:", err);
-      }
-    };
-    syncReputation();
-    return () => { cancelled = true; };
-  }, [user?.uid, gbp?.connected]);
-
   useEffect(() => {
     if (!listing?.id) { setBoost(null); return undefined; }
     return onSnapshot(doc(db, "vendors", listing.id, "boost", "latest"), (snap) => setBoost(snap.exists() ? snap.data() : null), () => setBoost(null));
