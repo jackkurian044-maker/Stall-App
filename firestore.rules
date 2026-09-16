@@ -144,6 +144,17 @@ service cloud.firestore {
           .hasOnly(['connected', 'disconnectedAt', 'responseSettings', 'settingsUpdatedAt']);
     }
 
+    // Review automation records are server-created. Owners can read their
+    // own records and edit only their own AI response/status metadata.
+    match /review_responses/{responseId} {
+      allow read: if request.auth != null && resource.data.vendorId == request.auth.uid;
+      allow update: if request.auth != null &&
+        resource.data.vendorId == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['aiResponse', 'status', 'editedAt']);
+      allow create, delete: if false;
+    }
+
     match /vendor_counter_snapshots/{vendorId} {
       allow read, write: if false;
     }
@@ -158,8 +169,7 @@ service cloud.firestore {
         (resource.data.agentId == request.auth.uid || isAdmin());
       allow create: if false;
       allow update: if isAdmin() &&
-        request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['status', 'paidAt', 'paidBy', 'priorStatusBeforeClawback']);
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'paidAt', 'paidBy', 'priorStatusBeforeClawback']);
       allow delete: if false;
     }
 
