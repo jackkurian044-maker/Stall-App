@@ -249,3 +249,6 @@ exports.pollReviews = functions.runWith({ secrets: [googleOAuthConfig] }).pubsub
   console.log(`pollReviews: complete — ${connectionsSnap.size} vendors checked, ${failed} vendor tasks rejected`);
   return null;
 });
+
+// Reuse the exact secure processing path from the manual "Sync Reviews Now" callable.
+exports.processVendor = processVendor;

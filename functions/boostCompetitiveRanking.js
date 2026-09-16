@@ -11,6 +11,7 @@ const axios = require("axios");
 const crypto = require("crypto");
 const db = admin.firestore();
 const googleOAuthConfig = defineSecret("GOOGLE_OAUTH_CONFIG");
+const { processVendor } = require("./reviewAutoResponder");
 
 const DEFAULT_RADIUS_METERS = 3000;
 const CLUSTER_RADIUS_METERS = DEFAULT_RADIUS_METERS / 2;
@@ -294,12 +295,16 @@ exports.triggerPollForVendor = functions.runWith({ secrets: [googleOAuthConfig] 
       lastReviewSyncCount: reviews.length,
     }, { merge: true });
 
+    // The button must do the actual responder work, not only import reviews.
+    // Reuse the same secure Gemini + Google reply path used by the scheduler.
+    await processVendor(vendorId, connectionData);
+
     return {
       reviewCount: reviews.length,
       savedCount,
       totalReviewCount: Number(reviewsRes.data.totalReviewCount || reviews.length),
       message: reviews.length
-        ? `Google returned ${reviews.length} reviews. ${savedCount} reviews are now available in STall.`
+        ? `Google returned ${reviews.length} reviews and STall processed the responder queue.`
         : "Google returned no reviews for this location.",
     };
   } catch (err) {
