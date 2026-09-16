@@ -43,6 +43,8 @@ export default function ReviewAutoResponder({ listing }) {
   const [connection, setConnection] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [loadingConnect, setLoadingConnect] = useState(false);
+  const [syncingReviews, setSyncingReviews] = useState(false);
+  const [syncMessage, setSyncMessage] = useState("");
   const [showSteps, setShowSteps] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editText, setEditText] = useState("");
@@ -121,6 +123,25 @@ export default function ReviewAutoResponder({ listing }) {
     } catch (err) {
       console.error("Failed to start GBP connection:", err);
       setLoadingConnect(false);
+    }
+  }
+
+  // Manual review pull for immediate testing. Uses the existing secure
+  // callable; the scheduled 30-minute polling architecture is unchanged.
+  async function syncReviewsNow() {
+    if (!connection?.connected || syncingReviews) return;
+    setSyncingReviews(true);
+    setSyncMessage("");
+    try {
+      const functions = getFunctions();
+      const triggerPollForVendor = httpsCallable(functions, "triggerPollForVendor");
+      const { data } = await triggerPollForVendor();
+      setSyncMessage(data?.message || `Google returned ${data?.reviewCount || 0} reviews.`);
+    } catch (err) {
+      console.error("Manual review sync failed:", err);
+      setSyncMessage(err?.message || "Review sync failed. Check the browser console for details.");
+    } finally {
+      setSyncingReviews(false);
     }
   }
 
@@ -244,9 +265,19 @@ export default function ReviewAutoResponder({ listing }) {
                 Location: {connection.locationName || "Verified"} · Connected {connection.connectedAt?.toDate?.()?.toLocaleDateString("en-IN") || "recently"}
               </div>
             </div>
-            <button onClick={disconnectGBP} style={{ ...S.outlineBtn, fontSize: 11, color: "#E24B4A", borderColor: "#E24B4A" }}>
-              Disconnect
-            </button>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <button onClick={syncReviewsNow} disabled={syncingReviews} style={{ ...S.btn("#1D9E75"), padding: "8px 14px", fontSize: 11 }}>
+                {syncingReviews ? "Syncing..." : "↻ Sync Reviews Now"}
+              </button>
+              <button onClick={disconnectGBP} style={{ ...S.outlineBtn, fontSize: 11, color: "#E24B4A", borderColor: "#E24B4A" }}>
+                Disconnect
+              </button>
+            </div>
+          </div>
+        )}
+        {connection?.connected && syncMessage && (
+          <div style={{ marginTop: 8, fontSize: 12, color: "#4B5563", background: "#F9FAFB", borderRadius: 8, padding: "8px 12px" }}>
+            {syncMessage}
           </div>
         )}
       </div>
