@@ -58,8 +58,14 @@ jobs:
       - name: Install Firebase Cloud Functions dependencies
         run: npm ci --prefix functions
 
-      # Deploy only the Premium payment functions. This avoids touching existing scheduled functions
-      # whose Cloud Scheduler jobs require a separate IAM permission.
+      # Premium payment source is migrated from legacy functions.config() to the
+      # existing RAZORPAY_CONFIG Secret Manager secret at deploy time. This keeps
+      # the change isolated to the four Premium functions without touching the
+      # working Google/weekly-digest/Boost functions in index.js.
+      - name: Prepare secure Premium payment functions
+        run: node functions/prepare-premium.js
+
+      # Production functions deployment is limited to the Premium payment endpoints.
       - name: Prepare Firebase CLI credentials
         run: node -e 'require("fs").writeFileSync(process.env.GOOGLE_APPLICATION_CREDENTIALS, process.env.FIREBASE_SERVICE_ACCOUNT_JSON)'
         env:
