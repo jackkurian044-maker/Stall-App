@@ -1,6 +1,6 @@
 // SEO-aware Google review responder overlay.
-// Keeps the existing Google/Gemini pipeline intact while enforcing
-// exact brand-name usage and natural local-service SEO language.
+// Uses vendor Response Settings stored in gbp_connections.responseSettings.
+// Existing Google/Gemini pipeline remains intact.
 
 const functions = require("firebase-functions");
 const { defineSecret } = require("firebase-functions/params");
@@ -10,6 +10,30 @@ const axios = require("axios");
 if (!admin.apps.length) admin.initializeApp();
 const db = admin.firestore();
 const googleOAuthConfig = defineSecret("GOOGLE_OAUTH_CONFIG");
+
+const DEFAULT_SETTINGS = {
+  autoReply: true,
+  seoOptimization: true,
+  tone: "friendly",
+  language: "english",
+  signOff: "",
+  customInstructions: "",
+  replyTo1Star: true,
+  replyTo2Star: true,
+  replyTo3Star: true,
+  replyTo4Star: true,
+  replyTo5Star: true,
+  responseLength: "standard",
+  serviceKeywords: [],
+  locationKeywords: [],
+};
+
+function normalizeSettings(raw) {
+  const s = { ...DEFAULT_SETTINGS, ...(raw || {}) };
+  s.serviceKeywords = Array.isArray(s.serviceKeywords) ? s.serviceKeywords.filter(Boolean).slice(0, 8) : [];
+  s.locationKeywords = Array.isArray(s.locationKeywords) ? s.locationKeywords.filter(Boolean).slice(0, 5) : [];
+  return s;
+}
 
 function getGoogleOAuthConfig() {
   let cfg;
@@ -56,22 +80,31 @@ async function getValidToken(vendorId, connectionData) {
   return connectionData.accessToken;
 }
 
-function buildSeoGuidance(listing) {
+function buildSeoGuidance(listing, settings) {
   const name = listing?.name || "Our Business";
   const category = listing?.category || "local business";
   const address = listing?.address || "";
-  const services = Array.isArray(listing?.services)
+  const listingServices = Array.isArray(listing?.services)
     ? listing.services.map(s => typeof s === "string" ? s : s?.name).filter(Boolean).slice(0, 4)
     : [];
-  const serviceText = services.length ? services.join(", ") : category;
-  return { name, category, address, serviceText };
+  const ownerServices = settings.serviceKeywords;
+  const services = ownerServices.length ? ownerServices : listingServices;
+  const locations = settings.locationKeywords.length ? settings.locationKeywords : (address ? [address] : []);
+  return {
+    name,
+    category,
+    address,
+    serviceText: services.length ? services.join(", ") : category,
+    locationText: locations.join(", "),
+  };
 }
 
-async function generateSeoResponse(review, listing, settings) {
+async function generateSeoResponse(review, listing, rawSettings) {
+  const settings = normalizeSettings(rawSettings);
   const projectId = process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT || admin.app().options.projectId;
   if (!projectId) throw new Error("Google Cloud project ID is not available");
   const accessToken = await getVertexAccessToken();
-  const seo = buildSeoGuidance(listing);
+  const seo = buildSeoGuidance(listing, settings);
   const toneMap = {
     friendly: "warm, friendly, and personable",
     professional: "professional and formal",
@@ -85,41 +118,51 @@ async function generateSeoResponse(review, listing, settings) {
     2: "Be empathetic, apologise where appropriate, and offer a genuine path to resolve the concern.",
     1: "Be calm and empathetic, acknowledge the concern, apologise where appropriate, and invite private resolution.",
   };
+  const seoRules = settings.seoOptimization
+    ? `- Use the EXACT business name "${seo.name}" naturally at least once. Do not shorten, alter, or misspell it.
+- Naturally include 1–2 relevant service/category/location phrases when they genuinely fit the customer's experience.
+- Prefer phrases drawn from the business category/services/location above. Never invent a service or location.
+- SEO wording must read like normal human conversation, never like a keyword list.
+- Never stuff or repeat keywords just for SEO.`
+    : `- Do not deliberately optimize for SEO or add keywords merely for search visibility.
+- Keep the response natural and focused only on the customer's experience.`;
+
+  const lengthMap = {
+    short: "20–45 words",
+    standard: "45–90 words",
+    detailed: "70–120 words",
+  };
 
   const prompt = `Write a natural Google Business Profile review reply for a local business.
 
 BUSINESS NAME: ${seo.name}
 BUSINESS CATEGORY: ${seo.category}
-BUSINESS LOCATION: ${seo.address || "Not provided"}
+BUSINESS LOCATION: ${seo.locationText || "Not provided"}
 RELEVANT SERVICES: ${seo.serviceText}
 REVIEWER: ${review.reviewerName || "Valued Customer"}
 RATING: ${review.starRating}/5
 CUSTOMER REVIEW: "${review.reviewText || "(No written text — star rating only)"}"
 
 RULES:
-- Tone: ${toneMap[settings?.tone] || "warm, friendly, and personable"}
-- Language: ${settings?.language || "English"}
+- Tone: ${toneMap[settings.tone] || "warm, friendly, and personable"}
+- Language: ${settings.language || "English"}
 - ${ratingGuidance[review.starRating] || ratingGuidance[3]}
-- Use the EXACT business name "${seo.name}" naturally at least once. Do not shorten, alter, or misspell it.
-- Naturally include 1–2 relevant service/category/location phrases when they genuinely fit the customer's experience.
-- Prefer phrases drawn from the business category/services above. Never invent a service the business does not provide.
-- SEO wording must read like normal human conversation, never like a keyword list.
-- Never stuff or repeat keywords just for SEO.
+${seoRules}
 - Never make unsupported claims such as "best", "#1", "top-rated", or guaranteed results.
 - Do not add promotions, discounts, phone numbers, links, or calls to buy.
 - Address the reviewer by name when available.
 - Mention a specific detail from the review when there is one.
-- 45–90 words for a written review; 30–60 words for a rating-only review.
-- Keep it short, genuine, positive/relevant, and conversational.
-- ${settings?.signOff ? `Sign off as: ${settings.signOff}` : "Do not add a separate signature unless it sounds natural."}
-${settings?.customInstructions ? `- Additional owner instruction: ${settings.customInstructions}` : ""}
+- Response length: ${lengthMap[settings.responseLength] || lengthMap.standard}.
+- Keep it genuine and conversational.
+- ${settings.signOff ? `Sign off as: ${settings.signOff}` : "Do not add a separate signature unless it sounds natural."}
+${settings.customInstructions ? `- Additional owner instruction: ${settings.customInstructions}` : ""}
 
 Write ONLY the final reply. No quotes, labels, explanations, or keyword lists.`;
 
   const endpoint = `https://aiplatform.googleapis.com/v1/projects/${projectId}/locations/global/publishers/google/models/gemini-2.5-flash:generateContent`;
   const response = await axios.post(endpoint, {
     contents: [{ role: "user", parts: [{ text: prompt }] }],
-    generationConfig: { maxOutputTokens: 220, temperature: 0.35 },
+    generationConfig: { maxOutputTokens: 260, temperature: 0.35 },
   }, {
     headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
   });
@@ -144,7 +187,10 @@ async function rewriteOne(vendorId, connectionData, reviewId, existingReview) {
 
   const vendorSnap = await db.collection("vendors").where("ownerId", "==", vendorId).limit(1).get();
   const listing = vendorSnap.docs[0]?.data() || {};
-  const settings = connectionData.responseSettings || {};
+  const settings = normalizeSettings(connectionData.responseSettings);
+  if (!settings.autoReply) {
+    throw new functions.https.HttpsError("failed-precondition", "Automatic review responses are turned off in Response Settings");
+  }
   const accessToken = await getValidToken(vendorId, connectionData);
   const latestRes = await axios.get(reviewUrl(connectionData, reviewId), {
     headers: { Authorization: `Bearer ${accessToken}` },
@@ -164,16 +210,15 @@ async function rewriteOne(vendorId, connectionData, reviewId, existingReview) {
 
   const ref = db.collection("review_responses").doc(`${vendorId}_${reviewId}`);
   await ref.set({
-    vendorId,
-    reviewId,
+    vendorId, reviewId,
     reviewerName: review.reviewerName,
     reviewText: review.reviewText,
     starRating: review.starRating,
     aiResponse,
     googleReply: aiResponse,
     status: "posted",
-    seoOptimized: true,
-    seoVersion: 2,
+    seoOptimized: !!settings.seoOptimization,
+    seoVersion: 3,
     editedAt: admin.firestore.FieldValue.serverTimestamp(),
     postedAt: admin.firestore.FieldValue.serverTimestamp(),
     syncedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -182,8 +227,6 @@ async function rewriteOne(vendorId, connectionData, reviewId, existingReview) {
   return aiResponse;
 }
 
-// One-click rewrite for an already-posted response. This uses Google's
-// documented updateReply PUT endpoint, so the public Google reply is updated too.
 exports.rewriteReviewResponse = functions.runWith({ secrets: [googleOAuthConfig] }).https.onCall(async (data, context) => {
   if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Login required");
   const vendorId = context.auth.uid;
@@ -205,8 +248,6 @@ exports.rewriteReviewResponse = functions.runWith({ secrets: [googleOAuthConfig]
   }
 });
 
-// Scheduled responder overlay. It processes only reviews that do not already
-// have a reply; the existing duplicate protection remains in force.
 exports.pollReviews = functions.runWith({ secrets: [googleOAuthConfig] }).pubsub.schedule("every 30 minutes").timeZone("Asia/Kolkata").onRun(async () => {
   console.log("pollReviews: SEO-aware review responder starting");
   const connectionsSnap = await db.collection("gbp_connections").where("connected", "==", true).get();
@@ -216,9 +257,13 @@ exports.pollReviews = functions.runWith({ secrets: [googleOAuthConfig] }).pubsub
     try {
       const premiumDoc = await db.collection("premium_vendors").doc(vendorId).get();
       if (!premiumDoc.exists || !premiumDoc.data().isPremium) continue;
+      const settings = normalizeSettings(connectionData.responseSettings);
+      if (!settings.autoReply) {
+        await connDoc.ref.set({ lastPolled: admin.firestore.FieldValue.serverTimestamp(), responderStatus: "disabled" }, { merge: true });
+        continue;
+      }
       const vendorSnap = await db.collection("vendors").where("ownerId", "==", vendorId).limit(1).get();
       const listing = vendorSnap.docs[0]?.data() || {};
-      const settings = connectionData.responseSettings || {};
       const accessToken = await getValidToken(vendorId, connectionData);
       const reviewsRes = await axios.get(`https://mybusiness.googleapis.com/v4/${connectionData.accountName}/${connectionData.locationId}/reviews`, {
         headers: { Authorization: `Bearer ${accessToken}` }, params: { pageSize: 50, orderBy: "updateTime desc" },
@@ -259,13 +304,13 @@ exports.pollReviews = functions.runWith({ secrets: [googleOAuthConfig] }).pubsub
             continue;
           }
           await axios.put(`${reviewUrl(connectionData, reviewId)}/reply`, { comment: aiResponse }, { headers: { Authorization: `Bearer ${accessToken}` } });
-          await ref.set({ aiResponse, googleReply: aiResponse, status: "posted", seoOptimized: true, seoVersion: 2, postedAt: admin.firestore.FieldValue.serverTimestamp(), processingAt: admin.firestore.FieldValue.delete(), syncedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+          await ref.set({ aiResponse, googleReply: aiResponse, status: "posted", seoOptimized: !!settings.seoOptimization, seoVersion: 3, postedAt: admin.firestore.FieldValue.serverTimestamp(), processingAt: admin.firestore.FieldValue.delete(), syncedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
         } catch (err) {
           await ref.set({ status: "error", error: err.response?.data?.error?.message || err.message, processingAt: admin.firestore.FieldValue.delete(), lastErrorAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
           console.error(`SEO responder failed for ${vendorId}/${reviewId}:`, err.response?.status, err.response?.data || err.message);
         }
       }
-      await db.collection("gbp_connections").doc(vendorId).set({ lastPolled: admin.firestore.FieldValue.serverTimestamp(), lastReviewSyncCount: reviews.length }, { merge: true });
+      await db.collection("gbp_connections").doc(vendorId).set({ lastPolled: admin.firestore.FieldValue.serverTimestamp(), lastReviewSyncCount: reviews.length, responderStatus: "active" }, { merge: true });
     } catch (err) {
       console.error(`SEO poll failed for vendor ${vendorId}:`, err.response?.status, err.response?.data || err.message);
     }
