@@ -14,6 +14,7 @@ import AdminAgents from "./AdminAgents";
 import PrivacyPolicy from "./PrivacyPolicy";
 import Footer from "./Footer";
 import ReviewAutoResponder from "./ReviewAutoResponder";
+import BusinessOwnerCTA from "./BusinessOwnerCTA";
 
 const AUTH_TRACE = "[STALL-AUTH v4]";
 const trace = (...args) => console.info(AUTH_TRACE, ...args);
@@ -102,6 +103,16 @@ export default function App() {
     setMode("find");
   };
 
+  const openVendorSignup = () => {
+    try { window.sessionStorage.setItem("stallVendorIntent", "signup"); } catch {}
+    setMode("auth");
+  };
+
+  const openVendorClaim = () => {
+    try { window.sessionStorage.setItem("stallVendorIntent", "claim"); } catch {}
+    setMode("auth");
+  };
+
   return (
     <div style={{ minHeight: "100vh", background: "#0a0a0a", display: "flex", flexDirection: "column" }}>
       <Header mode={mode} setMode={setMode} user={user} isAdmin={isAdmin} isAgent={!!agent} onSignOut={handleSignOut} />
@@ -109,7 +120,10 @@ export default function App() {
         {authLoading ? (
           <div style={{ padding: 40, textAlign: "center", color: "#9c9c9c", fontSize: 14 }}>Loading…</div>
         ) : mode === "find" ? (
-          <FindView user={user} isAdmin={isAdmin} onRequestSignIn={() => setMode("auth")} />
+          <>
+            <BusinessOwnerCTA onListFree={openVendorSignup} onClaim={openVendorClaim} />
+            <FindView user={user} isAdmin={isAdmin} onRequestSignIn={() => setMode("auth")} />
+          </>
         ) : mode === "auth" ? (
           user ? (
             isAdmin ? <AdminDashboard /> : agent ? <AgentDashboard user={user} agent={agent} /> : <VendorEntry user={user} agent={agent} />
