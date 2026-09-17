@@ -1,8 +1,7 @@
 // Manual Sync Reviews Now overlay.
 // Uses the same settings-aware Google/Gemini pipeline as the scheduled responder.
-// Important: the GBP aggregate rating/review count are stored separately from
-// the small local queue of unanswered reviews. We do NOT import the full GBP
-// review history into Firestore.
+// GBP aggregate rating/review count are stored separately from the small local
+// queue of unanswered reviews. We do NOT import the full GBP review history.
 
 const functions = require("firebase-functions");
 const { defineSecret } = require("firebase-functions/params");
@@ -40,6 +39,51 @@ async function token(vendorId, connection) {
   return r.data.access_token;
 }
 
+async function reworkLatestPosted(vendorId, connection, listing) {
+  const latestSnap = await db.collection("review_responses")
+    .where("vendorId", "==", vendorId)
+    .where("status", "==", "posted")
+    .orderBy("postedAt", "desc")
+    .limit(1)
+    .get();
+  if (latestSnap.empty) throw new functions.https.HttpsError("not-found", "No posted review is available to rework");
+
+  const ref = latestSnap.docs[0].ref;
+  const existing = latestSnap.docs[0].data();
+  const reviewId = existing.reviewId;
+  const accessToken = await token(vendorId, connection);
+  const settings = responder.normalizeSettings(connection.responseSettings);
+  const latest = await axios.get(responder.reviewUrl(connection, reviewId), {
+    headers: { Authorization: `Bearer ${accessToken}` }
+  });
+  const googleReview = latest.data;
+  if (!googleReview) throw new Error("Google review could not be re-read");
+
+  const ratingMap = { ONE: 1, TWO: 2, THREE: 3, FOUR: 4, FIVE: 5 };
+  const review = {
+    reviewerName: googleReview.reviewer?.displayName || existing.reviewerName || "Valued Customer",
+    reviewText: googleReview.comment || existing.reviewText || "",
+    starRating: ratingMap[googleReview.starRating] || existing.starRating || 3,
+  };
+  const aiResponse = await responder.generateSeoResponse(review, listing, settings);
+  await axios.put(`${responder.reviewUrl(connection, reviewId)}/reply`, { comment: aiResponse }, {
+    headers: { Authorization: `Bearer ${accessToken}` }
+  });
+  await ref.set({
+    reviewerName: review.reviewerName,
+    reviewText: review.reviewText,
+    starRating: review.starRating,
+    aiResponse,
+    googleReply: aiResponse,
+    status: "posted",
+    seoOptimized: !!settings.seoOptimization,
+    seoVersion: 4,
+    reworkedAt: admin.firestore.FieldValue.serverTimestamp(),
+    syncedAt: admin.firestore.FieldValue.serverTimestamp()
+  }, { merge: true });
+  return { reviewId, reviewerName: review.reviewerName, response: aiResponse };
+}
+
 exports.triggerPollForVendor = functions.runWith({ secrets: [googleOAuthConfig] }).https.onCall(async (data, context) => {
   if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Login required");
   const vendorId = context.auth.uid;
@@ -54,17 +98,23 @@ exports.triggerPollForVendor = functions.runWith({ secrets: [googleOAuthConfig] 
 
     const connection = connDoc.data();
     const settings = responder.normalizeSettings(connection.responseSettings);
+    const vendorSnap = await db.collection("vendors").where("ownerId", "==", vendorId).limit(1).get();
+    const listing = vendorSnap.docs[0]?.data() || {};
+
+    // Explicit one-click action for the owner to rework the most recently
+    // posted response. This does not alter the normal new-review sync.
+    if (data?.reworkLatest === true) {
+      if (!settings.autoReply) throw new functions.https.HttpsError("failed-precondition", "Automatic review responses are turned off in Response Settings");
+      const result = await reworkLatestPosted(vendorId, connection, listing);
+      return { ...result, reworked: true, message: `Reworked the latest response for ${result.reviewerName} and updated it on Google.` };
+    }
+
     if (!settings.autoReply) {
       await connDoc.ref.set({ lastPolled: admin.firestore.FieldValue.serverTimestamp(), responderStatus: "disabled" }, { merge: true });
       return { reviewCount: connection.totalReviewCount || 0, processedCount: 0, skippedCount: 0, message: "Automatic review responses are turned off in Response Settings." };
     }
 
-    const vendorSnap = await db.collection("vendors").where("ownerId", "==", vendorId).limit(1).get();
-    const listing = vendorSnap.docs[0]?.data() || {};
     const accessToken = await token(vendorId, connection);
-
-    // Pull only the newest small page. Google returns newest reviews first.
-    // The queue is intentionally limited: old replied reviews are not imported.
     const reviewsRes = await axios.get(
       `https://mybusiness.googleapis.com/v4/${connection.accountName}/${connection.locationId}/reviews`,
       { headers: { Authorization: `Bearer ${accessToken}` }, params: { pageSize: 10, orderBy: "updateTime desc" } }
@@ -81,9 +131,7 @@ exports.triggerPollForVendor = functions.runWith({ secrets: [googleOAuthConfig] 
     for (const review of reviews) {
       const reviewId = review.reviewId || review.name?.split("/").pop();
       if (!reviewId) { skippedCount++; continue; }
-      // Never import an already-replied review into the local unanswered queue.
       if (review.reviewReply) { skippedCount++; continue; }
-
       unansweredFound++;
       const starRating = ratingMap[review.starRating] || 3;
       if (settings[`replyTo${starRating}Star`] === false) { skippedCount++; continue; }
@@ -91,82 +139,30 @@ exports.triggerPollForVendor = functions.runWith({ secrets: [googleOAuthConfig] 
       const ref = db.collection("review_responses").doc(`${vendorId}_${reviewId}`);
       const existing = await ref.get();
       const existingData = existing.exists ? existing.data() : {};
-      if (existingData.status === "processing") { skippedCount++; continue; }
-      if (existingData.status === "posted") { skippedCount++; continue; }
+      if (existingData.status === "processing" || existingData.status === "posted") { skippedCount++; continue; }
 
-      await ref.set({
-        vendorId,
-        reviewId,
-        reviewerName: review.reviewer?.displayName || "Valued Customer",
-        reviewText: review.comment || "",
-        starRating,
-        status: "processing",
-        processingAt: admin.firestore.FieldValue.serverTimestamp(),
-        receivedAt: review.createTime ? admin.firestore.Timestamp.fromDate(new Date(review.createTime)) : admin.firestore.FieldValue.serverTimestamp(),
-      }, { merge: true });
+      await ref.set({ vendorId, reviewId, reviewerName: review.reviewer?.displayName || "Valued Customer", reviewText: review.comment || "", starRating, status: "processing", processingAt: admin.firestore.FieldValue.serverTimestamp(), receivedAt: review.createTime ? admin.firestore.Timestamp.fromDate(new Date(review.createTime)) : admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
 
       try {
-        const aiResponse = await responder.generateSeoResponse({
-          reviewerName: review.reviewer?.displayName || "Valued Customer",
-          reviewText: review.comment || "",
-          starRating,
-        }, listing, settings);
-
-        // Re-read immediately before posting so a simultaneous Google/manual
-        // reply cannot be overwritten by STall.
-        const latest = await axios.get(responder.reviewUrl(connection, reviewId), {
-          headers: { Authorization: `Bearer ${accessToken}` }
-        });
+        const aiResponse = await responder.generateSeoResponse({ reviewerName: review.reviewer?.displayName || "Valued Customer", reviewText: review.comment || "", starRating }, listing, settings);
+        const latest = await axios.get(responder.reviewUrl(connection, reviewId), { headers: { Authorization: `Bearer ${accessToken}` } });
         if (latest.data.reviewReply) {
           await ref.delete();
           skippedCount++;
           continue;
         }
-
-        await axios.put(`${responder.reviewUrl(connection, reviewId)}/reply`, { comment: aiResponse }, {
-          headers: { Authorization: `Bearer ${accessToken}` }
-        });
-        await ref.set({
-          aiResponse,
-          googleReply: aiResponse,
-          status: "posted",
-          seoOptimized: !!settings.seoOptimization,
-          seoVersion: 3,
-          postedAt: admin.firestore.FieldValue.serverTimestamp(),
-          processingAt: admin.firestore.FieldValue.delete(),
-          syncedAt: admin.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
+        await axios.put(`${responder.reviewUrl(connection, reviewId)}/reply`, { comment: aiResponse }, { headers: { Authorization: `Bearer ${accessToken}` } });
+        await ref.set({ aiResponse, googleReply: aiResponse, status: "posted", seoOptimized: !!settings.seoOptimization, seoVersion: 3, postedAt: admin.firestore.FieldValue.serverTimestamp(), processingAt: admin.firestore.FieldValue.delete(), syncedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
         processedCount++;
       } catch (err) {
         errorCount++;
-        await ref.set({
-          status: "error",
-          error: err.response?.data?.error?.message || err.message,
-          processingAt: admin.firestore.FieldValue.delete(),
-          lastErrorAt: admin.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
+        await ref.set({ status: "error", error: err.response?.data?.error?.message || err.message, processingAt: admin.firestore.FieldValue.delete(), lastErrorAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
         console.error(`Manual review sync failed for ${vendorId}/${reviewId}:`, err.response?.status, err.response?.data || err.message);
       }
     }
 
-    await connDoc.ref.set({
-      lastPolled: admin.firestore.FieldValue.serverTimestamp(),
-      lastReviewSyncAt: admin.firestore.FieldValue.serverTimestamp(),
-      lastReviewSyncCount: unansweredFound,
-      totalReviewCount,
-      averageRating,
-      responderStatus: errorCount ? "error" : "active"
-    }, { merge: true });
-
-    return {
-      reviewCount: totalReviewCount,
-      averageRating,
-      unansweredFound,
-      processedCount,
-      skippedCount,
-      errorCount,
-      message: `Google rating ${averageRating || "—"}★ · ${totalReviewCount || 0} total reviews. Checked the latest ${reviews.length} reviews and processed ${processedCount} unanswered review(s).`
-    };
+    await connDoc.ref.set({ lastPolled: admin.firestore.FieldValue.serverTimestamp(), lastReviewSyncAt: admin.firestore.FieldValue.serverTimestamp(), lastReviewSyncCount: unansweredFound, totalReviewCount, averageRating, responderStatus: errorCount ? "error" : "active" }, { merge: true });
+    return { reviewCount: totalReviewCount, averageRating, unansweredFound, processedCount, skippedCount, errorCount, message: `Google rating ${averageRating || "—"}★ · ${totalReviewCount || 0} total reviews. Checked the latest ${reviews.length} reviews and processed ${processedCount} unanswered review(s).` };
   } catch (err) {
     console.error(`Manual review sync failed for vendor ${vendorId}:`, err.response?.status, err.response?.data || err.message);
     if (err instanceof functions.https.HttpsError) throw err;
