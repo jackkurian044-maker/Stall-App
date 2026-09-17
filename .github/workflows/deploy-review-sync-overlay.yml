@@ -1,0 +1,39 @@
+name: Deploy Generic Review Sync
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'functions/seoManualSyncGeneric.js'
+      - '.github/workflows/deploy-review-sync-overlay.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install functions dependencies
+        working-directory: functions
+        run: npm ci
+
+      - name: Write Firebase credentials
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-service-account.json"
+
+      - name: Activate generic manual sync overlay
+        run: node -e 'const fs=require("fs"); const p="functions/index.js"; const s=fs.readFileSync(p,"utf8"); const line="Object.assign(exports, require(\"./seoManualSyncGeneric\"));"; if(!s.includes(line)) fs.appendFileSync(p,"\n"+line+"\n");'
+
+      - name: Deploy manual sync function
+        run: npx --yes firebase-tools@latest deploy --only functions:triggerPollForVendor --project stall-app-1aab7 --non-interactive
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
