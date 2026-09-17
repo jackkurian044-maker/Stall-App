@@ -10,6 +10,14 @@ const axios = require("axios");
 if (!admin.apps.length) admin.initializeApp();
 const db = admin.firestore();
 const googleOAuthConfig = defineSecret("GOOGLE_OAUTH_CONFIG");
+const STALL_BRANDING = "Powered by STall";
+
+function ensureStallBranding(response) {
+  const text = String(response || "").trim();
+  if (!text) return STALL_BRANDING;
+  if (/powered\s+by\s+stall\b/i.test(text)) return text;
+  return `${text}\n\n${STALL_BRANDING}`;
+}
 
 function getGoogleOAuthConfig() {
   let cfg;
@@ -53,7 +61,7 @@ async function generateAIResponse(review, listing, settings) {
     1: "1-star critical review. Be empathetic, take responsibility, apologise, urgently offer resolution.",
   };
 
-  const prompt = `Write a Google Business review response for a local business.\n\nBUSINESS: ${listing?.name || "Our Business"} | ${listing?.category || "Local Business"} | ${listing?.address || "India"}\nREVIEWER: ${review.reviewerName || "Valued Customer"}\nRATING: ${review.starRating}/5\nREVIEW: "${review.reviewText || "(No text — star rating only)"}"\n\nRULES:\n- Tone: ${toneMap[settings?.tone] || "warm and friendly"}\n- Language: ${settings?.language || "English"}\n- ${ratingGuidance[review.starRating] || ratingGuidance[3]}\n- Sign off as: ${settings?.signOff || `The ${listing?.name || "Team"}`}\n- 50-120 words only\n- Address reviewer by name\n- Never use "Thank you for your review" as opening\n- Make it personal and specific\n${settings?.customInstructions ? `- ${settings.customInstructions}` : ""}\n\nWrite ONLY the response. No quotes, no labels.`;
+  const prompt = `Write a Google Business review response for a local business.\n\nBUSINESS: ${listing?.name || "Our Business"} | ${listing?.category || "Local Business"} | ${listing?.address || "India"}\nREVIEWER: ${review.reviewerName || "Valued Customer"}\nRATING: ${review.starRating}/5\nREVIEW: "${review.reviewText || "(No text — star rating only)"}"\n\nRULES:\n- Tone: ${toneMap[settings?.tone] || "warm and friendly"}\n- Language: ${settings?.language || "English"}\n- ${ratingGuidance[review.starRating] || ratingGuidance[3]}\n- Sign off as: ${settings?.signOff || `The ${listing?.name || "Team"}`}\n- 50-120 words only for the business response itself\n- Address reviewer by name\n- Never use "Thank you for your review" as opening\n- Make it personal and specific\n- Do NOT include any STall branding or promotional text in the generated response; the system will append the required attribution separately\n${settings?.customInstructions ? `- ${settings.customInstructions}` : ""}\n\nWrite ONLY the business response. No quotes, no labels.`;
 
   const endpoint = `https://aiplatform.googleapis.com/v1/projects/${projectId}/locations/global/publishers/google/models/gemini-2.5-flash:generateContent`;
   const response = await axios.post(
@@ -70,7 +78,8 @@ async function generateAIResponse(review, listing, settings) {
     }
   );
 
-  return response.data.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("").trim() || "";
+  const generated = response.data.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("").trim() || "";
+  return ensureStallBranding(generated);
 }
 
 function reviewUrl(connectionData, reviewId) {
@@ -109,7 +118,7 @@ async function getValidToken(vendorId, connectionData) {
 }
 
 async function markGoogleReply(ref, review) {
-  const googleReply = review.reviewReply?.comment || null;
+  const googleReply = ensureStallBranding(review.reviewReply?.comment || null);
   await ref.set({
     status: "posted",
     aiResponse: googleReply,
