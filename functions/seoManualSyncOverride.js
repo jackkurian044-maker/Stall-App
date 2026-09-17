@@ -105,9 +105,7 @@ exports.triggerPollForVendor = functions.runWith({ secrets: [googleOAuthConfig] 
     if (!targets.has(name)) continue;
     const reviewId = review.reviewId || review.name?.split("/").pop();
     if (!reviewId) continue;
-    const ref = db.collection("review_responses").doc(`${vendorId}_${reviewId}`);
-    const existing = await ref.get();
-    if (existing.data()?.seoVersion !== 2 && await rewrite(vendorId, connection, review)) rewrittenCount++;
+    if (await rewrite(vendorId, connection, review)) rewrittenCount++;
   }
 
   await db.collection("gbp_connections").doc(vendorId).set({
@@ -120,6 +118,6 @@ exports.triggerPollForVendor = functions.runWith({ secrets: [googleOAuthConfig] 
     rewrittenCount,
     message: rewrittenCount
       ? `Google returned ${reviews.length} reviews. Rewrote ${rewrittenCount} test response(s) with the approved brand + local SEO wording.`
-      : `Google returned ${reviews.length} reviews. No outstanding test rewrites were needed.`
+      : `Google returned ${reviews.length} reviews, but none of the three target reviews were found.`
   };
 });
