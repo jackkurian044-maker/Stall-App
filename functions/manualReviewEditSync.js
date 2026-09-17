@@ -7,6 +7,14 @@ const axios = require("axios");
 if (!admin.apps.length) admin.initializeApp();
 const db = admin.firestore();
 const googleOAuthConfig = defineSecret("GOOGLE_OAUTH_CONFIG");
+const STALL_BRANDING = "Powered by STall";
+
+function ensureStallBranding(response) {
+  const text = String(response || "").trim();
+  if (!text) return STALL_BRANDING;
+  if (/powered\s+by\s+stall\b/i.test(text)) return text;
+  return `${text}\n\n${STALL_BRANDING}`;
+}
 
 function getConfig() {
   let cfg;
@@ -58,14 +66,16 @@ exports.syncManualReviewEdit = onDocumentUpdated(
     const connection = connectionSnap.data();
     const accessToken = await getGoogleToken(vendorId, connection);
     const url = reviewUrl(connection, after.reviewId);
+    const finalResponse = ensureStallBranding(after.aiResponse);
 
     await axios.get(url, { headers: { Authorization: `Bearer ${accessToken}` } });
-    await axios.put(`${url}/reply`, { comment: after.aiResponse.trim() }, {
+    await axios.put(`${url}/reply`, { comment: finalResponse }, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
 
     await event.data.after.ref.set({
-      googleReply: after.aiResponse.trim(),
+      aiResponse: finalResponse,
+      googleReply: finalResponse,
       syncedToGoogleAt: admin.firestore.FieldValue.serverTimestamp(),
       syncError: admin.firestore.FieldValue.delete(),
     }, { merge: true });
