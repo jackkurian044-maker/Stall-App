@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { db, auth } from "./firebase";
-import { doc, getDoc, setDoc, collection, query, where, orderBy, onSnapshot, updateDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, collection, query, where, onSnapshot, updateDoc } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
 
 const STAR_COLORS = { 1: "#E24B4A", 2: "#EF9F27", 3: "#EF9F27", 4: "#1D9E75", 5: "#1D9E75" };
@@ -46,9 +46,13 @@ export default function ReviewAutoResponder({ listing }) {
 
   useEffect(() => {
     if (!vendorId) return;
-    const q = query(collection(db, "review_responses"), where("vendorId", "==", vendorId), orderBy("receivedAt", "desc"));
+    // Read by vendor only so this screen does not depend on a composite Firestore index.
+    // Sort locally because this view only needs the latest five stored responses.
+    const q = query(collection(db, "review_responses"), where("vendorId", "==", vendorId));
     return onSnapshot(q, snap => {
-      const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const all = snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => (b.receivedAt?.toMillis?.() || 0) - (a.receivedAt?.toMillis?.() || 0));
       const queue = all.filter(r => r.status !== "posted" && r.status !== "manual");
       const recent = all.filter(r => r.status === "posted" || r.status === "manual").slice(0, 5);
       setReviews(queue);
