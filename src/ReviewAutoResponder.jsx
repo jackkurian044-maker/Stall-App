@@ -26,14 +26,16 @@ function StatusBadge({ status }) {
 export default function ReviewAutoResponder({ listing }) {
   const [connection, setConnection] = useState(null);
   const [reviews, setReviews] = useState([]);
+  const [recentReviews, setRecentReviews] = useState([]);
   const [loadingConnect, setLoadingConnect] = useState(false);
   const [syncingReviews, setSyncingReviews] = useState(false);
+  const [reworkingLatest, setReworkingLatest] = useState(false);
   const [syncMessage, setSyncMessage] = useState("");
   const [showSteps, setShowSteps] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editText, setEditText] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
-  const [stats, setStats] = useState({ posted: 0, avgResponseMinutes: null });
+  const [stats, setStats] = useState({ posted: 0 });
   const [tab, setTab] = useState("reviews");
   const vendorId = auth.currentUser?.uid;
 
@@ -48,11 +50,10 @@ export default function ReviewAutoResponder({ listing }) {
     return onSnapshot(q, snap => {
       const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       const queue = all.filter(r => r.status !== "posted" && r.status !== "manual");
+      const recent = all.filter(r => r.status === "posted" || r.status === "manual").slice(0, 5);
       setReviews(queue);
-      const posted = all.filter(r => r.status === "posted").length;
-      const timed = all.filter(r => r.status === "posted" && r.receivedAt?.toDate && r.postedAt?.toDate);
-      const avgResponseMinutes = timed.length ? Math.round(timed.reduce((sum, r) => sum + (r.postedAt.toDate() - r.receivedAt.toDate()) / 60000, 0) / timed.length) : null;
-      setStats({ posted, avgResponseMinutes });
+      setRecentReviews(recent);
+      setStats({ posted: all.filter(r => r.status === "posted").length });
     });
   }, [vendorId]);
 
@@ -67,13 +68,23 @@ export default function ReviewAutoResponder({ listing }) {
   }
 
   async function syncReviewsNow() {
-    if (!connection?.connected || syncingReviews) return;
+    if (!connection?.connected || syncingReviews || reworkingLatest) return;
     setSyncingReviews(true); setSyncMessage("");
     try {
       const { data } = await httpsCallable(getFunctions(), "triggerPollForVendor")();
       setSyncMessage(data?.message || `Google returned ${data?.reviewCount || 0} reviews.`);
     } catch (err) { console.error("Manual review sync failed:", err); setSyncMessage(err?.message || "Review sync failed."); }
     finally { setSyncingReviews(false); }
+  }
+
+  async function reworkLatestResponse() {
+    if (!connection?.connected || syncingReviews || reworkingLatest) return;
+    setReworkingLatest(true); setSyncMessage("");
+    try {
+      const { data } = await httpsCallable(getFunctions(), "triggerPollForVendor")({ reworkLatest: true });
+      setSyncMessage(data?.message || "Latest response reworked and updated on Google.");
+    } catch (err) { console.error("Latest review rework failed:", err); setSyncMessage(err?.message || "Could not rework the latest response."); }
+    finally { setReworkingLatest(false); }
   }
 
   async function disconnectGBP() {
@@ -105,6 +116,20 @@ export default function ReviewAutoResponder({ listing }) {
   const aggregateCount = Number(connection?.totalReviewCount || 0);
   const aggregateRating = Number(connection?.averageRating || 0);
 
+  function ReviewCard({ review, recent = false }) {
+    return <div style={S.reviewCard}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10, flexWrap: "wrap", gap: 6 }}>
+        <div><div style={{ fontSize: 13, fontWeight: 600, color: "#111" }}>{review.reviewerName || "Anonymous"}</div><div style={{ marginTop: 3 }}><StarDisplay rating={review.starRating} /></div></div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}><StatusBadge status={review.status} /><span style={{ fontSize: 11, color: "#9CA3AF" }}>{review.receivedAt?.toDate?.()?.toLocaleDateString("en-IN") || ""}</span></div>
+      </div>
+      <div style={{ marginBottom: 12 }}><div style={S.label}>Customer review</div><div style={{ ...S.responseBox, background: "#F9FAFB", fontStyle: review.reviewText ? "normal" : "italic", color: review.reviewText ? "#374151" : "#9CA3AF" }}>{review.reviewText || "(No text — star rating only)"}</div></div>
+      <div><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}><div style={S.label}>{review.status === "manual" ? "✎ Manually edited response" : "🤖 STall response"}</div>{editingId !== review.id && <button onClick={() => { setEditingId(review.id); setEditText(review.aiResponse || ""); }} style={{ ...S.outlineBtn, fontSize: 11, padding: "4px 10px" }}>Edit</button>}</div>
+        {editingId === review.id ? <div><textarea value={editText} onChange={e => setEditText(e.target.value)} style={S.textarea} placeholder="Edit the response..."/><div style={{ display: "flex", gap: 8, marginTop: 8 }}><button onClick={() => saveEdit(review.id)} disabled={savingEdit} style={S.btn("#1D9E75")}>{savingEdit ? "Saving..." : "Save & Update"}</button><button onClick={() => setEditingId(null)} style={S.outlineBtn}>Cancel</button></div></div> : <div style={S.responseBox}>{review.aiResponse || "No response recorded"}</div>}
+      </div>
+      {review.postedAt && <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 8 }}>Posted to Google: {review.postedAt?.toDate?.()?.toLocaleString("en-IN")}</div>}
+    </div>;
+  }
+
   return <div style={S.wrap}>
     <div style={{ ...S.card, borderLeft: "3px solid #1D9E75" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 10 }}>
@@ -116,9 +141,9 @@ export default function ReviewAutoResponder({ listing }) {
         <button onClick={connectGBP} disabled={loadingConnect} style={S.btn("#1D9E75")}>{loadingConnect ? "Redirecting to Google..." : "🔑 Connect with Google"}</button>
         <div style={{ marginTop: 12 }}><button onClick={() => setShowSteps(s => !s)} style={{ background: "none", border: "none", color: "#1D9E75", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>{showSteps ? "Hide what happens ▲" : "See what happens, step by step ▼"}</button></div>
         {showSteps && <div style={{ textAlign: "left", maxWidth: 500, margin: "12px auto 0", fontSize: 12, color: "#374151", lineHeight: 1.6 }}>Google handles sign-in and consent. Stall receives permission to read reviews and post replies; your Google password never passes through Stall.</div>}
-      </div> : <div style={{ display: "flex", alignItems: "center", gap: 12, background: "#E1F5EE", borderRadius: 10, padding: "12px 16px" }}>
-        <div style={{ fontSize: 24 }}>✅</div><div style={{ flex: 1 }}><div style={{ fontSize: 13, fontWeight: 600, color: "#085041" }}>Connected to Google Business Profile</div><div style={{ fontSize: 11, color: "#4B7C6A" }}>Location: {connection.locationName || "Verified"} · Connected {connection.connectedAt?.toDate?.()?.toLocaleDateString("en-IN") || "recently"}</div></div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}><button onClick={syncReviewsNow} disabled={syncingReviews} style={{ ...S.btn("#1D9E75"), padding: "8px 14px", fontSize: 11 }}>{syncingReviews ? "Syncing..." : "↻ Sync Reviews Now"}</button><button onClick={disconnectGBP} style={{ ...S.outlineBtn, fontSize: 11, color: "#E24B4A", borderColor: "#E24B4A" }}>Disconnect</button></div>
+      </div> : <div style={{ display: "flex", alignItems: "center", gap: 12, background: "#E1F5EE", borderRadius: 10, padding: "12px 16px", flexWrap: "wrap" }}>
+        <div style={{ fontSize: 24 }}>✅</div><div style={{ flex: 1, minWidth: 180 }}><div style={{ fontSize: 13, fontWeight: 600, color: "#085041" }}>Connected to Google Business Profile</div><div style={{ fontSize: 11, color: "#4B7C6A" }}>Location: {connection.locationName || "Verified"} · Connected {connection.connectedAt?.toDate?.()?.toLocaleDateString("en-IN") || "recently"}</div></div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}><button onClick={syncReviewsNow} disabled={syncingReviews || reworkingLatest} style={{ ...S.btn("#1D9E75"), padding: "8px 14px", fontSize: 11 }}>{syncingReviews ? "Syncing..." : "↻ Sync Reviews Now"}</button><button onClick={reworkLatestResponse} disabled={syncingReviews || reworkingLatest} style={{ ...S.btn("#111"), padding: "8px 14px", fontSize: 11 }}>{reworkingLatest ? "Reworking..." : "↻ Recheck & Rework Latest"}</button><button onClick={disconnectGBP} style={{ ...S.outlineBtn, fontSize: 11, color: "#E24B4A", borderColor: "#E24B4A" }}>Disconnect</button></div>
       </div>}
       {syncMessage && <div style={{ marginTop: 8, fontSize: 12, color: "#4B5563", background: "#F9FAFB", borderRadius: 8, padding: "8px 12px" }}>{syncMessage}</div>}
     </div>
@@ -127,19 +152,19 @@ export default function ReviewAutoResponder({ listing }) {
       <div style={S.metric}><div style={S.mv}>{aggregateCount || "—"}</div><div style={S.ml}>Total Google reviews</div></div>
       <div style={S.metric}><div style={{ ...S.mv, color: "#1D9E75" }}>{stats.posted}</div><div style={S.ml}>Auto-responded by Stall</div></div>
       <div style={S.metric}><div style={{ ...S.mv, color: aggregateRating >= 4 ? "#1D9E75" : aggregateRating >= 3 ? "#EF9F27" : "#E24B4A" }}>{aggregateRating ? `${aggregateRating.toFixed(1)}★` : "—"}</div><div style={S.ml}>Google average rating</div></div>
-      {stats.avgResponseMinutes != null && <div style={S.metric}><div style={{ ...S.mv, color: "#1D9E75" }}>{stats.avgResponseMinutes < 60 ? `${stats.avgResponseMinutes}m` : `${(stats.avgResponseMinutes / 60).toFixed(1)}h`}</div><div style={S.ml}>⚡ Avg reply time</div></div>}
     </div>}
 
-    <div style={S.tabBar}><button style={S.tab(tab === "reviews")} onClick={() => setTab("reviews")}>New Reviews & Responses</button><button style={S.tab(tab === "settings")} onClick={() => setTab("settings")}>Response Settings</button></div>
+    <div style={S.tabBar}><button style={S.tab(tab === "reviews")} onClick={() => setTab("reviews")}>Reviews & Responses</button><button style={S.tab(tab === "settings")} onClick={() => setTab("settings")}>Response Settings</button></div>
 
     {tab === "reviews" && <div>
-      {reviews.length === 0 ? <div style={{ ...S.card, textAlign: "center", padding: "2rem", color: "#9CA3AF" }}><div style={{ fontSize: 28, marginBottom: 8 }}>✅</div><div style={{ fontSize: 14, fontWeight: 500, color: "#374151", marginBottom: 4 }}>No unanswered reviews</div><div style={{ fontSize: 12 }}>{connection?.connected ? "You're up to date. Stall checks the newest Google reviews every 30 minutes." : "Connect your Google Business Profile above to start."}</div></div> : reviews.map(review => <div key={review.id} style={S.reviewCard}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10, flexWrap: "wrap", gap: 6 }}><div><div style={{ fontSize: 13, fontWeight: 600, color: "#111" }}>{review.reviewerName || "Anonymous"}</div><div style={{ marginTop: 3 }}><StarDisplay rating={review.starRating} /></div></div><div style={{ display: "flex", alignItems: "center", gap: 8 }}><StatusBadge status={review.status} /><span style={{ fontSize: 11, color: "#9CA3AF" }}>{review.receivedAt?.toDate?.()?.toLocaleDateString("en-IN") || ""}</span></div></div>
-        <div style={{ marginBottom: 12 }}><div style={S.label}>Customer review</div><div style={{ ...S.responseBox, background: "#F9FAFB", fontStyle: review.reviewText ? "normal" : "italic", color: review.reviewText ? "#374151" : "#9CA3AF" }}>{review.reviewText || "(No text — star rating only)"}</div></div>
-        <div><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}><div style={S.label}>{review.status === "manual" ? "✎ Manually edited response" : "🤖 AI generated response"}</div>{editingId !== review.id && <button onClick={() => { setEditingId(review.id); setEditText(review.aiResponse || ""); }} style={{ ...S.outlineBtn, fontSize: 11, padding: "4px 10px" }}>Edit</button>}</div>
-          {editingId === review.id ? <div><textarea value={editText} onChange={e => setEditText(e.target.value)} style={S.textarea} placeholder="Edit the response..."/><div style={{ display: "flex", gap: 8, marginTop: 8 }}><button onClick={() => saveEdit(review.id)} disabled={savingEdit} style={S.btn("#1D9E75")}>{savingEdit ? "Saving..." : "Save & Update"}</button><button onClick={() => setEditingId(null)} style={S.outlineBtn}>Cancel</button></div></div> : <div style={S.responseBox}>{review.aiResponse || "Generating response..."}</div>}
-        </div>
-      </div>)}
+      {reviews.length > 0 && <div style={{ ...S.card, marginBottom: "1rem" }}><div style={{ fontSize: 14, fontWeight: 700, color: "#111", marginBottom: 4 }}>New Reviews & Responses</div><div style={{ fontSize: 12, color: "#6B7280" }}>Only unanswered reviews appear here. Once Stall responds, they move into the Recent 5 history below.</div></div>}
+      {reviews.length === 0 ? <div style={{ ...S.card, textAlign: "center", padding: "2rem", color: "#9CA3AF" }}><div style={{ fontSize: 28, marginBottom: 8 }}>✅</div><div style={{ fontSize: 14, fontWeight: 500, color: "#374151", marginBottom: 4 }}>No unanswered reviews</div><div style={{ fontSize: 12 }}>{connection?.connected ? "You're up to date. Stall checks the newest Google reviews every 30 minutes." : "Connect your Google Business Profile above to start."}</div></div> : reviews.map(review => <ReviewCard key={review.id} review={review} />)}
+
+      {recentReviews.length > 0 && <div style={{ ...S.card, marginTop: "1.25rem" }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: "#111", marginBottom: 4 }}>Recent 5 Reviews</div>
+        <div style={{ fontSize: 12, color: "#6B7280", marginBottom: 14 }}>Latest reviews already responded to by Stall. This confirms the Google → Stall → response pipeline is working.</div>
+        {recentReviews.map(review => <ReviewCard key={review.id} review={review} recent />)}
+      </div>}
     </div>}
 
     {tab === "settings" && <ResponseSettings vendorId={vendorId} listing={listing} />}
