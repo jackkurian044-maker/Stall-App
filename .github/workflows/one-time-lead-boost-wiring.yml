@@ -33,8 +33,8 @@ jobs:
               print(f'{label}: patched')
 
           patch('functions/index.js',
-                'Object.assign(exports, require("./reviewAutoResponder"));',
-                'Object.assign(exports, require("./reviewAutoResponder"));\nObject.assign(exports, require("./leadEngine"));\nObject.assign(exports, require("./boostCampaigns"));',
+                'exports.pollReviews = functions.pubsub.schedule("every 30 minutes").onRun(async () => {',
+                'Object.assign(exports, require("./leadEngine"));\nObject.assign(exports, require("./boostCampaigns"));\n\nexports.pollReviews = functions.pubsub.schedule("every 30 minutes").onRun(async () => {',
                 'functions/index exports')
 
           patch('.github/workflows/deploy.yml',
@@ -58,13 +58,8 @@ jobs:
                 'VendorDashboard tab content')
 
           patch('src/FindView.jsx',
-                '      .filter((v) => {\n        if (!query_.trim()) return true;',
-                '      .filter((v) => {\n        if (!query_.trim()) return true;',
-                'FindView query marker')
-
-          patch('src/FindView.jsx',
                 '      .sort((a, b) => {\n        const ar = typeof a.rating === "number" ? a.rating : -1;\n        const br = typeof b.rating === "number" ? b.rating : -1;\n        if (br !== ar) return br - ar; // higher rating first; unrated (-1) sinks to the bottom\n        return a.distance - b.distance; // tie-break (including among unrated): closer first\n      });',
-                '      .map((v) => {\n        const endsAt = v.boostEndsAt?.toDate?.()?.getTime?.() || (v.boostEndsAt instanceof Date ? v.boostEndsAt.getTime() : 0);\n        const active = Boolean(v.boostActive && endsAt > Date.now() && Number(v.boostRadiusKm || 0) >= Number(v.distance || 0) && Number.isFinite(v.distance));\n        return { ...v, isBoosted: active };\n      })\n      .sort((a, b) => {\n        if (a.isBoosted !== b.isBoosted) return a.isBoosted ? -1 : 1;\n        const ar = typeof a.rating === "number" ? a.rating : -1;\n        const br = typeof b.rating === "number" ? b.rating : -1;\n        if (br !== ar) return br - ar; // preserve existing rating ordering within organic/boosted groups\n        return a.distance - b.distance;\n      });',
+                '      .map((v) => {\n        const endsAt = v.boostEndsAt?.toDate?.()?.getTime?.() || (v.boostEndsAt instanceof Date ? v.boostEndsAt.getTime() : 0);\n        const active = Boolean(v.boostActive && endsAt > Date.now() && Number(v.boostRadiusKm || 0) >= Number(v.distance || 0) && Number.isFinite(v.distance));\n        return { ...v, isBoosted: active };\n      })\n      .sort((a, b) => {\n        if (a.isBoosted !== b.isBoosted) return a.isBoosted ? -1 : 1;\n        const ar = typeof a.rating === "number" ? a.rating : -1;\n        const br = typeof b.rating === "number" ? b.rating : -1;\n        if (br !== ar) return br - ar;\n        return a.distance - b.distance;\n      });',
                 'FindView Boost distribution ordering')
 
           patch('src/VendorTicket.jsx',
@@ -113,5 +108,9 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add functions/index.js .github/workflows/deploy.yml src/VendorDashboard.jsx src/FindView.jsx src/VendorTicket.jsx src/interactions.js firestore.rules
+          if git diff --cached --quiet; then
+            echo "No wiring changes needed."
+            exit 0
+          fi
           git commit -m "Wire STall Lead Engine and Boost distribution"
           git push
