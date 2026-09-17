@@ -1,0 +1,78 @@
+name: Finalize STall Lead and Boost wiring
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/one-time-lead-boost-finalize.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply wiring patches
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          def patch(path, old, new, label):
+              p=Path(path); t=p.read_text(encoding='utf-8')
+              if new in t: print(label+': already'); return
+              if old not in t: raise SystemExit(label+': marker not found')
+              p.write_text(t.replace(old,new,1), encoding='utf-8'); print(label+': patched')
+
+          patch('functions/index.js',
+            'exports.pollReviews = functions.pubsub.schedule("every 30 minutes").onRun(async () => {',
+            'Object.assign(exports, require("./leadEngine"));\nObject.assign(exports, require("./boostCampaigns"));\n\nexports.pollReviews = functions.pubsub.schedule("every 30 minutes").onRun(async () => {', 'functions')
+
+          patch('.github/workflows/deploy.yml',
+            'functions:pollReviews --project stall-app-1aab7 --non-interactive',
+            'functions:pollReviews,functions:googleAdsLeadWebhook,functions:leadWebhook,functions:createManualLead,functions:updateLeadStatus,functions:createBoostOrder,functions:verifyBoostPayment,functions:pauseBoostCampaign --project stall-app-1aab7 --non-interactive', 'deploy')
+
+          patch('src/VendorDashboard.jsx',
+            'import VendorPremiumWorkspace from "./VendorPremiumWorkspace";',
+            'import VendorPremiumWorkspace from "./VendorPremiumWorkspace";\nimport LeadEnginePanel from "./LeadEnginePanel";\nimport BoostCampaignPanel from "./BoostCampaignPanel";', 'dashboard imports')
+          patch('src/VendorDashboard.jsx',
+            '<TabButton active={dashTab === "insights"} onClick={() => setDashTab("insights")} icon={<BarChart2 size={13} />}>Insights</TabButton>\n          <TabButton active={dashTab === "premium"}',
+            '<TabButton active={dashTab === "insights"} onClick={() => setDashTab("insights")} icon={<BarChart2 size={13} />}>Insights</TabButton>\n          <TabButton active={dashTab === "leads"} onClick={() => setDashTab("leads")} icon={<MessageCircle size={13} />}>Leads</TabButton>\n          <TabButton active={dashTab === "premium"}', 'dashboard tab')
+          patch('src/VendorDashboard.jsx',
+            '{dashTab === "premium" && (\n          <VendorPremiumWorkspace user={user} listing={premiumListing} />',
+            '{dashTab === "leads" && (\n          <LeadEnginePanel listings={listings} />\n        )}\n\n        {dashTab === "premium" && (\n          <div>\n            <VendorPremiumWorkspace user={user} listing={premiumListing} />\n            <BoostCampaignPanel user={user} listing={premiumListing} />\n          </div>', 'dashboard content')
+
+          patch('src/FindView.jsx',
+            '      .sort((a, b) => {\n        const ar = typeof a.rating === "number" ? a.rating : -1;\n        const br = typeof b.rating === "number" ? b.rating : -1;\n        if (br !== ar) return br - ar; // higher rating first; unrated (-1) sinks to the bottom\n        return a.distance - b.distance; // tie-break (including among unrated): closer first\n      });',
+            '      .map((v) => {\n        const endsAt = v.boostEndsAt?.toDate?.()?.getTime?.() || (v.boostEndsAt instanceof Date ? v.boostEndsAt.getTime() : 0);\n        const active = Boolean(v.boostActive && endsAt > Date.now() && Number(v.boostRadiusKm || 0) >= Number(v.distance || 0) && Number.isFinite(v.distance));\n        return { ...v, isBoosted: active };\n      })\n      .sort((a, b) => {\n        if (a.isBoosted !== b.isBoosted) return a.isBoosted ? -1 : 1;\n        const ar = typeof a.rating === "number" ? a.rating : -1;\n        const br = typeof b.rating === "number" ? b.rating : -1;\n        if (br !== ar) return br - ar;\n        return a.distance - b.distance;\n      });', 'discovery boost ordering')
+
+          for typ, repl in [
+            ('view','    logInteraction(db, vendor.id, "view", { source: vendor.isBoosted ? "STALL_BOOST" : "STALL_ORGANIC", boostCampaignId: vendor.isBoosted ? vendor.boostCampaignId : null });'),
+            ('call','    logInteraction(db, vendor.id, "call", { source: vendor.isBoosted ? "STALL_BOOST" : "STALL_ORGANIC", boostCampaignId: vendor.isBoosted ? vendor.boostCampaignId : null });'),
+            ('whatsapp','    logInteraction(db, vendor.id, "whatsapp", { source: vendor.isBoosted ? "STALL_BOOST" : "STALL_ORGANIC", boostCampaignId: vendor.isBoosted ? vendor.boostCampaignId : null });'),
+            ('directions','    logInteraction(db, vendor.id, "directions", { source: vendor.isBoosted ? "STALL_BOOST" : "STALL_ORGANIC", boostCampaignId: vendor.isBoosted ? vendor.boostCampaignId : null });')]:
+              patch('src/VendorTicket.jsx', f'    logInteraction(db, vendor.id, "{typ}");', repl, 'ticket '+typ)
+          patch('src/VendorTicket.jsx',
+            '{isNewListing && <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 999, color: "#fff", background: COLORS.teal, display: "flex", alignItems: "center", gap: 4 }}><Sparkles size={11} /> New</span>}',
+            '{isNewListing && <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 999, color: "#fff", background: COLORS.teal, display: "flex", alignItems: "center", gap: 4 }}><Sparkles size={11} /> New</span>}\n            {vendor.isBoosted && <span style={{ fontSize: 11, fontWeight: 800, padding: "3px 9px", borderRadius: 999, color: COLORS.ink, background: COLORS.marigold }}>Boosted</span>}', 'ticket badge')
+
+          patch('src/interactions.js', 'export async function logInteraction(db, vendorId, type) {', 'export async function logInteraction(db, vendorId, type, meta = {}) {', 'interaction signature')
+          patch('src/interactions.js', '      dayBucket: new Date().toISOString().slice(0, 10),\n    });', '      dayBucket: new Date().toISOString().slice(0, 10),\n      source: meta.source || "STALL_ORGANIC",\n      boostCampaignId: meta.boostCampaignId || null,\n    });', 'interaction attribution')
+
+          patch('firestore.rules',
+            ".hasAny(['addedByAgentId', 'isPremium', 'rating', 'ratingsCount']) &&",
+            ".hasAny(['addedByAgentId', 'isPremium', 'rating', 'ratingsCount', 'boostActive', 'boostCampaignId', 'boostObjective', 'boostTargetLat', 'boostTargetLng', 'boostRadiusKm', 'boostEndsAt']) &&", 'rules protection')
+          patch('firestore.rules',
+            '    match /vendors/{vendorId}/boost/{docId} {',
+            '    match /vendors/{vendorId}/leads/{leadId} {\n      allow read: if request.auth != null && (\n        get(/databases/$(database)/documents/vendors/$(vendorId)).data.ownerId == request.auth.uid ||\n        get(/databases/$(database)/documents/vendors/$(vendorId)).data.addedByAgentId == request.auth.uid ||\n        isAdmin()\n      );\n      allow write: if false;\n    }\n\n    match /vendors/{vendorId}/boostCampaigns/{campaignId} {\n      allow read: if request.auth != null && (\n        get(/databases/$(database)/documents/vendors/$(vendorId)).data.ownerId == request.auth.uid ||\n        isAdmin()\n      );\n      allow write: if false;\n    }\n\n    match /vendors/{vendorId}/boost/{docId} {', 'rules collections')
+          PY
+      - name: Commit wiring
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add functions/index.js .github/workflows/deploy.yml src/VendorDashboard.jsx src/FindView.jsx src/VendorTicket.jsx src/interactions.js firestore.rules
+          if git diff --cached --quiet; then echo "Nothing to commit"; exit 0; fi
+          git commit -m "Wire STall Lead Engine and Boost distribution"
+          git push
