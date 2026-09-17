@@ -252,11 +252,17 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
           (v.description || "").toLowerCase().includes(q)
         );
       })
+      .map((v) => {
+        const endsAt = v.boostEndsAt?.toDate?.()?.getTime?.() || (v.boostEndsAt instanceof Date ? v.boostEndsAt.getTime() : 0);
+        const active = Boolean(v.boostActive && endsAt > Date.now() && Number(v.boostRadiusKm || 0) >= Number(v.distance || 0) && Number.isFinite(v.distance));
+        return { ...v, isBoosted: active };
+      })
       .sort((a, b) => {
+        if (a.isBoosted !== b.isBoosted) return a.isBoosted ? -1 : 1;
         const ar = typeof a.rating === "number" ? a.rating : -1;
         const br = typeof b.rating === "number" ? b.rating : -1;
-        if (br !== ar) return br - ar; // higher rating first; unrated (-1) sinks to the bottom
-        return a.distance - b.distance; // tie-break (including among unrated): closer first
+        if (br !== ar) return br - ar;
+        return a.distance - b.distance;
       });
   }, [vendors, userLoc, categoryFilter, query_, showFavoritesOnly, favoriteIds]);
 

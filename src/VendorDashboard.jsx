@@ -14,6 +14,8 @@ import { findDuplicateVendor } from "./duplicateCheck";
 import QuickOfferModal from "./QuickOfferModal";
 import { encodeGeohash } from "./geohash";
 import VendorPremiumWorkspace from "./VendorPremiumWorkspace";
+import LeadEnginePanel from "./LeadEnginePanel";
+import BoostCampaignPanel from "./BoostCampaignPanel";
 
 const emptyForm = {
   name: "", category: CATEGORIES[0], description: "", products: "",
@@ -190,6 +192,7 @@ export default function VendorDashboard({ user, agent }) {
         <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" }}>
           <TabButton active={dashTab === "listings"} onClick={() => setDashTab("listings")}>My Listings ({listings.length})</TabButton>
           <TabButton active={dashTab === "insights"} onClick={() => setDashTab("insights")} icon={<BarChart2 size={13} />}>Insights</TabButton>
+          <TabButton active={dashTab === "leads"} onClick={() => setDashTab("leads")} icon={<MessageCircle size={13} />}>Leads</TabButton>
           <TabButton active={dashTab === "premium"} onClick={() => setDashTab("premium")} icon={<Zap size={13} />}>Premium</TabButton>
         </div>
 
@@ -207,8 +210,15 @@ export default function VendorDashboard({ user, agent }) {
           </div>
         )}
 
+        {dashTab === "leads" && (
+          <LeadEnginePanel listings={listings} />
+        )}
+
         {dashTab === "premium" && (
-          <VendorPremiumWorkspace user={user} listing={premiumListing} />
+          <div>
+            <VendorPremiumWorkspace user={user} listing={premiumListing} />
+            <BoostCampaignPanel user={user} listing={premiumListing} />
+          </div>
         )}
       </div>
 

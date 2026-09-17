@@ -21,7 +21,7 @@ export default function VendorTicket({ vendor, highlighted, onClick, onOpenRevie
   useEffect(() => {
     if (!vendor.id || viewLogged) return;
     setViewLogged(true);
-    logInteraction(db, vendor.id, "view");
+    logInteraction(db, vendor.id, "view", { source: vendor.isBoosted ? "STALL_BOOST" : "STALL_ORGANIC", boostCampaignId: vendor.isBoosted ? vendor.boostCampaignId : null });
     getRecentViewCount(db, vendor.id).then(setRecentViews);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vendor.id]);
@@ -42,7 +42,7 @@ export default function VendorTicket({ vendor, highlighted, onClick, onOpenRevie
   };
 
   const handleCall = stop(() => {
-    logInteraction(db, vendor.id, "call");
+    logInteraction(db, vendor.id, "call", { source: vendor.isBoosted ? "STALL_BOOST" : "STALL_ORGANIC", boostCampaignId: vendor.isBoosted ? vendor.boostCampaignId : null });
     window.location.href = `tel:${vendor.phone}`;
   });
 
@@ -58,7 +58,7 @@ export default function VendorTicket({ vendor, highlighted, onClick, onOpenRevie
   };
 
   const handleWhatsapp = stop(() => {
-    logInteraction(db, vendor.id, "whatsapp");
+    logInteraction(db, vendor.id, "whatsapp", { source: vendor.isBoosted ? "STALL_BOOST" : "STALL_ORGANIC", boostCampaignId: vendor.isBoosted ? vendor.boostCampaignId : null });
     const phone = normalizeWhatsAppPhone(vendor.phone);
     if (!phone) return;
 
@@ -71,7 +71,7 @@ export default function VendorTicket({ vendor, highlighted, onClick, onOpenRevie
   });
 
   const handleDirections = stop(() => {
-    logInteraction(db, vendor.id, "directions");
+    logInteraction(db, vendor.id, "directions", { source: vendor.isBoosted ? "STALL_BOOST" : "STALL_ORGANIC", boostCampaignId: vendor.isBoosted ? vendor.boostCampaignId : null });
     const url = vendor.mapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${vendor.name} ${vendor.address}`)}`;
     window.open(url, "_blank", "noopener,noreferrer");
   });
@@ -151,6 +151,7 @@ export default function VendorTicket({ vendor, highlighted, onClick, onOpenRevie
             <span className="font-display" style={{ fontSize: 22, fontWeight: 700, color: COLORS.ink }}>{vendor.name}</span>
             <span style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 700, padding: "3px 8px", borderRadius: 999, color: "#fff", background: CATEGORY_COLORS[vendor.category] || COLORS.ink }}>{vendor.category}</span>
             {isNewListing && <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 999, color: "#fff", background: COLORS.teal, display: "flex", alignItems: "center", gap: 4 }}><Sparkles size={11} /> New</span>}
+            {vendor.isBoosted && <span style={{ fontSize: 11, fontWeight: 800, padding: "3px 9px", borderRadius: 999, color: COLORS.ink, background: COLORS.marigold }}>Boosted</span>}
             {vendor.rating != null && <span style={{ fontSize: 14, fontWeight: 700, color: COLORS.ink, display: "flex", alignItems: "center", gap: 5, background: `${COLORS.marigold}30`, border: `1.5px solid ${COLORS.marigold}`, padding: "3px 10px", borderRadius: 999 }}><Star size={15} fill={COLORS.marigold} color={COLORS.marigold} strokeWidth={2.5} /><span className="font-mono">{vendor.rating.toFixed(1)}</span>{vendor.ratingsCount != null && <span style={{ color: "#6b6255", fontWeight: 600 }}>({vendor.ratingsCount})</span>}</span>}
           </div>
           {vendor.description && <div style={{ fontSize: 14.5, color: "#444", marginBottom: 10 }}>{vendor.description}</div>}

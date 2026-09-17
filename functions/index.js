@@ -315,6 +315,9 @@ async function generateAIResponse(review, listing, settings) {
   return res.data.content?.[0]?.text?.trim() || "";
 }
 
+Object.assign(exports, require("./leadEngine"));
+Object.assign(exports, require("./boostCampaigns"));
+
 exports.pollReviews = functions.pubsub.schedule("every 30 minutes").onRun(async () => {
   console.log("pollReviews: starting");
   const connectionsSnap = await db.collection("gbp_connections").where("connected", "==", true).get();

@@ -18,7 +18,7 @@ export const INTERACTION_TYPES = ["view", "call", "whatsapp", "directions"];
  * This is deliberately NOT tied to a specific signed-in user — customers
  * browsing Stall shouldn't need an account, so this can't require auth.
  */
-export async function logInteraction(db, vendorId, type) {
+export async function logInteraction(db, vendorId, type, meta = {}) {
   if (!INTERACTION_TYPES.includes(type)) return;
   const field = `${type}Count`;
   try {
@@ -33,6 +33,8 @@ export async function logInteraction(db, vendorId, type) {
       createdAt: serverTimestamp(),
       // bucketed to the day for cheap "this week / this month" queries later
       dayBucket: new Date().toISOString().slice(0, 10),
+      source: meta.source || "STALL_ORGANIC",
+      boostCampaignId: meta.boostCampaignId || null,
     });
   } catch {
     // same — non-fatal
