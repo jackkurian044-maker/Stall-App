@@ -126,13 +126,7 @@ async function generateSeoResponse(review, listing, rawSettings) {
 - Never stuff or repeat keywords just for SEO.`
     : `- Do not deliberately optimize for SEO or add keywords merely for search visibility.
 - Keep the response natural and focused only on the customer's experience.`;
-
-  const lengthMap = {
-    short: "20–45 words",
-    standard: "45–90 words",
-    detailed: "70–120 words",
-  };
-
+  const lengthMap = { short: "20–45 words", standard: "45–90 words", detailed: "70–120 words" };
   const prompt = `Write a natural Google Business Profile review reply for a local business.
 
 BUSINESS NAME: ${seo.name}
@@ -158,15 +152,11 @@ ${seoRules}
 ${settings.customInstructions ? `- Additional owner instruction: ${settings.customInstructions}` : ""}
 
 Write ONLY the final reply. No quotes, labels, explanations, or keyword lists.`;
-
   const endpoint = `https://aiplatform.googleapis.com/v1/projects/${projectId}/locations/global/publishers/google/models/gemini-2.5-flash:generateContent`;
   const response = await axios.post(endpoint, {
     contents: [{ role: "user", parts: [{ text: prompt }] }],
     generationConfig: { maxOutputTokens: 260, temperature: 0.35 },
-  }, {
-    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-  });
-
+  }, { headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" } });
   const text = response.data.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("").trim() || "";
   if (!text) throw new Error("Gemini returned an empty SEO response");
   return text;
@@ -178,23 +168,14 @@ function reviewUrl(connectionData, reviewId) {
 
 async function rewriteOne(vendorId, connectionData, reviewId, existingReview) {
   const premiumDoc = await db.collection("premium_vendors").doc(vendorId).get();
-  if (!premiumDoc.exists || !premiumDoc.data().isPremium) {
-    throw new functions.https.HttpsError("failed-precondition", "Premium subscription required");
-  }
-  if (!connectionData?.connected || !connectionData.accountName || !connectionData.locationId) {
-    throw new functions.https.HttpsError("failed-precondition", "GBP is not connected");
-  }
-
+  if (!premiumDoc.exists || !premiumDoc.data().isPremium) throw new functions.https.HttpsError("failed-precondition", "Premium subscription required");
+  if (!connectionData?.connected || !connectionData.accountName || !connectionData.locationId) throw new functions.https.HttpsError("failed-precondition", "GBP is not connected");
   const vendorSnap = await db.collection("vendors").where("ownerId", "==", vendorId).limit(1).get();
   const listing = vendorSnap.docs[0]?.data() || {};
   const settings = normalizeSettings(connectionData.responseSettings);
-  if (!settings.autoReply) {
-    throw new functions.https.HttpsError("failed-precondition", "Automatic review responses are turned off in Response Settings");
-  }
+  if (!settings.autoReply) throw new functions.https.HttpsError("failed-precondition", "Automatic review responses are turned off in Response Settings");
   const accessToken = await getValidToken(vendorId, connectionData);
-  const latestRes = await axios.get(reviewUrl(connectionData, reviewId), {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  const latestRes = await axios.get(reviewUrl(connectionData, reviewId), { headers: { Authorization: `Bearer ${accessToken}` } });
   const latestReview = latestRes.data;
   const ratingMap = { ONE: 1, TWO: 2, THREE: 3, FOUR: 4, FIVE: 5 };
   const review = {
@@ -202,28 +183,10 @@ async function rewriteOne(vendorId, connectionData, reviewId, existingReview) {
     reviewText: latestReview.comment || existingReview?.reviewText || "",
     starRating: ratingMap[latestReview.starRating] || existingReview?.starRating || 3,
   };
-
   const aiResponse = await generateSeoResponse(review, listing, settings);
-  await axios.put(`${reviewUrl(connectionData, reviewId)}/reply`, { comment: aiResponse }, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
-
+  await axios.put(`${reviewUrl(connectionData, reviewId)}/reply`, { comment: aiResponse }, { headers: { Authorization: `Bearer ${accessToken}` } });
   const ref = db.collection("review_responses").doc(`${vendorId}_${reviewId}`);
-  await ref.set({
-    vendorId, reviewId,
-    reviewerName: review.reviewerName,
-    reviewText: review.reviewText,
-    starRating: review.starRating,
-    aiResponse,
-    googleReply: aiResponse,
-    status: "posted",
-    seoOptimized: !!settings.seoOptimization,
-    seoVersion: 3,
-    editedAt: admin.firestore.FieldValue.serverTimestamp(),
-    postedAt: admin.firestore.FieldValue.serverTimestamp(),
-    syncedAt: admin.firestore.FieldValue.serverTimestamp(),
-  }, { merge: true });
-
+  await ref.set({ vendorId, reviewId, reviewerName: review.reviewerName, reviewText: review.reviewText, starRating: review.starRating, aiResponse, googleReply: aiResponse, status: "posted", seoOptimized: !!settings.seoOptimization, seoVersion: 3, editedAt: admin.firestore.FieldValue.serverTimestamp(), postedAt: admin.firestore.FieldValue.serverTimestamp(), syncedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
   return aiResponse;
 }
 
@@ -232,7 +195,6 @@ exports.rewriteReviewResponse = functions.runWith({ secrets: [googleOAuthConfig]
   const vendorId = context.auth.uid;
   const reviewId = String(data?.reviewId || "").trim();
   if (!reviewId) throw new functions.https.HttpsError("invalid-argument", "Review ID is required");
-
   try {
     const [connDoc, reviewDoc] = await Promise.all([
       db.collection("gbp_connections").doc(vendorId).get(),
@@ -265,12 +227,9 @@ exports.pollReviews = functions.runWith({ secrets: [googleOAuthConfig] }).pubsub
       const vendorSnap = await db.collection("vendors").where("ownerId", "==", vendorId).limit(1).get();
       const listing = vendorSnap.docs[0]?.data() || {};
       const accessToken = await getValidToken(vendorId, connectionData);
-      const reviewsRes = await axios.get(`https://mybusiness.googleapis.com/v4/${connectionData.accountName}/${connectionData.locationId}/reviews`, {
-        headers: { Authorization: `Bearer ${accessToken}` }, params: { pageSize: 50, orderBy: "updateTime desc" },
-      });
+      const reviewsRes = await axios.get(`https://mybusiness.googleapis.com/v4/${connectionData.accountName}/${connectionData.locationId}/reviews`, { headers: { Authorization: `Bearer ${accessToken}` }, params: { pageSize: 50, orderBy: "updateTime desc" } });
       const reviews = reviewsRes.data.reviews || [];
       const ratingMap = { ONE: 1, TWO: 2, THREE: 3, FOUR: 4, FIVE: 5 };
-
       for (const review of reviews) {
         const reviewId = review.reviewId || review.name?.split("/").pop();
         if (!reviewId || review.reviewReply) continue;
@@ -281,23 +240,9 @@ exports.pollReviews = functions.runWith({ secrets: [googleOAuthConfig] }).pubsub
         const starRating = ratingMap[review.starRating] || 3;
         if (settings[`replyTo${starRating}Star`] === false) continue;
         if (existingData.status === "processing") continue;
-
-        await ref.set({
-          vendorId, reviewId,
-          reviewerName: review.reviewer?.displayName || "Valued Customer",
-          reviewText: review.comment || "",
-          starRating,
-          status: "processing",
-          processingAt: admin.firestore.FieldValue.serverTimestamp(),
-          receivedAt: review.createTime ? admin.firestore.Timestamp.fromDate(new Date(review.createTime)) : admin.firestore.FieldValue.serverTimestamp(),
-        }, { merge: true });
-
+        await ref.set({ vendorId, reviewId, reviewerName: review.reviewer?.displayName || "Valued Customer", reviewText: review.comment || "", starRating, status: "processing", processingAt: admin.firestore.FieldValue.serverTimestamp(), receivedAt: review.createTime ? admin.firestore.Timestamp.fromDate(new Date(review.createTime)) : admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
         try {
-          const aiResponse = await generateSeoResponse({
-            reviewerName: review.reviewer?.displayName || "Valued Customer",
-            reviewText: review.comment || "",
-            starRating,
-          }, listing, settings);
+          const aiResponse = await generateSeoResponse({ reviewerName: review.reviewer?.displayName || "Valued Customer", reviewText: review.comment || "", starRating }, listing, settings);
           const latest = await axios.get(reviewUrl(connectionData, reviewId), { headers: { Authorization: `Bearer ${accessToken}` } });
           if (latest.data.reviewReply) {
             await ref.set({ status: "posted", aiResponse: latest.data.reviewReply.comment || null, googleReply: latest.data.reviewReply.comment || null, processingAt: admin.firestore.FieldValue.delete() }, { merge: true });
@@ -317,3 +262,7 @@ exports.pollReviews = functions.runWith({ secrets: [googleOAuthConfig] }).pubsub
   }
   return null;
 });
+
+// Shared by the manual Sync Reviews Now callable so manual sync and the scheduled
+// responder use exactly the same settings-aware Google/Gemini pipeline.
+exports.__reviewResponder = { normalizeSettings, getValidToken, generateSeoResponse, reviewUrl };
