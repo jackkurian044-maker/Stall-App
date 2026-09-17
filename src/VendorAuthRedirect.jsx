@@ -14,7 +14,13 @@ const AUTH_TRACE = "[STALL-AUTH v6]";
 const trace = (...args) => console.info(AUTH_TRACE, ...args);
 
 export default function VendorAuthRedirect({ initialError = "" }) {
-  const [mode, setMode] = useState("signin");
+  const [mode, setMode] = useState(() => {
+    try {
+      return window.sessionStorage.getItem("stallVendorIntent") === "signup" ? "signup" : "signin";
+    } catch {
+      return "signin";
+    }
+  });
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(initialError);
@@ -25,6 +31,7 @@ export default function VendorAuthRedirect({ initialError = "" }) {
 
   useEffect(() => {
     if (initialError) setError(initialError);
+    try { window.sessionStorage.removeItem("stallVendorIntent"); } catch {}
   }, [initialError]);
 
   const signInWithGoogle = async () => {
