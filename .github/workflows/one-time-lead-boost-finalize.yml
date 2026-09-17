@@ -29,10 +29,6 @@ jobs:
             'exports.pollReviews = functions.pubsub.schedule("every 30 minutes").onRun(async () => {',
             'Object.assign(exports, require("./leadEngine"));\nObject.assign(exports, require("./boostCampaigns"));\n\nexports.pollReviews = functions.pubsub.schedule("every 30 minutes").onRun(async () => {', 'functions')
 
-          patch('.github/workflows/deploy.yml',
-            'functions:pollReviews --project stall-app-1aab7 --non-interactive',
-            'functions:pollReviews,functions:googleAdsLeadWebhook,functions:leadWebhook,functions:createManualLead,functions:updateLeadStatus,functions:createBoostOrder,functions:verifyBoostPayment,functions:pauseBoostCampaign --project stall-app-1aab7 --non-interactive', 'deploy')
-
           patch('src/VendorDashboard.jsx',
             'import VendorPremiumWorkspace from "./VendorPremiumWorkspace";',
             'import VendorPremiumWorkspace from "./VendorPremiumWorkspace";\nimport LeadEnginePanel from "./LeadEnginePanel";\nimport BoostCampaignPanel from "./BoostCampaignPanel";', 'dashboard imports')
@@ -72,7 +68,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add functions/index.js .github/workflows/deploy.yml src/VendorDashboard.jsx src/FindView.jsx src/VendorTicket.jsx src/interactions.js firestore.rules
+          git add functions/index.js src/VendorDashboard.jsx src/FindView.jsx src/VendorTicket.jsx src/interactions.js firestore.rules
           if git diff --cached --quiet; then echo "Nothing to commit"; exit 0; fi
           git commit -m "Wire STall Lead Engine and Boost distribution"
           git push
