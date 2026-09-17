@@ -21,6 +21,18 @@ function cfg() {
   return value;
 }
 
+// Normalize stored GBP identifiers. Older connection records may store
+// locationId as the full accounts/.../locations/... resource, while newer
+// records may store only the locations/... segment.
+function reviewResource(connection, reviewId) {
+  const account = String(connection.accountName || "").replace(/^\/+|\/+$/g, "");
+  const rawLocation = String(connection.locationId || "").replace(/^\/+|\/+$/g, "");
+  const location = rawLocation.includes("/locations/")
+    ? rawLocation
+    : `${account}/locations/${rawLocation.replace(/^locations\//, "")}`;
+  return `https://mybusiness.googleapis.com/v4/${location}/reviews/${reviewId}`;
+}
+
 async function token(vendorId, connection) {
   const expiry = connection.tokenExpiresAt?.toDate?.() || new Date(0);
   if (connection.accessToken && expiry >= new Date(Date.now() + 5 * 60 * 1000)) return connection.accessToken;
@@ -40,20 +52,24 @@ async function token(vendorId, connection) {
 }
 
 async function reworkLatestPosted(vendorId, connection, listing) {
-  const latestSnap = await db.collection("review_responses")
+  // Avoid a composite Firestore index: read this vendor's small local queue
+  // and sort the already-stored posted responses in memory.
+  const postedSnap = await db.collection("review_responses")
     .where("vendorId", "==", vendorId)
-    .where("status", "==", "posted")
-    .orderBy("postedAt", "desc")
-    .limit(1)
     .get();
-  if (latestSnap.empty) throw new functions.https.HttpsError("not-found", "No posted review is available to rework");
+  const posted = postedSnap.docs
+    .map(d => ({ ref: d.ref, data: d.data() }))
+    .filter(x => x.data.status === "posted")
+    .sort((a, b) => (b.data.postedAt?.toMillis?.() || 0) - (a.data.postedAt?.toMillis?.() || 0));
+  if (!posted.length) throw new functions.https.HttpsError("not-found", "No posted review is available to rework");
 
-  const ref = latestSnap.docs[0].ref;
-  const existing = latestSnap.docs[0].data();
+  const ref = posted[0].ref;
+  const existing = posted[0].data;
   const reviewId = existing.reviewId;
+  if (!reviewId) throw new Error("The latest posted review is missing its Google review ID");
   const accessToken = await token(vendorId, connection);
   const settings = responder.normalizeSettings(connection.responseSettings);
-  const latest = await axios.get(responder.reviewUrl(connection, reviewId), {
+  const latest = await axios.get(reviewResource(connection, reviewId), {
     headers: { Authorization: `Bearer ${accessToken}` }
   });
   const googleReview = latest.data;
@@ -66,7 +82,7 @@ async function reworkLatestPosted(vendorId, connection, listing) {
     starRating: ratingMap[googleReview.starRating] || existing.starRating || 3,
   };
   const aiResponse = await responder.generateSeoResponse(review, listing, settings);
-  await axios.put(`${responder.reviewUrl(connection, reviewId)}/reply`, { comment: aiResponse }, {
+  await axios.put(`${reviewResource(connection, reviewId)}/reply`, { comment: aiResponse }, {
     headers: { Authorization: `Bearer ${accessToken}` }
   });
   await ref.set({
@@ -101,8 +117,6 @@ exports.triggerPollForVendor = functions.runWith({ secrets: [googleOAuthConfig] 
     const vendorSnap = await db.collection("vendors").where("ownerId", "==", vendorId).limit(1).get();
     const listing = vendorSnap.docs[0]?.data() || {};
 
-    // Explicit one-click action for the owner to rework the most recently
-    // posted response. This does not alter the normal new-review sync.
     if (data?.reworkLatest === true) {
       if (!settings.autoReply) throw new functions.https.HttpsError("failed-precondition", "Automatic review responses are turned off in Response Settings");
       const result = await reworkLatestPosted(vendorId, connection, listing);
@@ -115,8 +129,13 @@ exports.triggerPollForVendor = functions.runWith({ secrets: [googleOAuthConfig] 
     }
 
     const accessToken = await token(vendorId, connection);
+    const locationResource = String(connection.locationId || "").replace(/^\/+|\/+$/g, "");
+    const accountResource = String(connection.accountName || "").replace(/^\/+|\/+$/g, "");
+    const reviewParent = locationResource.includes("/locations/")
+      ? locationResource
+      : `${accountResource}/locations/${locationResource.replace(/^locations\//, "")}`;
     const reviewsRes = await axios.get(
-      `https://mybusiness.googleapis.com/v4/${connection.accountName}/${connection.locationId}/reviews`,
+      `https://mybusiness.googleapis.com/v4/${reviewParent}/reviews`,
       { headers: { Authorization: `Bearer ${accessToken}` }, params: { pageSize: 10, orderBy: "updateTime desc" } }
     );
     const reviews = reviewsRes.data.reviews || [];
