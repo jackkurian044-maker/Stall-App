@@ -16,6 +16,7 @@ export default function Header({ mode, setMode, user, isAdmin, isAgent, onSignOu
 
   return (
     <div
+      className="stall-header"
       style={{
         position: "sticky",
         top: 0,
