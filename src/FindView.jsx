@@ -22,7 +22,7 @@ import ReviewsModal from "./ReviewsModal";
 import { watchFavorites, toggleFavorite } from "./favorites";
 import TagStoreModal from "./TagStoreModal";
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 5;
 
 // Debounce how fast the radius slider re-triggers Firestore queries — the
 // slider fires onChange continuously while dragging, and we don't want a
