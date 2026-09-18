@@ -31,7 +31,7 @@ export default function Header({ mode, setMode, user, isAdmin, isAgent, onSignOu
         gap: 12,
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <div className="stall-header-brand" style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
         <img
           src={stallLogoMark}
           alt="Stall"
@@ -41,18 +41,18 @@ export default function Header({ mode, setMode, user, isAdmin, isAgent, onSignOu
           <div style={{ fontWeight: 700, fontSize: "1.28rem", color: "#fff" }}>all</div>
           <div style={{ fontSize: "0.55rem", letterSpacing: "0.22em", color: "#9c9c9c", fontWeight: 600, marginTop: 2 }}>THAT'S ALL</div>
         </div>
-        <div style={{ fontSize: 11, letterSpacing: "0.04em", color: "#9c9c9c", fontWeight: 600, marginLeft: 10 }}>
+        <div className="stall-header-tagline" style={{ fontSize: 11, letterSpacing: "0.04em", color: "#9c9c9c", fontWeight: 600, marginLeft: 10 }}>
           what's around the corner
         </div>
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-        <div style={{ display: "flex", background: "#111111", borderRadius: 999, padding: 4, gap: 2 }}>
+      <div className="stall-header-actions" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", minWidth: 0 }}>
+        <div className="stall-header-tabs" style={{ display: "flex", background: "#111111", borderRadius: 999, padding: 4, gap: 2, maxWidth: "100%", overflowX: "auto", scrollbarWidth: "none" }}>
           {tabs.map((t) => (
             <button
               key={t.id}
               onClick={() => setMode(t.id)}
-              className={mode === t.id ? "" : "stall-tab"}
+              className={`stall-header-tab ${mode === t.id ? "" : "stall-tab"}`}
               style={{
                 padding: "9px 16px",
                 fontSize: 13,
@@ -70,7 +70,7 @@ export default function Header({ mode, setMode, user, isAdmin, isAgent, onSignOu
           ))}
         </div>
         {user && (
-          <button onClick={onSignOut} className="stall-btn stall-pill stall-pill-gold" style={{ padding: "9px 18px", fontSize: 13 }}>
+          <button onClick={onSignOut} className="stall-btn stall-pill stall-pill-gold stall-header-signout" style={{ padding: "9px 18px", fontSize: 13 }}>
             Sign out
           </button>
         )}
