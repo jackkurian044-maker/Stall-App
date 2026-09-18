@@ -1,5 +1,7 @@
 name: Deploy STall to Firebase
 
+# Production deployment pipeline — Boost verification
+
 on:
   push:
     branches: [main]
