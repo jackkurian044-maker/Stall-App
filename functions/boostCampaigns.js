@@ -150,6 +150,35 @@ exports.verifyBoostPayment = functions.runWith({ secrets: [razorpayConfig] }).ht
   return { success: true, campaignId, status: "active", endAt };
 });
 
+exports.resumeBoostCampaign = functions.https.onCall(async (data, context) => {
+  if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Login required");
+  const uid = context.auth.uid;
+  const businessId = String(data.businessId || "").trim();
+  const campaignId = String(data.campaignId || "").trim();
+  await getOwnedListing(uid, businessId);
+  const campaignRef = db.collection("vendors").doc(businessId).collection("boostCampaigns").doc(campaignId);
+  const vendorRef = db.collection("vendors").doc(businessId);
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(campaignRef);
+    if (!snap.exists) throw new functions.https.HttpsError("not-found", "Boost campaign not found");
+    const campaign = snap.data();
+    if (campaign.ownerId !== uid) throw new functions.https.HttpsError("permission-denied", "Not allowed");
+    if (campaign.status !== "paused") throw new functions.https.HttpsError("failed-precondition", "Only a paused Boost can be resumed");
+    if (!campaign.paymentId) throw new functions.https.HttpsError("failed-precondition", "This Boost has not been paid and verified");
+    const now = admin.firestore.Timestamp.now();
+    const pausedAtMs = campaign.pausedAt && typeof campaign.pausedAt.toMillis === "function" ? campaign.pausedAt.toMillis() : now.toMillis();
+    const endAtMs = campaign.endAt && typeof campaign.endAt.toMillis === "function" ? campaign.endAt.toMillis() : now.toMillis();
+    const pauseMs = Math.max(0, now.toMillis() - pausedAtMs);
+    const endAt = admin.firestore.Timestamp.fromMillis(endAtMs + pauseMs);
+    const activeSnap = await tx.get(db.collection("vendors").doc(businessId).collection("boostCampaigns").where("status", "==", "active"));
+    activeSnap.docs.forEach((doc) => {
+      if (doc.id !== campaignId) tx.update(doc.ref, { status: "superseded", supersededAt: now, supersededBy: campaignId });
+    });
+    tx.update(campaignRef, { status: "active", resumedAt: now, endAt, pausedAt: null });
+    tx.update(vendorRef, { boostActive: true, boostCampaignId: campaignId, boostObjective: campaign.objective, boostTargetLat: campaign.targetLat, boostTargetLng: campaign.targetLng, boostRadiusKm: campaign.radiusKm, boostEndsAt: endAt });
+  });
+  return { success: true, campaignId, status: "active" };
+});
 exports.pauseBoostCampaign = functions.https.onCall(async (data, context) => {
   if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Login required");
   const uid = context.auth.uid;
