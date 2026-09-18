@@ -15,7 +15,7 @@ export default function BusinessOwnerCTA({ onListFree, onClaim }) {
         background: "linear-gradient(135deg, rgba(240,180,41,0.12), rgba(255,255,255,0.04))",
       }}
     >
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: 20, alignItems: "center" }}>
+      <div className="stall-business-owner-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: 20, alignItems: "center" }}>
         <div>
           <div style={{ color: "#f0b429", fontSize: 11, fontWeight: 800, letterSpacing: "0.09em", textTransform: "uppercase", marginBottom: 7 }}>
             For business owners
@@ -28,7 +28,7 @@ export default function BusinessOwnerCTA({ onListFree, onClaim }) {
             Already listed? Claim your business and take control of your listing.
           </p>
         </div>
-        <div style={{ display: "flex", gap: 9, flexWrap: "wrap", justifyContent: "flex-end" }}>
+        <div className="stall-business-owner-actions" style={{ display: "flex", gap: 9, flexWrap: "wrap", justifyContent: "flex-end" }}>
           <button
             type="button"
             onClick={onListFree}
