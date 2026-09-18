@@ -87,3 +87,7 @@ jobs:
         run: npx --yes firebase-tools@latest deploy --only functions:pauseBoostCampaign --project stall-app-1aab7 --non-interactive
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
+      - name: Deploy Boost - resume campaign
+        run: npx --yes firebase-tools@latest deploy --only functions:resumeBoostCampaign --project stall-app-1aab7 --non-interactive
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
