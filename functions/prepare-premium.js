@@ -14,8 +14,11 @@ if (!source.includes('defineSecret("RAZORPAY_CONFIG")')) {
 
 const legacyRazorpayConfig = "functions.config().razorpay";
 const legacyCount = source.split(legacyRazorpayConfig).length - 1;
-if (legacyCount === 0) throw new Error("Premium prepare: legacy Razorpay config references not found");
-source = source.replace(/functions\.config\(\)\.razorpay/g, "getRazorpayConfig()");
+if (legacyCount > 0) {
+  source = source.replace(/functions\.config\(\)\.razorpay/g, "getRazorpayConfig()");
+} else if (!source.includes('defineSecret("RAZORPAY_CONFIG")')) {
+  throw new Error("Premium prepare: neither legacy Razorpay config nor RAZORPAY_CONFIG migration was found");
+}
 
 if (source.includes("if (cached.exists && cached.data().planId) return cached.data().planId;")) {
   source = source.replace(
