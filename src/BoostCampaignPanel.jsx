@@ -12,6 +12,13 @@ const OBJECTIVES = [
   ["offer", "Promote my offer"],
 ];
 
+function friendlyError(err, fallback) {
+  const code = String(err?.code || "").toLowerCase();
+  const raw = String(err?.message || "").trim();
+  if (!raw || raw.toLowerCase() === "internal" || code.includes("internal")) return fallback;
+  return raw.replace(/^functions\//i, "");
+}
+
 export default function BoostCampaignPanel({ user, listing }) {
   const [objective, setObjective] = useState("discovery");
   const [budget, setBudget] = useState("500");
@@ -66,7 +73,7 @@ export default function BoostCampaignPanel({ user, listing }) {
             await verify({ businessId: listing.id, campaignId, razorpay_payment_id: response.razorpay_payment_id, razorpay_order_id: response.razorpay_order_id, razorpay_signature: response.razorpay_signature });
             setMessage("Boost is active. STall will now give this business additional local discovery exposure.");
           } catch (err) {
-            setMessage(err.message || "Payment completed but Boost activation could not be verified.");
+            setMessage(friendlyError(err, "Payment completed but Boost activation could not be verified."));
           } finally {
             setBusy(false);
           }
@@ -77,7 +84,7 @@ export default function BoostCampaignPanel({ user, listing }) {
       checkout.open();
     } catch (err) {
       setBusy(false);
-      setMessage(err.message || "Couldn't start Boost.");
+      setMessage(friendlyError(err, "Couldn't start Boost. Please try again."));
     }
   };
 
@@ -89,7 +96,7 @@ export default function BoostCampaignPanel({ user, listing }) {
       await fn({ businessId: listing.id, campaignId });
       setMessage("Boost paused.");
     } catch (err) {
-      setMessage(err.message || "Couldn't pause Boost.");
+      setMessage(friendlyError(err, "Couldn't pause Boost. Please try again."));
     } finally {
       setBusy(false);
     }
@@ -112,7 +119,7 @@ export default function BoostCampaignPanel({ user, listing }) {
         <label style={labelStyle}>Local radius (km)<input type="number" min="1" max="50" value={radius} onChange={(e) => setRadius(e.target.value)} style={inputStyle} /></label>
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#f7f5ef", borderRadius: 9, padding: 10, marginTop: 12, fontSize: 11.5 }}><MapPin size={14} color={COLORS.teal} /> Approx. ₹{daily.toFixed(2)}/day · targeted around this business</div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#f7f5ef", borderRadius: 9, padding: 10, marginTop: 12, fontSize: 11.5, color: COLORS.ink, fontWeight: 600 }}><MapPin size={14} color={COLORS.teal} /> Approx. ₹{daily.toFixed(2)}/day · targeted around this business</div>
       <button disabled={busy} onClick={startBoost} className="stall-btn" style={{ marginTop: 12, width: "100%", background: COLORS.marigold, color: COLORS.ink, border: "none", borderRadius: 8, padding: 11, fontWeight: 800, fontSize: 13, display: "flex", justifyContent: "center", alignItems: "center", gap: 7 }}><WalletCards size={15} /> {busy ? "Opening payment…" : `Pay ₹${Number(budget || 0).toLocaleString("en-IN")} & Start Boost`}</button>
       {message && <div style={{ marginTop: 9, fontSize: 11.5, color: message.toLowerCase().includes("active") ? COLORS.teal : COLORS.brick }}>{message}</div>}
 
