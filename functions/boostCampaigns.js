@@ -2,12 +2,33 @@ const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const Razorpay = require("razorpay");
 const crypto = require("crypto");
+const { defineSecret } = require("firebase-functions/params");
+const razorpayConfig = defineSecret("RAZORPAY_CONFIG");
 
 const db = admin.firestore();
 const OBJECTIVES = new Set(["discovery", "whatsapp", "calls", "offer"]);
 
+function getRazorpayConfig() {
+  let raw;
+  try {
+    raw = razorpayConfig.value();
+  } catch (err) {
+    throw new Error("RAZORPAY_CONFIG secret is unavailable: " + err.message);
+  }
+  let cfg;
+  try {
+    cfg = JSON.parse(raw);
+  } catch (err) {
+    throw new Error("RAZORPAY_CONFIG must contain valid JSON");
+  }
+  if (!cfg?.key_id || !cfg?.key_secret) {
+    throw new Error("RAZORPAY_CONFIG is missing key_id or key_secret");
+  }
+  return cfg;
+}
+
 function getRazorpay() {
-  const cfg = functions.config().razorpay;
+  const cfg = getRazorpayConfig();
   return new Razorpay({ key_id: cfg.key_id, key_secret: cfg.key_secret });
 }
 
@@ -24,7 +45,7 @@ function number(value, fallback = 0) {
   return Number.isFinite(n) ? n : fallback;
 }
 
-exports.createBoostOrder = functions.https.onCall(async (data, context) => {
+exports.createBoostOrder = functions.runWith({ secrets: [razorpayConfig] }).https.onCall(async (data, context) => {
   if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Login required");
   const uid = context.auth.uid;
   const businessId = String(data.businessId || "").trim();
@@ -75,10 +96,10 @@ exports.createBoostOrder = functions.https.onCall(async (data, context) => {
     paymentId: null,
   });
 
-  return { campaignId: campaignRef.id, orderId: order.id, keyId: functions.config().razorpay.key_id, amount, currency: "INR" };
+  return { campaignId: campaignRef.id, orderId: order.id, keyId: getRazorpayConfig().key_id, amount, currency: "INR" };
 });
 
-exports.verifyBoostPayment = functions.https.onCall(async (data, context) => {
+exports.verifyBoostPayment = functions.runWith({ secrets: [razorpayConfig] }).https.onCall(async (data, context) => {
   if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Login required");
   const uid = context.auth.uid;
   const businessId = String(data.businessId || "").trim();
@@ -93,7 +114,7 @@ exports.verifyBoostPayment = functions.https.onCall(async (data, context) => {
   if (campaign.ownerId !== uid) throw new functions.https.HttpsError("permission-denied", "Not allowed");
   if (campaign.orderId !== returnedOrderId) throw new functions.https.HttpsError("invalid-argument", "Order mismatch");
 
-  const cfg = functions.config().razorpay;
+  const cfg = getRazorpayConfig();
   const expected = crypto.createHmac("sha256", cfg.key_secret).update(`${campaign.orderId}|${paymentId}`).digest("hex");
   if (expected !== signature) throw new functions.https.HttpsError("invalid-argument", "Payment signature mismatch");
 
