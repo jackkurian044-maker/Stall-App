@@ -528,3 +528,76 @@ img, svg, video, canvas { max-width:100%; }
   .stall-header { padding-left:9px !important; padding-right:9px !important; }
   .stall-header-tabs button { padding-left:10px !important; padding-right:10px !important; font-size:11.5px !important; }
 }
+
+
+/* =========================================================
+   SAFE MOBILE HEADER OVERRIDE
+   Keeps all existing desktop/header behaviour intact.
+   On phones, navigation stays usable without forcing the
+   Sign out button onto a separate full-width row.
+   ========================================================= */
+@media (max-width: 640px) {
+  .stall-header {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+  }
+
+  .stall-header-brand {
+    flex: 1 1 100% !important;
+    min-width: 0 !important;
+  }
+
+  .stall-header-actions {
+    display: flex !important;
+    flex: 1 1 100% !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+  }
+
+  .stall-header-tabs {
+    flex: 1 1 auto !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    white-space: nowrap !important;
+    scrollbar-width: none !important;
+  }
+
+  .stall-header-tabs button {
+    flex: 0 0 auto !important;
+    white-space: nowrap !important;
+  }
+
+  .stall-header-signout {
+    flex: 0 0 auto !important;
+    width: auto !important;
+    min-width: 82px !important;
+    white-space: nowrap !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .stall-header-actions {
+    gap: 6px !important;
+  }
+
+  .stall-header-signout {
+    min-width: 76px !important;
+    padding-left: 11px !important;
+    padding-right: 11px !important;
+    font-size: 12px !important;
+  }
+
+  .stall-header-tabs button {
+    padding-left: 9px !important;
+    padding-right: 9px !important;
+    font-size: 11.5px !important;
+  }
+}
