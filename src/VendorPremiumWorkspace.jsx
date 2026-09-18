@@ -65,8 +65,17 @@ export default function VendorPremiumWorkspace({ user, listing }) {
 
   useEffect(() => {
     if (!listing?.id) { setBoost(null); return undefined; }
-    return onSnapshot(doc(db, "vendors", listing.id, "boost", "latest"), (snap) => setBoost(snap.exists() ? snap.data() : null), () => setBoost(null));
-  }, [listing?.id]);
+    // Boost activation is written to the vendor document by verifyBoostPayment,
+    // pauseBoostCampaign and resumeBoostCampaign. Keep the Premium workspace
+    // status sourced from that same document instead of the obsolete
+    // vendors/{id}/boost/latest path.
+    setBoost({
+      active: Boolean(listing.boostActive),
+      campaignId: listing.boostCampaignId || null,
+      endsAt: listing.boostEndsAt || null,
+    });
+    return undefined;
+  }, [listing?.id, listing?.boostActive, listing?.boostCampaignId, listing?.boostEndsAt]);
 
   const stats = useMemo(() => ({
     views: Number(listing?.viewCount || 0),
