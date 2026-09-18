@@ -18,6 +18,29 @@ const admin = require("firebase-admin");
 const axios = require("axios");
 const Razorpay = require("razorpay");
 const crypto = require("crypto");
+const { defineSecret } = require("firebase-functions/params");
+const razorpayConfig = defineSecret("RAZORPAY_CONFIG");
+
+function getRazorpayConfig() {
+  let raw;
+  try {
+    raw = razorpayConfig.value();
+  } catch (err) {
+    throw new Error("RAZORPAY_CONFIG secret is unavailable: " + err.message);
+  }
+
+  let cfg;
+  try {
+    cfg = JSON.parse(raw);
+  } catch (err) {
+    throw new Error("RAZORPAY_CONFIG must contain valid JSON");
+  }
+
+  if (!cfg?.key_id || !cfg?.key_secret || !cfg?.webhook_secret) {
+    throw new Error("RAZORPAY_CONFIG is missing key_id, key_secret, or webhook_secret");
+  }
+  return cfg;
+}
 
 if (!admin.apps.length) admin.initializeApp();
 const db = admin.firestore();
@@ -27,7 +50,7 @@ const db = admin.firestore();
 // ═══════════════════════════════════════════════════════════════
 
 function getRazorpay() {
-  const cfg = functions.config().razorpay;
+  const cfg = getRazorpayConfig();
   return new Razorpay({ key_id: cfg.key_id, key_secret: cfg.key_secret });
 }
 
@@ -83,7 +106,7 @@ async function getOrCreatePlanId(razorpay, planKey) {
   return created.id;
 }
 
-exports.createSubscription = functions.https.onCall(async (data, context) => {
+exports.createSubscription = functions.runWith({ secrets: [razorpayConfig] }).https.onCall(async (data, context) => {
   if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Login required");
   const { vendorId, vendorName, vendorEmail, billingCycle } = data;
   const cycle = billingCycle === "annual" ? "annual" : "monthly";
@@ -110,7 +133,7 @@ exports.createSubscription = functions.https.onCall(async (data, context) => {
       amount: plan.amount, currency: plan.currency, status: "created", vendorName: vendorName || "", vendorEmail: vendorEmail || "",
       createdAt: admin.firestore.FieldValue.serverTimestamp(), activatedAt: null, nextBillingDate: null, payments: [],
     }, { merge: true });
-    const cfg = functions.config().razorpay;
+    const cfg = getRazorpayConfig();
     return { subscriptionId: subscription.id, keyId: cfg.key_id, planKey, amount: plan.amount, currency: plan.currency };
   } catch (err) {
     console.error("createSubscription error:", err);
@@ -118,12 +141,12 @@ exports.createSubscription = functions.https.onCall(async (data, context) => {
   }
 });
 
-exports.verifySubscription = functions.https.onCall(async (data, context) => {
+exports.verifySubscription = functions.runWith({ secrets: [razorpayConfig] }).https.onCall(async (data, context) => {
   if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Login required");
   const { razorpay_payment_id, razorpay_subscription_id, razorpay_signature, vendorId } = data;
   if (context.auth.uid !== vendorId) throw new functions.https.HttpsError("permission-denied", "Unauthorized");
   try {
-    const cfg = functions.config().razorpay;
+    const cfg = getRazorpayConfig();
     const body = `${razorpay_payment_id}|${razorpay_subscription_id}`;
     const expectedSignature = crypto.createHmac("sha256", cfg.key_secret).update(body).digest("hex");
     if (expectedSignature !== razorpay_signature) throw new functions.https.HttpsError("invalid-argument", "Payment signature mismatch");
@@ -148,7 +171,7 @@ exports.verifySubscription = functions.https.onCall(async (data, context) => {
   }
 });
 
-exports.cancelSubscription = functions.https.onCall(async (data, context) => {
+exports.cancelSubscription = functions.runWith({ secrets: [razorpayConfig] }).https.onCall(async (data, context) => {
   if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Login required");
   const vendorId = context.auth.uid;
   try {
@@ -166,8 +189,8 @@ exports.cancelSubscription = functions.https.onCall(async (data, context) => {
   }
 });
 
-exports.razorpayWebhook = functions.https.onRequest(async (req, res) => {
-  const cfg = functions.config().razorpay;
+exports.razorpayWebhook = functions.runWith({ secrets: [razorpayConfig] }).https.onRequest(async (req, res) => {
+  const cfg = getRazorpayConfig();
   const receivedSig = req.headers["x-razorpay-signature"];
   const expectedSig = crypto.createHmac("sha256", cfg.webhook_secret).update(JSON.stringify(req.body)).digest("hex");
   if (receivedSig !== expectedSig) { console.error("Webhook signature mismatch"); return res.status(400).send("Invalid signature"); }
@@ -450,3 +473,6 @@ exports.runBoostScan = functions.https.onCall(async (data, context) => {
 Object.assign(exports, require("./agentCommissions"));
 Object.assign(exports, require("./websiteBuildPayments"));
 Object.assign(exports, require("./boostCompetitiveRanking"));
+
+
+
