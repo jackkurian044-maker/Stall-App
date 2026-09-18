@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { collection, limit, onSnapshot, orderBy, query } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
-import { Megaphone, MapPin, WalletCards, PauseCircle, CheckCircle2 } from "lucide-react";
+import { Megaphone, MapPin, WalletCards, PauseCircle, PlayCircle, CheckCircle2 } from "lucide-react";
 import { db } from "./firebase";
 import { COLORS } from "./constants";
 
@@ -88,6 +88,19 @@ export default function BoostCampaignPanel({ user, listing }) {
     }
   };
 
+  const resume = async (campaignId) => {
+    setBusy(true);
+    setMessage("");
+    try {
+      const fn = httpsCallable(functions, "resumeBoostCampaign");
+      await fn({ businessId: listing.id, campaignId });
+      setMessage("Boost is active again.");
+    } catch (err) {
+      setMessage(friendlyError(err, "Could not resume Boost. Please try again."));
+    } finally {
+      setBusy(false);
+    }
+  };
   const pause = async (campaignId) => {
     setBusy(true);
     setMessage("");
@@ -132,7 +145,8 @@ export default function BoostCampaignPanel({ user, listing }) {
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "4px 8px", borderRadius: 999, background: campaign.status === "active" ? `${COLORS.teal}18` : "#f2f2f2", color: campaign.status === "active" ? COLORS.teal : "#666", fontSize: 10.5, fontWeight: 800 }}><CheckCircle2 size={11} /> {campaign.status}</span>
-            {campaign.status === "active" && <button disabled={busy} onClick={() => pause(campaign.id)} style={{ border: `1px solid ${COLORS.ink}`, background: "#fff", borderRadius: 7, padding: "5px 8px", fontSize: 10.5, fontWeight: 700 }}><PauseCircle size={11} /> Pause</button>}
+            {campaign.status === "active" && <button disabled={busy} onClick={() => pause(campaign.id)} style={{ border: `1px solid ${COLORS.ink}`, background: "#fff", borderRadius: 7, padding: "5px 8px", fontSize: 10.5, fontWeight: 700 }}><PauseCircle size={11} /> Pause</button>
+            {campaign.status === "paused" && campaign.paymentId && <button disabled={busy} onClick={() => resume(campaign.id)} style={{ border: `1px solid ${COLORS.teal}`, background: "#fff", color: COLORS.teal, borderRadius: 7, padding: "5px 8px", fontSize: 10.5, fontWeight: 800, display: "inline-flex", alignItems: "center", gap: 4 }}><PlayCircle size={11} /> Resume Boost</button>}}
           </div>
         </div>)}
       </div>}
