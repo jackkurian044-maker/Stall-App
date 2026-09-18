@@ -133,5 +133,5 @@ export default function BoostCampaignPanel({ user, listing }) {
   );
 }
 
-const labelStyle = { display: "flex", flexDirection: "column", gap: 5, fontSize: 10.5, fontWeight: 800, textTransform: "uppercase" };
-const inputStyle = { width: "100%", boxSizing: "border-box", padding: "8px 9px", border: `1.5px solid ${COLORS.ink}`, borderRadius: 7, fontSize: 12.5, background: "#fff" };
+const labelStyle = { display: "flex", flexDirection: "column", gap: 5, fontSize: 10.5, fontWeight: 800, textTransform: "uppercase", color: COLORS.ink };
+const inputStyle = { width: "100%", boxSizing: "border-box", padding: "8px 9px", border: `1.5px solid ${COLORS.ink}`, borderRadius: 7, fontSize: 12.5, background: "#fff", color: COLORS.ink };
