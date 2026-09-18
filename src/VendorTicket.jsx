@@ -107,7 +107,7 @@ export default function VendorTicket({ vendor, highlighted, onClick, onOpenRevie
 
   return (
     <div
-      className="stall-card"
+      className="stall-card vendor-ticket-card"
       onClick={handleClick}
       title="Open website / Google Business profile"
       style={{
