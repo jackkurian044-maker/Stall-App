@@ -75,7 +75,7 @@ function regionFromLatLng(lat, lng) {
 const SUBSCRIPTION_PLANS = {
   // New India catalog
   in_digital_growth_monthly: { tier: "digital_growth", amount: 49900, currency: "INR", period: "monthly", interval: 1, label: "STall Digital Growth — Monthly" },
-  in_growth_setup_monthly: { tier: "growth_setup", amount: 99900, currency: "INR", period: "monthly", interval: 1, label: "STall Growth Setup — Monthly" },
+  in_growth_setup_monthly_v2: { tier: "growth_setup", amount: 99900, currency: "INR", period: "monthly", interval: 1, label: "STall Growth Setup — Monthly ₹999" },
 
   // Legacy catalog kept so existing subscribers are not broken.
   in_monthly: { tier: "digital_growth", amount: 49900, currency: "INR", period: "monthly", interval: 1, label: "Stall Premium — Monthly" },
@@ -131,7 +131,7 @@ exports.createSubscription = functions.runWith({ secrets: [razorpayConfig] }).ht
     let planKey;
     if (product === "growth_setup") {
       if (region !== "in") throw new functions.https.HttpsError("failed-precondition", "Growth Setup pricing is currently configured for India only.");
-      planKey = "in_growth_setup_monthly";
+      planKey = "in_growth_setup_monthly_v2";
     } else if (product === "digital_growth") {
       planKey = region === "ae" ? "ae_monthly" : "in_digital_growth_monthly";
     } else {
@@ -139,6 +139,13 @@ exports.createSubscription = functions.runWith({ secrets: [razorpayConfig] }).ht
       planKey = `${region}_${cycle}`;
     }
     const plan = SUBSCRIPTION_PLANS[planKey];
+    if (!plan) throw new functions.https.HttpsError("failed-precondition", "Selected payment plan is not configured");
+    if (product === "growth_setup" && (plan.amount !== 99900 || plan.currency !== "INR")) {
+      throw new functions.https.HttpsError("failed-precondition", "Growth Setup must be ₹999/month");
+    }
+    if (product === "digital_growth" && region === "in" && (plan.amount !== 49900 || plan.currency !== "INR")) {
+      throw new functions.https.HttpsError("failed-precondition", "Digital Growth must be ₹499/month");
+    }
     const razorpay = getRazorpay();
     const planId = await getOrCreatePlanId(razorpay, planKey);
     const subscription = await razorpay.subscriptions.create({
