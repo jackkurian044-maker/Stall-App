@@ -15,6 +15,7 @@ import PrivacyPolicy from "./PrivacyPolicy";
 import Footer from "./Footer";
 import ReviewAutoResponder from "./ReviewAutoResponder";
 import BusinessOwnerCTA from "./BusinessOwnerCTA";
+import StoreLandingPage from "./StoreLandingPage";
 
 const AUTH_TRACE = "[STALL-AUTH v4]";
 const trace = (...args) => console.info(AUTH_TRACE, ...args);
@@ -25,9 +26,19 @@ export default function App() {
   const [agent, setAgent] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [mode, setMode] = useState("find");
+  const [landingStoreId, setLandingStoreId] = useState("");
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    if (params.get("store")) {
+      const storeId = (params.get("store") || "").trim();
+      if (storeId) {
+        setLandingStoreId(storeId);
+        setMode("landing");
+        window.history.replaceState({}, "", window.location.pathname);
+        return;
+      }
+    }
     if (params.get("upgrade") === "1") {
       try {
         window.sessionStorage.setItem("stallPremiumIntent", "1");
@@ -130,6 +141,8 @@ export default function App() {
       <div style={{ flex: 1 }}>
         {authLoading ? (
           <div style={{ padding: 40, textAlign: "center", color: "#9c9c9c", fontSize: 14 }}>Loading…</div>
+        ) : mode === "landing" ? (
+          <StoreLandingPage listingId={landingStoreId} onBack={() => { setMode("find"); window.history.replaceState({}, "", window.location.pathname); }} />
         ) : mode === "find" ? (
           <>
             <BusinessOwnerCTA onListFree={openVendorSignup} onClaim={openVendorClaim} />
