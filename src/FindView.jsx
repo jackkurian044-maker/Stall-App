@@ -246,6 +246,9 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
       // listing cannot be surfaced beyond the radius attached to its plan.
       // Free listings retain the existing basic-listing discovery behavior.
       .filter((v) => {
+        // Admins can inspect the full vendor marketplace; customer discovery
+        // remains governed by each listing's plan visibility entitlement.
+        if (isAdmin) return true;
         const plan = getPlan(v);
         return !plan.visibilityKm || Number(v.distance || 0) <= plan.visibilityKm;
       })
