@@ -34,6 +34,7 @@ export default function PlanCheckout({ user, listing }) {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [requestedPlan, setRequestedPlan] = useState("");
+  const [allowPlanChange, setAllowPlanChange] = useState(false);
 
   useEffect(() => {
     try {
@@ -177,25 +178,34 @@ export default function PlanCheckout({ user, listing }) {
         </div>
       )}
 
+      {requestedPlan && current !== requestedPlan && (
+        <div style={{ marginTop: 10, display: "flex", justifyContent: "flex-end" }}>
+          <button type="button" onClick={() => setAllowPlanChange(true)} style={{ background: "transparent", border: "1px solid " + COLORS.ink, color: COLORS.ink, borderRadius: 8, padding: "7px 10px", fontSize: 11.5, fontWeight: 800 }}>
+            Change plan instead
+          </button>
+        </div>
+      )}
+
       <div style={{ display: "grid", gap: 10, marginTop: 16 }}>
         {PLAN_ORDER.map(key => {
           const p = STALL_PLANS[key];
           const isCurrent = current === key;
           const locked = current === "growth_setup" || (current === "digital_growth" && key !== "growth_setup");
           const upgradePending = current === "digital_growth" && key === "growth_setup";
+          const requestedLocked = Boolean(requestedPlan && current !== requestedPlan && requestedPlan !== key && !allowPlanChange);
           return (
             <div key={key} style={{ border: isCurrent ? "2px solid " + COLORS.teal : "1px solid #ddd", borderRadius: 12, padding: 13, background: "#fff" }}>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
                 <div>
-                  <div style={{ fontWeight: 900 }}>{p.name}</div>
-                  <div style={{ fontSize: 18, fontWeight: 900, marginTop: 3 }}>₹{p.price.toLocaleString("en-IN")} <span style={{ fontSize: 11, fontWeight: 600, color: "#777" }}>{p.billing === "monthly" ? "/ month" : "one-time"}</span></div>
+                  <div style={{ fontWeight: 900, color: COLORS.ink, fontSize: 15 }}>{p.name}</div>
+                  <div style={{ fontSize: 18, fontWeight: 900, marginTop: 3, color: COLORS.ink }}>₹{p.price.toLocaleString("en-IN")} <span style={{ fontSize: 11, fontWeight: 600, color: "#777" }}>{p.billing === "monthly" ? "/ month" : "one-time"}</span></div>
                   <div style={{ fontSize: 11.5, color: "#666", marginTop: 5 }}>Local visibility: {p.visibilityKm ? "up to " + p.visibilityKm + " KM" : "basic listing"}</div>
                 </div>
                 {isCurrent ? (
                   <span style={{ padding: "5px 9px", borderRadius: 999, background: "#E1F5EE", color: "#085041", fontSize: 11, fontWeight: 800 }}>ACTIVE</span>
                 ) : (
-                  <button type="button" disabled={Boolean(working) || locked || upgradePending} onClick={() => checkout(key)} style={{ border: "none", borderRadius: 9, padding: "9px 12px", background: locked || upgradePending ? "#ddd" : COLORS.ink, color: locked || upgradePending ? "#888" : "#fff", fontWeight: 800, cursor: locked || upgradePending ? "not-allowed" : "pointer" }}>
-                    {working === key ? "Opening…" : upgradePending ? "Upgrade flow next" : (p.billing === "monthly" ? "Pay ₹" + p.price.toLocaleString("en-IN") + "/month" : "Pay ₹" + p.price.toLocaleString("en-IN"))}
+                  <button type="button" disabled={Boolean(working) || locked || upgradePending || requestedLocked} onClick={() => checkout(key)} style={{ border: "none", borderRadius: 9, padding: "9px 12px", background: locked || upgradePending || requestedLocked ? "#ddd" : COLORS.ink, color: locked || upgradePending || requestedLocked ? "#888" : "#fff", fontWeight: 800, cursor: locked || upgradePending || requestedLocked ? "not-allowed" : "pointer" }}>
+                    {working === key ? "Opening…" : upgradePending ? "Upgrade flow next" : requestedLocked ? "Select after change" : (p.billing === "monthly" ? "Pay ₹" + p.price.toLocaleString("en-IN") + "/month" : "Pay ₹" + p.price.toLocaleString("en-IN"))}
                   </button>
                 )}
               </div>
