@@ -257,7 +257,16 @@ exports.razorpayWebhook = functions.runWith({ secrets: [razorpayConfig] }).https
         const vendorId = snap.docs[0].id;
         await db.collection("premium_vendors").doc(vendorId).update({ isPremium: false, status: "payment_failed", failedAt: admin.firestore.FieldValue.serverTimestamp() });
         const vendorSnap = await db.collection("vendors").where("ownerId", "==", vendorId).limit(1).get();
-        if (!vendorSnap.empty) await vendorSnap.docs[0].ref.update({ isPremium: false });
+        if (!vendorSnap.empty) {
+          const basePlanKey = snap.docs[0].data().basePlanKey || "free";
+          await vendorSnap.docs[0].ref.update({
+            isPremium: false,
+            isVerified: basePlanKey === "verified",
+            subscriptionTier: basePlanKey,
+            planKey: basePlanKey,
+            planUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        }
         console.log(`⚠️ Payment failed — premium deactivated for vendor ${vendorId}`);
         break;
       }
