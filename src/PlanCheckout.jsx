@@ -165,6 +165,7 @@ export default function PlanCheckout({ user, listing }) {
           const p = STALL_PLANS[key];
           const isCurrent = current === key;
           const locked = current === "growth_setup" || (current === "digital_growth" && key !== "growth_setup");
+          const upgradePending = current === "digital_growth" && key === "growth_setup";
           return (
             <div key={key} style={{ border: isCurrent ? "2px solid " + COLORS.teal : "1px solid #ddd", borderRadius: 12, padding: 13, background: "#fff" }}>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
@@ -176,8 +177,8 @@ export default function PlanCheckout({ user, listing }) {
                 {isCurrent ? (
                   <span style={{ padding: "5px 9px", borderRadius: 999, background: "#E1F5EE", color: "#085041", fontSize: 11, fontWeight: 800 }}>ACTIVE</span>
                 ) : (
-                  <button type="button" disabled={Boolean(working) || locked} onClick={() => checkout(key)} style={{ border: "none", borderRadius: 9, padding: "9px 12px", background: locked ? "#ddd" : COLORS.ink, color: locked ? "#888" : "#fff", fontWeight: 800, cursor: locked ? "not-allowed" : "pointer" }}>
-                    {working === key ? "Opening…" : "Choose"}
+                  <button type="button" disabled={Boolean(working) || locked || upgradePending} onClick={() => checkout(key)} style={{ border: "none", borderRadius: 9, padding: "9px 12px", background: locked || upgradePending ? "#ddd" : COLORS.ink, color: locked || upgradePending ? "#888" : "#fff", fontWeight: 800, cursor: locked || upgradePending ? "not-allowed" : "pointer" }}>
+                    {working === key ? "Opening…" : upgradePending ? "Upgrade flow next" : "Choose"}
                   </button>
                 )}
               </div>
@@ -185,6 +186,12 @@ export default function PlanCheckout({ user, listing }) {
           );
         })}
       </div>
+
+      {current === "digital_growth" && (
+        <div style={{ marginTop: 10, padding: 10, borderRadius: 9, background: "#FFF7ED", color: "#9A3412", fontSize: 11.5 }}>
+          Growth Setup upgrade is intentionally held here until the existing subscription can be changed without creating a second active Razorpay subscription.
+        </div>
+      )}
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 14, fontSize: 11.5, color: "#555" }}>
         <span><Check size={13} style={{ verticalAlign: "middle" }} /> Verified payment activation</span>
