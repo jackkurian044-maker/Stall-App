@@ -38,7 +38,7 @@ function withTimeout(promise, ms, message) {
   ]);
 }
 
-export default function VendorPremiumWorkspace({ user, listing }) {
+export default function VendorPremiumWorkspace({ user, listing, hideCheckout = false }) {
   const [premium, setPremium] = useState(null);
   const [gbp, setGbp] = useState(null);
   const [boost, setBoost] = useState(null);
@@ -205,7 +205,7 @@ export default function VendorPremiumWorkspace({ user, listing }) {
         </div>
       </section>
 
-      {!active && !premiumLoading && (
+      {!hideCheckout && !active && !premiumLoading && (
         <section style={{ ...cardStyle, background: `${COLORS.marigold}18` }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "flex-start", flexWrap: "wrap" }}>
             <div>
