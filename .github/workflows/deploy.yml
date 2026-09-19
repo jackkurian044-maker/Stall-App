@@ -75,6 +75,30 @@ jobs:
         run: npx --yes firebase-tools@latest deploy --only functions:updateLeadStatus --project stall-app-1aab7 --non-interactive
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
+      - name: Deploy Verified payment - create order
+        run: npx --yes firebase-tools@latest deploy --only functions:createVerifiedOrder --project stall-app-1aab7 --non-interactive
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
+      - name: Deploy Verified payment - verify payment
+        run: npx --yes firebase-tools@latest deploy --only functions:verifyVerifiedPayment --project stall-app-1aab7 --non-interactive
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
+      - name: Deploy Premium - create subscription
+        run: npx --yes firebase-tools@latest deploy --only functions:createSubscription --project stall-app-1aab7 --non-interactive
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
+      - name: Deploy Premium - verify subscription
+        run: npx --yes firebase-tools@latest deploy --only functions:verifySubscription --project stall-app-1aab7 --non-interactive
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
+      - name: Deploy Premium - cancel subscription
+        run: npx --yes firebase-tools@latest deploy --only functions:cancelSubscription --project stall-app-1aab7 --non-interactive
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
+      - name: Deploy Premium - Razorpay webhook
+        run: npx --yes firebase-tools@latest deploy --only functions:razorpayWebhook --project stall-app-1aab7 --non-interactive
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
       - name: Deploy Boost - create order
         run: npx --yes firebase-tools@latest deploy --only functions:createBoostOrder --project stall-app-1aab7 --non-interactive
         env:
