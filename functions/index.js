@@ -228,6 +228,7 @@ exports.verifySubscription = functions.runWith({ secrets: [razorpayConfig] }).ht
     return { success: true };
   } catch (err) {
     console.error("verifySubscription error:", err);
+    if (err instanceof functions.https.HttpsError) throw err;
     throw new functions.https.HttpsError("internal", err.message);
   }
 });
