@@ -147,6 +147,7 @@ exports.createSubscription = functions.runWith({ secrets: [razorpayConfig] }).ht
     await db.collection("premium_vendors").doc(vendorId).set({
       isPremium: false, subscriptionId: subscription.id, planId, planKey, tier: plan.tier || "digital_growth",
       product: product || "legacy_premium", billingCycle: plan.period === "yearly" ? "annual" : "monthly",
+      basePlanKey: listing?.isVerified ? "verified" : "free",
       amount: plan.amount, currency: plan.currency, status: "created", vendorName: vendorName || "", vendorEmail: vendorEmail || "",
       createdAt: admin.firestore.FieldValue.serverTimestamp(), activatedAt: null, nextBillingDate: null, payments: [],
     }, { merge: true });
@@ -408,6 +409,7 @@ exports.verifyVerifiedPayment = functions.runWith({ secrets: [razorpayConfig] })
       subscriptionTier: "verified",
       verifiedAt: admin.firestore.FieldValue.serverTimestamp(),
       verifiedPaymentId: razorpay_payment_id,
+      basePlanKey: "verified",
       planUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
