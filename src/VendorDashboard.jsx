@@ -14,6 +14,7 @@ import { findDuplicateVendor } from "./duplicateCheck";
 import QuickOfferModal from "./QuickOfferModal";
 import { encodeGeohash } from "./geohash";
 import VendorPremiumWorkspace from "./VendorPremiumWorkspace";
+import PlanCheckout from "./PlanCheckout";
 import LeadEnginePanel from "./LeadEnginePanel";
 import BoostCampaignPanel from "./BoostCampaignPanel";
 
@@ -216,7 +217,8 @@ export default function VendorDashboard({ user, agent }) {
 
         {dashTab === "premium" && (
           <div>
-            <VendorPremiumWorkspace user={user} listing={premiumListing} />
+            <PlanCheckout user={user} listing={premiumListing} />
+            <VendorPremiumWorkspace user={user} listing={premiumListing} hideCheckout />
             <BoostCampaignPanel user={user} listing={premiumListing} />
           </div>
         )}
