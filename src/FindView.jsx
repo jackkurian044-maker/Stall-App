@@ -21,6 +21,7 @@ import RadarChart from "./RadarChart";
 import ReviewsModal from "./ReviewsModal";
 import { watchFavorites, toggleFavorite } from "./favorites";
 import TagStoreModal from "./TagStoreModal";
+import { getPlan } from "./planCatalog";
 
 const PAGE_SIZE = 5;
 
@@ -241,6 +242,13 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
   const results = useMemo(() => {
     if (!userLoc) return [];
     return vendors
+      // Paid visibility is an entitlement, not just a UI label. A paid
+      // listing cannot be surfaced beyond the radius attached to its plan.
+      // Free listings retain the existing basic-listing discovery behavior.
+      .filter((v) => {
+        const plan = getPlan(v);
+        return !plan.visibilityKm || Number(v.distance || 0) <= plan.visibilityKm;
+      })
       .filter((v) => categoryFilter === "All" || v.category === categoryFilter)
       .filter((v) => !showFavoritesOnly || favoriteIds.has(v.id))
       .filter((v) => {
