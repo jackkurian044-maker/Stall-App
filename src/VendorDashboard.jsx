@@ -154,7 +154,11 @@ export default function VendorDashboard({ user, agent }) {
     } catch { setClaimMsg("Couldn't claim that listing — check the code and try again."); }
   };
 
-  const premiumListing = listings[0];
+  let premiumListing = listings[0];
+  try {
+    const requestedListingId = window.sessionStorage.getItem("stallUpgradeListingId") || "";
+    if (requestedListingId) premiumListing = listings.find((l) => l.id === requestedListingId) || listings[0];
+  } catch {}
 
   return (
     <div className="stall-grid">
