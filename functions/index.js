@@ -141,7 +141,7 @@ exports.createSubscription = functions.runWith({ secrets: [razorpayConfig] }).ht
       plan_id: planId,
       customer_notify: 1,
       quantity: 1,
-      total_count: cycle === "annual" ? 10 : 120,
+      total_count: plan.period === "yearly" ? 10 : 120,
       notes: { vendorId, vendorName: vendorName || "", vendorEmail: vendorEmail || "", source: "stall-app", planKey },
     });
     await db.collection("premium_vendors").doc(vendorId).set({
