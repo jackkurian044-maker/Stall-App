@@ -33,6 +33,14 @@ export default function PlanCheckout({ user, listing }) {
   const [working, setWorking] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [requestedPlan, setRequestedPlan] = useState("");
+
+  useEffect(() => {
+    try {
+      const plan = window.sessionStorage.getItem("stallUpgradePlan") || "";
+      if (PLAN_ORDER.includes(plan)) setRequestedPlan(plan);
+    } catch {}
+  }, []);
 
   useEffect(() => {
     if (!user?.uid) return undefined;
@@ -146,6 +154,15 @@ export default function PlanCheckout({ user, listing }) {
         <div style={{ fontSize: 18, fontWeight: 900 }}>STall Plans</div>
       </div>
       <div style={muted}>Plans are activated only after verified Razorpay payment. Your current business: <strong>{listing.name}</strong></div>
+      {requestedPlan && current !== requestedPlan && STALL_PLANS[requestedPlan] && (
+        <div style={{ marginTop: 12, padding: 12, borderRadius: 10, background: "#EEF6FF", border: "1px solid #93C5FD", color: "#123B66" }}>
+          <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".04em" }}>You selected this plan</div>
+          <div style={{ fontSize: 18, fontWeight: 900, marginTop: 3 }}>
+            {STALL_PLANS[requestedPlan].name} — ₹{STALL_PLANS[requestedPlan].price.toLocaleString("en-IN")} {STALL_PLANS[requestedPlan].billing === "monthly" ? "/ month" : "one-time"}
+          </div>
+          <div style={{ fontSize: 12, marginTop: 4 }}>Click the matching payment button below to open Razorpay. The amount shown there is the amount you will pay.</div>
+        </div>
+      )}
 
       {(current === "digital_growth" || current === "growth_setup") && (
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 14 }}>
@@ -171,14 +188,14 @@ export default function PlanCheckout({ user, listing }) {
               <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
                 <div>
                   <div style={{ fontWeight: 900 }}>{p.name}</div>
-                  <div style={{ fontSize: 18, fontWeight: 900, marginTop: 3 }}>₹{p.price.toLocaleString("en-IN")} <span style={{ fontSize: 11, fontWeight: 600, color: "#777" }}>{p.billing}</span></div>
+                  <div style={{ fontSize: 18, fontWeight: 900, marginTop: 3 }}>₹{p.price.toLocaleString("en-IN")} <span style={{ fontSize: 11, fontWeight: 600, color: "#777" }}>{p.billing === "monthly" ? "/ month" : "one-time"}</span></div>
                   <div style={{ fontSize: 11.5, color: "#666", marginTop: 5 }}>Local visibility: {p.visibilityKm ? "up to " + p.visibilityKm + " KM" : "basic listing"}</div>
                 </div>
                 {isCurrent ? (
                   <span style={{ padding: "5px 9px", borderRadius: 999, background: "#E1F5EE", color: "#085041", fontSize: 11, fontWeight: 800 }}>ACTIVE</span>
                 ) : (
                   <button type="button" disabled={Boolean(working) || locked || upgradePending} onClick={() => checkout(key)} style={{ border: "none", borderRadius: 9, padding: "9px 12px", background: locked || upgradePending ? "#ddd" : COLORS.ink, color: locked || upgradePending ? "#888" : "#fff", fontWeight: 800, cursor: locked || upgradePending ? "not-allowed" : "pointer" }}>
-                    {working === key ? "Opening…" : upgradePending ? "Upgrade flow next" : "Choose"}
+                    {working === key ? "Opening…" : upgradePending ? "Upgrade flow next" : (p.billing === "monthly" ? "Pay ₹" + p.price.toLocaleString("en-IN") + "/month" : "Pay ₹" + p.price.toLocaleString("en-IN"))}
                   </button>
                 )}
               </div>
