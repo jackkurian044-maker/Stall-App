@@ -28,6 +28,17 @@ export default function App() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    if (params.get("upgrade") === "1") {
+      try {
+        window.sessionStorage.setItem("stallPremiumIntent", "1");
+        if (params.get("plan")) window.sessionStorage.setItem("stallUpgradePlan", params.get("plan"));
+        if (params.get("id")) window.sessionStorage.setItem("stallUpgradeListingId", params.get("id"));
+        if (params.get("claim")) window.sessionStorage.setItem("stallUpgradeClaim", params.get("claim"));
+      } catch {}
+      setMode("auth");
+      window.history.replaceState({}, "", window.location.pathname);
+      return;
+    }
     if (params.get("premium") === "1") {
       try { window.sessionStorage.setItem("stallPremiumIntent", "1"); } catch {}
       setMode("auth");
