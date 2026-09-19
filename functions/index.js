@@ -271,7 +271,14 @@ exports.razorpayWebhook = functions.runWith({ secrets: [razorpayConfig] }).https
         const vendorSnap = await db.collection("vendors").where("ownerId", "==", vendorId).limit(1).get();
         if (!vendorSnap.empty) {
           const vendorDoc = vendorSnap.docs[0];
-          await vendorDoc.ref.update({ isPremium: false, subscriptionTier: "free", planKey: "free", planUpdatedAt: admin.firestore.FieldValue.serverTimestamp() });
+          const basePlanKey = snap.docs[0].data().basePlanKey || "free";
+          await vendorDoc.ref.update({
+            isPremium: false,
+            isVerified: basePlanKey === "verified",
+            subscriptionTier: basePlanKey,
+            planKey: basePlanKey,
+            planUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
           try {
             const commissionSnap = await db.collection("commissions").where("vendorId", "==", vendorDoc.id).limit(1).get();
             if (!commissionSnap.empty) {
