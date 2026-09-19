@@ -73,10 +73,15 @@ function regionFromLatLng(lat, lng) {
 // Amounts are in the smallest currency unit (paise / fils).
 // planKey = "<region>_<cycle>".
 const SUBSCRIPTION_PLANS = {
-  in_monthly: { amount: 49900, currency: "INR", period: "monthly", interval: 1, label: "Stall Premium — Monthly" },
-  in_annual: { amount: 499900, currency: "INR", period: "yearly", interval: 1, label: "Stall Premium — Annual" },
-  ae_monthly: { amount: 10000, currency: "AED", period: "monthly", interval: 1, label: "Stall Premium — Monthly" },
-  ae_annual: { amount: 99900, currency: "AED", period: "yearly", interval: 1, label: "Stall Premium — Annual" },
+  // New India catalog
+  in_digital_growth_monthly: { tier: "digital_growth", amount: 49900, currency: "INR", period: "monthly", interval: 1, label: "STall Digital Growth — Monthly" },
+  in_growth_setup_monthly: { tier: "growth_setup", amount: 99900, currency: "INR", period: "monthly", interval: 1, label: "STall Growth Setup — Monthly" },
+
+  // Legacy catalog kept so existing subscribers are not broken.
+  in_monthly: { tier: "digital_growth", amount: 49900, currency: "INR", period: "monthly", interval: 1, label: "Stall Premium — Monthly" },
+  in_annual: { tier: "digital_growth", amount: 499900, currency: "INR", period: "yearly", interval: 1, label: "Stall Premium — Annual" },
+  ae_monthly: { tier: "digital_growth", amount: 10000, currency: "AED", period: "monthly", interval: 1, label: "Stall Premium — Monthly" },
+  ae_annual: { tier: "digital_growth", amount: 99900, currency: "AED", period: "yearly", interval: 1, label: "Stall Premium — Annual" },
 };
 
 // Looks up (or lazily creates, once ever) the Razorpay plan_id for a
@@ -108,8 +113,7 @@ async function getOrCreatePlanId(razorpay, planKey) {
 
 exports.createSubscription = functions.runWith({ secrets: [razorpayConfig] }).https.onCall(async (data, context) => {
   if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Login required");
-  const { vendorId, vendorName, vendorEmail, billingCycle } = data;
-  const cycle = billingCycle === "annual" ? "annual" : "monthly";
+  const { vendorId, vendorName, vendorEmail, billingCycle, product } = data;
   if (context.auth.uid !== vendorId) throw new functions.https.HttpsError("permission-denied", "Unauthorized");
   const premiumDoc = await db.collection("premium_vendors").doc(vendorId).get();
   if (premiumDoc.exists && premiumDoc.data().isPremium) throw new functions.https.HttpsError("already-exists", "Already subscribed");
@@ -117,7 +121,19 @@ exports.createSubscription = functions.runWith({ secrets: [razorpayConfig] }).ht
     const vendorListingSnap = await db.collection("vendors").where("ownerId", "==", vendorId).limit(1).get();
     const listing = vendorListingSnap.empty ? null : vendorListingSnap.docs[0].data();
     const region = regionFromLatLng(listing?.lat, listing?.lng);
-    const planKey = `${region}_${cycle}`;
+
+    // New checkout callers choose an explicit product. Legacy callers that
+    // only send billingCycle keep the old Premium behaviour.
+    let planKey;
+    if (product === "growth_setup") {
+      if (region !== "in") throw new functions.https.HttpsError("failed-precondition", "Growth Setup pricing is currently configured for India only.");
+      planKey = "in_growth_setup_monthly";
+    } else if (product === "digital_growth") {
+      planKey = region === "ae" ? "ae_monthly" : "in_digital_growth_monthly";
+    } else {
+      const cycle = billingCycle === "annual" ? "annual" : "monthly";
+      planKey = `${region}_${cycle}`;
+    }
     const plan = SUBSCRIPTION_PLANS[planKey];
     const razorpay = getRazorpay();
     const planId = await getOrCreatePlanId(razorpay, planKey);
@@ -129,12 +145,13 @@ exports.createSubscription = functions.runWith({ secrets: [razorpayConfig] }).ht
       notes: { vendorId, vendorName: vendorName || "", vendorEmail: vendorEmail || "", source: "stall-app", planKey },
     });
     await db.collection("premium_vendors").doc(vendorId).set({
-      isPremium: false, subscriptionId: subscription.id, planId, planKey, billingCycle: cycle,
+      isPremium: false, subscriptionId: subscription.id, planId, planKey, tier: plan.tier || "digital_growth",
+      product: product || "legacy_premium", billingCycle: plan.period === "yearly" ? "annual" : "monthly",
       amount: plan.amount, currency: plan.currency, status: "created", vendorName: vendorName || "", vendorEmail: vendorEmail || "",
       createdAt: admin.firestore.FieldValue.serverTimestamp(), activatedAt: null, nextBillingDate: null, payments: [],
     }, { merge: true });
     const cfg = getRazorpayConfig();
-    return { subscriptionId: subscription.id, keyId: cfg.key_id, planKey, amount: plan.amount, currency: plan.currency };
+    return { subscriptionId: subscription.id, keyId: cfg.key_id, planKey, tier: plan.tier || "digital_growth", product: product || "legacy_premium", amount: plan.amount, currency: plan.currency };
   } catch (err) {
     console.error("createSubscription error:", err);
     throw new functions.https.HttpsError("internal", err.message);
@@ -153,16 +170,27 @@ exports.verifySubscription = functions.runWith({ secrets: [razorpayConfig] }).ht
     const razorpay = getRazorpay();
     const payment = await razorpay.payments.fetch(razorpay_payment_id);
     const premiumSnap = await db.collection("premium_vendors").doc(vendorId).get();
-    const billingCycle = premiumSnap.exists ? premiumSnap.data().billingCycle : "monthly";
+    const premiumData = premiumSnap.exists ? premiumSnap.data() : {};
+    const billingCycle = premiumData.billingCycle || "monthly";
     const nextBilling = new Date();
     nextBilling.setDate(nextBilling.getDate() + (billingCycle === "annual" ? 365 : 30));
     await db.collection("premium_vendors").doc(vendorId).set({
       isPremium: true, status: "active", subscriptionId: razorpay_subscription_id,
+      tier: premiumData.tier || "digital_growth",
+      product: premiumData.product || "legacy_premium",
       activatedAt: admin.firestore.FieldValue.serverTimestamp(), nextBillingDate: nextBilling,
       payments: admin.firestore.FieldValue.arrayUnion({ paymentId: razorpay_payment_id, amount: payment.amount, paidAt: admin.firestore.Timestamp.now(), method: payment.method }),
     }, { merge: true });
     const vendorSnap = await db.collection("vendors").where("ownerId", "==", vendorId).limit(1).get();
-    if (!vendorSnap.empty) await vendorSnap.docs[0].ref.update({ isPremium: true });
+    if (!vendorSnap.empty) {
+      const tier = premiumData.tier || "digital_growth";
+      await vendorSnap.docs[0].ref.update({
+        isPremium: true,
+        planKey: tier,
+        subscriptionTier: tier,
+        planUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    }
     console.log(`✅ Premium activated for vendor ${vendorId}`);
     return { success: true };
   } catch (err) {
@@ -211,6 +239,8 @@ exports.razorpayWebhook = functions.runWith({ secrets: [razorpayConfig] }).https
         nextBilling.setDate(nextBilling.getDate() + (existingData.billingCycle === "annual" ? 365 : 30));
         await db.collection("premium_vendors").doc(vendorId).update({
           isPremium: true, status: "active", nextBillingDate: nextBilling,
+          tier: existingData.tier || "digital_growth",
+          product: existingData.product || "legacy_premium",
           payments: admin.firestore.FieldValue.arrayUnion({ paymentId: payment?.id || "", amount: payment?.amount || existingData.amount || 49900, paidAt: admin.firestore.Timestamp.now(), method: payment?.method || "auto" }),
         });
         console.log(`✅ Subscription renewed for vendor ${vendorId}`);
@@ -240,7 +270,7 @@ exports.razorpayWebhook = functions.runWith({ secrets: [razorpayConfig] }).https
         const vendorSnap = await db.collection("vendors").where("ownerId", "==", vendorId).limit(1).get();
         if (!vendorSnap.empty) {
           const vendorDoc = vendorSnap.docs[0];
-          await vendorDoc.ref.update({ isPremium: false });
+          await vendorDoc.ref.update({ isPremium: false, subscriptionTier: "free", planKey: "free", planUpdatedAt: admin.firestore.FieldValue.serverTimestamp() });
           try {
             const commissionSnap = await db.collection("commissions").where("vendorId", "==", vendorDoc.id).limit(1).get();
             if (!commissionSnap.empty) {
