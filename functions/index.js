@@ -116,7 +116,11 @@ exports.createSubscription = functions.runWith({ secrets: [razorpayConfig] }).ht
   const { vendorId, vendorName, vendorEmail, billingCycle, product } = data;
   if (context.auth.uid !== vendorId) throw new functions.https.HttpsError("permission-denied", "Unauthorized");
   const premiumDoc = await db.collection("premium_vendors").doc(vendorId).get();
-  if (premiumDoc.exists && premiumDoc.data().isPremium) throw new functions.https.HttpsError("already-exists", "Already subscribed");
+  if (premiumDoc.exists && premiumDoc.data().isPremium) {
+    // Do not create a second live subscription. Plan upgrades require an
+    // explicit, verified lifecycle and are intentionally not duplicated here.
+    throw new functions.https.HttpsError("already-exists", "An active subscription already exists");
+  }
   try {
     const vendorListingSnap = await db.collection("vendors").where("ownerId", "==", vendorId).limit(1).get();
     const listing = vendorListingSnap.empty ? null : vendorListingSnap.docs[0].data();
@@ -169,9 +173,36 @@ exports.verifySubscription = functions.runWith({ secrets: [razorpayConfig] }).ht
     const expectedSignature = crypto.createHmac("sha256", cfg.key_secret).update(body).digest("hex");
     if (expectedSignature !== razorpay_signature) throw new functions.https.HttpsError("invalid-argument", "Payment signature mismatch");
     const razorpay = getRazorpay();
-    const payment = await razorpay.payments.fetch(razorpay_payment_id);
     const premiumSnap = await db.collection("premium_vendors").doc(vendorId).get();
-    const premiumData = premiumSnap.exists ? premiumSnap.data() : {};
+    if (!premiumSnap.exists) {
+      throw new functions.https.HttpsError("failed-precondition", "Subscription record not found");
+    }
+    const premiumData = premiumSnap.data();
+
+    // Verify the exact subscription and payment with Razorpay before granting
+    // paid entitlement. The client callback/signature alone is not enough.
+    if (premiumData.subscriptionId !== razorpay_subscription_id) {
+      throw new functions.https.HttpsError("invalid-argument", "Subscription mismatch");
+    }
+    const payment = await razorpay.payments.fetch(razorpay_payment_id);
+    const expectedAmount = Number(premiumData.amount || 0);
+    const expectedCurrency = premiumData.currency || "INR";
+    const paymentStatus = String(payment.status || "").toLowerCase();
+    const paymentSubscriptionId = payment.subscription_id || payment.subscriptionId || "";
+    if (paymentStatus !== "captured") {
+      throw new functions.https.HttpsError("failed-precondition", "Subscription payment is not captured");
+    }
+    if (Number(payment.amount) !== expectedAmount || String(payment.currency || "").toUpperCase() !== expectedCurrency.toUpperCase()) {
+      throw new functions.https.HttpsError("failed-precondition", "Subscription payment amount or currency mismatch");
+    }
+    if (paymentSubscriptionId && paymentSubscriptionId !== razorpay_subscription_id) {
+      throw new functions.https.HttpsError("failed-precondition", "Payment is linked to a different subscription");
+    }
+
+    const subscription = await razorpay.subscriptions.fetch(razorpay_subscription_id);
+    if (!subscription || subscription.id !== razorpay_subscription_id) {
+      throw new functions.https.HttpsError("failed-precondition", "Subscription could not be verified");
+    }
     const billingCycle = premiumData.billingCycle || "monthly";
     const nextBilling = new Date();
     nextBilling.setDate(nextBilling.getDate() + (billingCycle === "annual" ? 365 : 30));
@@ -248,14 +279,44 @@ exports.razorpayWebhook = functions.runWith({ secrets: [razorpayConfig] }).https
         console.log(`✅ Subscription renewed for vendor ${vendorId}`);
         break;
       }
-      case "subscription.payment.failed":
-      case "payment.failed": {
+      case "subscription.payment.failed": {
+        // Razorpay can retry a failed subscription payment. Do not revoke
+        // entitlement on the first failed attempt; wait for a terminal
+        // subscription state such as subscription.halted.
         const subscription = payload.subscription?.entity;
         if (!subscription) break;
         const snap = await db.collection("premium_vendors").where("subscriptionId", "==", subscription.id).limit(1).get();
         if (snap.empty) break;
         const vendorId = snap.docs[0].id;
-        await db.collection("premium_vendors").doc(vendorId).update({ isPremium: false, status: "payment_failed", failedAt: admin.firestore.FieldValue.serverTimestamp() });
+        await db.collection("premium_vendors").doc(vendorId).update({
+          status: "payment_pending",
+          lastPaymentFailedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        console.log(`⚠️ Subscription payment failed/retry pending for vendor ${vendorId}`);
+        break;
+      }
+      case "subscription.pending": {
+        const subscription = payload.subscription?.entity;
+        if (!subscription) break;
+        const snap = await db.collection("premium_vendors").where("subscriptionId", "==", subscription.id).limit(1).get();
+        if (snap.empty) break;
+        await snap.docs[0].ref.update({
+          status: "payment_pending",
+          lastPaymentPendingAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        break;
+      }
+      case "subscription.halted": {
+        const subscription = payload.subscription?.entity;
+        if (!subscription) break;
+        const snap = await db.collection("premium_vendors").where("subscriptionId", "==", subscription.id).limit(1).get();
+        if (snap.empty) break;
+        const vendorId = snap.docs[0].id;
+        await db.collection("premium_vendors").doc(vendorId).update({
+          isPremium: false,
+          status: "payment_failed",
+          haltedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
         const vendorSnap = await db.collection("vendors").where("ownerId", "==", vendorId).limit(1).get();
         if (!vendorSnap.empty) {
           const basePlanKey = snap.docs[0].data().basePlanKey || "free";
@@ -267,7 +328,7 @@ exports.razorpayWebhook = functions.runWith({ secrets: [razorpayConfig] }).https
             planUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
           });
         }
-        console.log(`⚠️ Payment failed — premium deactivated for vendor ${vendorId}`);
+        console.log(`⚠️ Subscription halted — premium deactivated for vendor ${vendorId}`);
         break;
       }
       case "subscription.cancelled":
