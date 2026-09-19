@@ -186,6 +186,7 @@ exports.verifySubscription = functions.runWith({ secrets: [razorpayConfig] }).ht
       const tier = premiumData.tier || "digital_growth";
       await vendorSnap.docs[0].ref.update({
         isPremium: true,
+        isVerified: true,
         planKey: tier,
         subscriptionTier: tier,
         planUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
