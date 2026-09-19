@@ -7,7 +7,7 @@ export const STALL_PLANS = {
     name: "Free Listing",
     price: 0,
     billing: "forever",
-    visibilityKm: 0,
+    visibilityKm: 0.1,
     features: ["listing", "basic_profile", "location_contact"],
   },
   verified: {
