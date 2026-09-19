@@ -297,6 +297,127 @@ exports.razorpayWebhook = functions.runWith({ secrets: [razorpayConfig] }).https
   }
 });
 
+// ═══════════════════════════════════════════════════════════════
+// SECTION 1B — STALL VERIFIED (₹99 ONE-TIME)
+// ═══════════════════════════════════════════════════════════════
+
+exports.createVerifiedOrder = functions.runWith({ secrets: [razorpayConfig] }).https.onCall(async (data, context) => {
+  if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Login required");
+
+  const listingId = String(data?.listingId || "").trim();
+  if (!listingId) throw new functions.https.HttpsError("invalid-argument", "Listing is required");
+
+  const listingRef = db.collection("vendors").doc(listingId);
+  const listingSnap = await listingRef.get();
+  if (!listingSnap.exists) throw new functions.https.HttpsError("not-found", "Listing not found");
+
+  const listing = listingSnap.data();
+  if (listing.ownerId !== context.auth.uid) {
+    throw new functions.https.HttpsError("permission-denied", "You can only verify your own listing");
+  }
+  if (listing.isVerified === true || listing.planKey === "verified" || listing.planKey === "digital_growth" || listing.planKey === "growth_setup") {
+    throw new functions.https.HttpsError("already-exists", "This listing is already verified");
+  }
+
+  try {
+    const razorpay = getRazorpay();
+    const receipt = `stall_verified_${listingId}_${Date.now()}`.slice(0, 40);
+    const order = await razorpay.orders.create({
+      amount: 9900,
+      currency: "INR",
+      receipt,
+      notes: {
+        product: "verified",
+        listingId,
+        ownerId: context.auth.uid,
+        source: "stall-app",
+      },
+    });
+
+    await db.collection("stall_orders").doc(order.id).set({
+      orderId: order.id,
+      product: "verified",
+      listingId,
+      ownerId: context.auth.uid,
+      amount: 9900,
+      currency: "INR",
+      status: "created",
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    const cfg = getRazorpayConfig();
+    return { orderId: order.id, keyId: cfg.key_id, amount: 9900, currency: "INR" };
+  } catch (err) {
+    console.error("createVerifiedOrder error:", err);
+    throw new functions.https.HttpsError("internal", "Unable to start verification payment");
+  }
+});
+
+exports.verifyVerifiedPayment = functions.runWith({ secrets: [razorpayConfig] }).https.onCall(async (data, context) => {
+  if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Login required");
+
+  const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = data || {};
+  if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+    throw new functions.https.HttpsError("invalid-argument", "Incomplete payment response");
+  }
+
+  try {
+    const orderRef = db.collection("stall_orders").doc(String(razorpay_order_id));
+    const orderSnap = await orderRef.get();
+    if (!orderSnap.exists) throw new functions.https.HttpsError("not-found", "Payment order not found");
+
+    const order = orderSnap.data();
+    if (order.ownerId !== context.auth.uid) throw new functions.https.HttpsError("permission-denied", "Unauthorized");
+    if (order.product !== "verified" || order.amount !== 9900 || order.currency !== "INR") {
+      throw new functions.https.HttpsError("failed-precondition", "Invalid verification order");
+    }
+    if (order.status === "paid") return { success: true };
+
+    const cfg = getRazorpayConfig();
+    const expectedSignature = crypto
+      .createHmac("sha256", cfg.key_secret)
+      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+      .digest("hex");
+    if (expectedSignature !== razorpay_signature) {
+      throw new functions.https.HttpsError("invalid-argument", "Payment signature mismatch");
+    }
+
+    const razorpay = getRazorpay();
+    const payment = await razorpay.payments.fetch(razorpay_payment_id);
+    if (payment.status !== "captured" || Number(payment.amount) !== 9900 || payment.currency !== "INR") {
+      throw new functions.https.HttpsError("failed-precondition", "Payment is not captured");
+    }
+
+    const listingRef = db.collection("vendors").doc(order.listingId);
+    const listingSnap = await listingRef.get();
+    if (!listingSnap.exists || listingSnap.data().ownerId !== context.auth.uid) {
+      throw new functions.https.HttpsError("not-found", "Listing is no longer available for verification");
+    }
+
+    await listingRef.update({
+      isVerified: true,
+      planKey: "verified",
+      subscriptionTier: "verified",
+      verifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+      verifiedPaymentId: razorpay_payment_id,
+      planUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    await orderRef.update({
+      status: "paid",
+      paymentId: razorpay_payment_id,
+      paidAt: admin.firestore.FieldValue.serverTimestamp(),
+      method: payment.method || "unknown",
+    });
+
+    return { success: true, planKey: "verified" };
+  } catch (err) {
+    console.error("verifyVerifiedPayment error:", err);
+    if (err instanceof functions.https.HttpsError) throw err;
+    throw new functions.https.HttpsError("internal", "Unable to activate verification");
+  }
+});
+
 exports.getSubscriptionStatus = functions.https.onCall(async (data, context) => {
   if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Login required");
   const vendorId = context.auth.uid;
