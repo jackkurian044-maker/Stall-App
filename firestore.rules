@@ -47,7 +47,7 @@ service cloud.firestore {
         isAdmin() ||
         (
           !request.resource.data.diff(resource.data).affectedKeys()
-            .hasAny(['addedByAgentId', 'isPremium', 'rating', 'ratingsCount', 'boostActive', 'boostCampaignId', 'boostObjective', 'boostTargetLat', 'boostTargetLng', 'boostRadiusKm', 'boostEndsAt']) &&
+            .hasAny(['addedByAgentId', 'isPremium', 'isVerified', 'planKey', 'subscriptionTier', 'verifiedAt', 'verifiedPaymentId', 'planUpdatedAt', 'rating', 'ratingsCount', 'boostActive', 'boostCampaignId', 'boostObjective', 'boostTargetLat', 'boostTargetLng', 'boostRadiusKm', 'boostEndsAt']) &&
           (
             resource.data.ownerId == request.auth.uid ||
             (
@@ -130,6 +130,11 @@ service cloud.firestore {
         get(/databases/$(database)/documents/vendors/$(vendorId)).data.ownerId == request.auth.uid &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
       allow create, delete: if false;
+    }
+
+
+    match /stall_orders/{orderId} {
+      allow read, write: if false;
     }
 
     match /premium_vendors/{uid} {
