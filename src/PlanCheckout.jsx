@@ -147,6 +147,19 @@ export default function PlanCheckout({ user, listing }) {
       </div>
       <div style={muted}>Plans are activated only after verified Razorpay payment. Your current business: <strong>{listing.name}</strong></div>
 
+      {(current === "digital_growth" || current === "growth_setup") && (
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 14 }}>
+          <a
+            href={window.location.origin + "/?store=" + encodeURIComponent(listing.id)}
+            target="_blank"
+            rel="noreferrer"
+            style={{ display: "inline-flex", alignItems: "center", gap: 7, background: COLORS.ink, color: "#fff", textDecoration: "none", borderRadius: 9, padding: "9px 12px", fontWeight: 800, fontSize: 12 }}
+          >
+            Open STall Landing Page
+          </a>
+        </div>
+      )}
+
       <div style={{ display: "grid", gap: 10, marginTop: 16 }}>
         {PLAN_ORDER.map(key => {
           const p = STALL_PLANS[key];
