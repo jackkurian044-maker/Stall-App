@@ -14,8 +14,8 @@ export function RestaurantBusinessPage({ listing, onBack }) {
         <Back onBack={onBack} />
         <Hero listing={listing} icon={<Utensils size={15} />} />
         <div style={specialGrid}>
-          <Special title="Today's special" value={listing.todaySpecial} tone="gold" />
-          <Special title="Everyday special" value={listing.everydaySpecial} tone="teal" />
+          <Special title="Today's offer" value={listing.todayOffer} tone="gold" />
+          <Special title="Weekend offer" value={listing.weekendOffer} tone="teal" />
         </div>
         <div style={infoGrid}>
           <Info icon={<MapPin size={17} />} title="Location" value={listing.address || "Location available on STall"} />
