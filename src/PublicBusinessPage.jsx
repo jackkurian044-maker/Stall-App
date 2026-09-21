@@ -6,6 +6,7 @@ import { publicDb } from "./publicFirebase";
 import { COLORS } from "./constants";
 import { vendorLink } from "./geo";
 import { RestaurantBusinessPage, SalonBusinessPage } from "./BusinessTemplatePages";
+import StoreLandingPage from "./StoreLandingPage";
 
 export default function PublicBusinessPage({ listingId }) {
   const [listing, setListing] = useState(null);
@@ -86,13 +87,13 @@ export default function PublicBusinessPage({ listingId }) {
   if (listing.category === "Food & Produce") return (
     <>
       {layoutPreviewEnabled && <LayoutPreviewSwitcher active={previewLayout || listing.pageLayout || "classic"} onSelect={selectPreviewLayout} />}
-      <RestaurantBusinessPage listing={renderListing} onBack={back} />
+      <PublicPageBoundary fallback={<StoreLandingPage listingId={listing.id} onBack={back} />}><RestaurantBusinessPage listing={renderListing} onBack={back} /></PublicPageBoundary>
     </>
   );
   if (listing.category === "Salons") return (
     <>
       {layoutPreviewEnabled && <LayoutPreviewSwitcher active={previewLayout || listing.pageLayout || "classic"} onSelect={selectPreviewLayout} />}
-      <SalonBusinessPage listing={renderListing} onBack={back} />
+      <PublicPageBoundary fallback={<StoreLandingPage listingId={listing.id} onBack={back} />}><SalonBusinessPage listing={renderListing} onBack={back} /></PublicPageBoundary>
     </>
   );
 
@@ -140,6 +141,22 @@ export default function PublicBusinessPage({ listingId }) {
       <script type="application/ld+json" dangerouslySetInnerHTML={{__html:JSON.stringify(schema)}}/>
     </div>
   </Shell>;
+}
+
+class PublicPageBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { failed: false };
+  }
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  componentDidCatch(error) {
+    console.error("STall public page template failed; using safe store fallback", error);
+  }
+  render() {
+    return this.state.failed ? this.props.fallback : this.props.children;
+  }
 }
 
 function LayoutPreviewSwitcher({ active, onSelect }) {
