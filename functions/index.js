@@ -20,6 +20,7 @@ const Razorpay = require("razorpay");
 const crypto = require("crypto");
 const { defineSecret } = require("firebase-functions/params");
 const razorpayConfig = defineSecret("RAZORPAY_CONFIG");
+const googleOAuthConfig = defineSecret("GOOGLE_OAUTH_CONFIG");
 
 function getRazorpayConfig() {
   let raw;
@@ -530,9 +531,24 @@ exports.beginGbpOauth = functions.https.onCall(async (data, context) => {
 // OAuth callback is provided by boostCompetitiveRanking.js using GOOGLE_OAUTH_CONFIG.
 // Keep a single production callback export to avoid config ambiguity.
 
+function getGoogleOAuthConfig() {
+  let cfg;
+  try { cfg = JSON.parse(googleOAuthConfig.value()); }
+  catch (err) { throw new Error("GOOGLE_OAUTH_CONFIG is missing or invalid"); }
+  if (!cfg.client_id || !cfg.client_secret || !cfg.redirect_uri) {
+    throw new Error("GOOGLE_OAUTH_CONFIG is missing client_id, client_secret, or redirect_uri");
+  }
+  return cfg;
+}
+
 async function refreshAccessToken(vendorId, connectionData) {
-  const cfg = { client_id: functions.config().google.client_id, client_secret: functions.config().google.client_secret, redirect_uri: functions.config().google.redirect_uri };
-  const res = await axios.post("https://oauth2.googleapis.com/token", { refresh_token: connectionData.refreshToken, client_id: cfg.client_id, client_secret: cfg.client_secret, grant_type: "refresh_token" });
+  const cfg = getGoogleOAuthConfig();
+  const res = await axios.post("https://oauth2.googleapis.com/token", {
+    refresh_token: connectionData.refreshToken,
+    client_id: cfg.client_id,
+    client_secret: cfg.client_secret,
+    grant_type: "refresh_token",
+  });
   const { access_token, expires_in } = res.data;
   await db.collection("gbp_connections").doc(vendorId).update({ accessToken: access_token, tokenExpiresAt: new Date(Date.now() + expires_in * 1000) });
   return access_token;
@@ -557,7 +573,7 @@ async function generateAIResponse(review, listing, settings) {
 Object.assign(exports, require("./leadEngine"));
 Object.assign(exports, require("./boostCampaigns"));
 
-exports.pollReviews = functions.pubsub.schedule("every 30 minutes").onRun(async () => {
+exports.pollReviews = functions.runWith({ secrets: [googleOAuthConfig] }).pubsub.schedule("every 30 minutes").onRun(async () => {
   console.log("pollReviews: starting");
   const connectionsSnap = await db.collection("gbp_connections").where("connected", "==", true).get();
   if (connectionsSnap.empty) { console.log("No connected vendors"); return null; }

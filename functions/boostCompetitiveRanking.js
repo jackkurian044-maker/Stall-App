@@ -201,17 +201,70 @@ exports.oauthCallback = functions.runWith({ secrets: [googleOAuthConfig] }).http
     const { access_token, refresh_token, expires_in } = tokenRes.data;
     if (!access_token) throw new Error("Google did not return an access token");
 
+    // Match the Google profile to the STall listing instead of silently taking
+    // the first account/location. A manager may have several GBP accounts.
+    const vendorSnap = await db.collection("vendors").where("ownerId", "==", vendorId).limit(1).get();
+    const listing = vendorSnap.empty ? null : vendorSnap.docs[0].data();
+    if (!listing) throw new Error("STall business listing not found for this account");
+
+    const normalize = (value) => String(value || "")
+      .toLowerCase()
+      .replace(/&/g, "and")
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim()
+      .replace(/\s+/g, " ");
+
+    const normalizePhone = (value) => String(value || "").replace(/\D/g, "").slice(-10);
+    const listingName = normalize(listing.name);
+    const listingAddress = normalize(listing.address);
+    const listingPhone = normalizePhone(listing.phone);
+    const listingPlaceId = String(listing.placeId || "").trim();
+
     const accountsRes = await axios.get("https://mybusinessaccountmanagement.googleapis.com/v1/accounts", {
       headers: { Authorization: `Bearer ${access_token}` },
     });
-    const account = accountsRes.data.accounts?.[0];
-    if (!account?.name) throw new Error("No Google Business Profile account was returned");
+    const accounts = accountsRes.data.accounts || [];
+    if (!accounts.length) throw new Error("No Google Business Profile accounts were returned");
 
-    const locationsRes = await axios.get(`https://mybusinessbusinessinformation.googleapis.com/v1/${account.name}/locations`, {
-      headers: { Authorization: `Bearer ${access_token}` },
-      params: { readMask: "name,title,storefrontAddress,websiteUri,phoneNumbers,categories,metadata" },
-    });
-    const location = locationsRes.data.locations?.[0] || null;
+    const candidates = [];
+    for (const account of accounts) {
+      if (!account?.name) continue;
+      const locationsRes = await axios.get(`https://mybusinessbusinessinformation.googleapis.com/v1/${account.name}/locations`, {
+        headers: { Authorization: `Bearer ${access_token}` },
+        params: { readMask: "name,title,storefrontAddress,websiteUri,phoneNumbers,categories,metadata" },
+      });
+      for (const location of locationsRes.data.locations || []) {
+        const googlePlaceId = String(location.metadata?.placeId || "").trim();
+        const googleAddress = [
+          location.storefrontAddress?.addressLines?.join(" "),
+          location.storefrontAddress?.locality,
+          location.storefrontAddress?.administrativeArea,
+          location.storefrontAddress?.postalCode,
+          location.storefrontAddress?.regionCode,
+        ].filter(Boolean).join(" ");
+        const googlePhone = normalizePhone(location.phoneNumbers?.primaryPhone);
+        const placeMatch = listingPlaceId && googlePlaceId && listingPlaceId === googlePlaceId;
+        const nameMatch = listingName && normalize(location.title) === listingName;
+        const addressMatch = listingAddress && normalize(googleAddress) === listingAddress;
+        const phoneMatch = listingPhone && googlePhone && listingPhone === googlePhone;
+        let score = 0;
+        if (placeMatch) score += 100;
+        if (nameMatch) score += 10;
+        if (addressMatch) score += 5;
+        if (phoneMatch) score += 5;
+        candidates.push({ account, location, score });
+      }
+    }
+
+    candidates.sort((a, b) => b.score - a.score);
+    const top = candidates[0];
+    const second = candidates[1];
+    if (!top || top.score === 0 || (second && second.score === top.score)) {
+      throw new Error("Could not uniquely match your Google Business Profile to the STall listing. Please make sure the Google business name, address, phone, or Place ID matches your STall listing.");
+    }
+
+    const account = top.account;
+    const location = top.location;
 
     await db.collection("gbp_connections").doc(vendorId).set({
       connected: true,
@@ -221,6 +274,7 @@ exports.oauthCallback = functions.runWith({ secrets: [googleOAuthConfig] }).http
       accountName: account.name,
       locationName: location?.title || "Your Business",
       locationId: location?.name || "",
+      googlePlaceId: location.metadata?.placeId || null,
       connectedAt: admin.firestore.FieldValue.serverTimestamp(),
       lastPolled: null,
     }, { merge: true });
