@@ -2,7 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import "./global.css";
 
-const publicMatch = window.location.pathname.match(/^\/business\/([^/]+)\/?$/i);
+const publicMatch = window.location.pathname.match(/^\/store\/([^/]+)\/?$/i);
 const root = ReactDOM.createRoot(document.getElementById("root"));
 
 async function boot() {
