@@ -196,6 +196,7 @@ import { MapPin, Locate, Search, Copy, Loader2, Target, IndianRupee, Store } fro
 import { db } from "./firebase";
 import { CATEGORIES, COLORS, DEFAULT_LOC } from "./constants";
 import { uid, haversineKm } from "./geo";
+import { encodeGeohash } from "./geohash";
 import { loadGoogleMaps } from "./googleMaps";
 import { findExistingPlaceIds } from "./duplicateCheck";
 
