@@ -3,7 +3,7 @@ import {
   collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc,
   getDocs, serverTimestamp,
 } from "firebase/firestore";
-import { Plus, Trash2, KeyRound, RefreshCw, Star, Zap, BarChart2, Eye, Phone, MessageCircle, Navigation } from "lucide-react";
+import { Plus, Trash2, KeyRound, RefreshCw, Star, Zap, BarChart2, Eye, Phone, MessageCircle, Navigation, X, CheckCircle2 } from "lucide-react";
 import { db } from "./firebase";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { CATEGORIES, COLORS } from "./constants";
@@ -18,6 +18,7 @@ import VendorPremiumWorkspace from "./VendorPremiumWorkspace";
 import PlanCheckout from "./PlanCheckout";
 import LeadEnginePanel from "./LeadEnginePanel";
 import BoostCampaignPanel from "./BoostCampaignPanel";
+import { RestaurantBusinessPage, SalonBusinessPage } from "./BusinessTemplatePages";
 
 const emptyForm = {
   name: "", category: CATEGORIES[0], description: "", products: "",
@@ -55,6 +56,7 @@ export default function VendorDashboard({ user, agent }) {
   });
   const [quickOfferListing, setQuickOfferListing] = useState(null);
   const [vendorDigests, setVendorDigests] = useState({});
+  const [previewListing, setPreviewListing] = useState(null);
   const refreshedRef = useRef(new Set());
 
   useEffect(() => {
@@ -104,12 +106,49 @@ export default function VendorDashboard({ user, agent }) {
     });
   };
 
-  const submit = async (e) => {
-    e.preventDefault();
+  const buildPreviewListing = () => {
+    const current = editingId ? listings.find((l) => l.id === editingId) : null;
+    return {
+      ...(current || {}),
+      id: editingId || "preview",
+      name: form.name.trim(),
+      category: form.category,
+      description: form.description.trim(),
+      products: form.products.trim(),
+      address: form.address.trim(),
+      phone: form.phone.trim(),
+      lat: parseFloat(form.lat),
+      lng: parseFloat(form.lng),
+      website: form.website || null,
+      mapsUrl: form.mapsUrl || null,
+      placeId: form.placeId || null,
+      rating: form.rating ?? null,
+      ratingsCount: form.ratingsCount ?? null,
+      hours: form.hours.trim(),
+      photos: form.photos || [],
+      preferredLink: form.preferredLink || null,
+      offer: form.offer.trim(),
+      todaySpecial: form.todaySpecial.trim(),
+      everydaySpecial: form.everydaySpecial.trim(),
+      todayOffer: form.todayOffer.trim(),
+      weekendOffer: form.weekendOffer.trim(),
+      pageLayout: form.pageLayout || "classic",
+    };
+  };
+
+  const openPreview = () => {
     setError("");
     const lat = parseFloat(form.lat), lng = parseFloat(form.lng);
-    if (!form.name.trim()) return setError("Name is required.");
+    if (!form.name.trim()) return setError("Name is required before previewing.");
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) return setError("Please select an address from the suggestions dropdown (or switch to \"enter manually\" and type coordinates).");
+    setPreviewListing(buildPreviewListing());
+  };
+
+  const saveDraft = async () => {
+    setError("");
+    const lat = parseFloat(form.lat), lng = parseFloat(form.lng);
+    if (!form.name.trim()) return false;
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
     setSaving(true);
     try {
       if (!editingId) {
@@ -146,8 +185,20 @@ export default function VendorDashboard({ user, agent }) {
       }
       setForm(emptyForm);
       setEditingId(null);
-    } catch { setError("Couldn't save — please try again."); }
+      return true;
+    } catch { setError("Couldn't save — please try again."); return false; }
     finally { setSaving(false); }
+  };
+
+  const submit = async (e) => {
+    e.preventDefault();
+    openPreview();
+  };
+
+  const publishPreview = async () => {
+    if (!previewListing) return;
+    const ok = await saveDraft();
+    if (ok) setPreviewListing(null);
   };
 
   const remove = async (id) => {
@@ -181,7 +232,7 @@ export default function VendorDashboard({ user, agent }) {
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <div style={cardStyle}>
           <div className="font-display" style={{ fontSize: 19, fontWeight: 700, marginBottom: 4 }}>{editingId ? "Edit listing" : "Create a listing"}</div>
-          <div style={{ fontSize: 12, color: "#666", marginBottom: 14 }}>This appears live to anyone searching nearby.</div>
+          <div style={{ fontSize: 12, color: "#666", marginBottom: 14 }}>Build your page here. <strong>Nothing goes live until you preview and confirm.</strong></div>
           <form onSubmit={submit}>
             {field("Name", <input style={inputStyle} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Amma's Pickle Stand" />)}
             {field("Category", <select style={inputStyle} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>{CATEGORIES.map((c) => <option key={c}>{c}</option>)}</select>)}
@@ -208,8 +259,8 @@ export default function VendorDashboard({ user, agent }) {
             <ImageUpload photos={form.photos} pathPrefix={`vendor-photos/${editingId || tempId}`} onChange={(photos) => setForm((f) => ({ ...f, photos }))} />
             {error && <div style={{ color: COLORS.brick, fontSize: 12, marginBottom: 10 }}>{error}</div>}
             <div style={{ display: "flex", gap: 8 }}>
-              <button type="submit" disabled={saving} className="stall-btn" style={{ flex: 1, background: COLORS.ink, color: "#fff", border: "none", borderRadius: 7, padding: 10, fontSize: 13, fontWeight: 700 }}><Plus size={15} /> {saving ? "Saving…" : editingId ? "Save changes" : "Add listing"}</button>
-              {editingId && <button type="button" onClick={() => { setEditingId(null); setForm(emptyForm); }} className="stall-btn" style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 7, padding: "10px 14px", fontSize: 13 }}>Cancel</button>}
+              <button type="submit" disabled={saving} className="stall-btn" style={{ flex: 1, background: COLORS.ink, color: "#fff", border: "none", borderRadius: 7, padding: 10, fontSize: 13, fontWeight: 700 }}><Eye size={15} /> Preview before publish</button>
+              {editingId && <button type="button" onClick={() => { setEditingId(null); setForm(emptyForm); setError(""); }} className="stall-btn" style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 7, padding: "10px 14px", fontSize: 13 }}>Cancel</button>}
             </div>
           </form>
         </div>
@@ -256,6 +307,12 @@ export default function VendorDashboard({ user, agent }) {
         )}
       </div>
 
+      {previewListing && <StorePagePreviewModal
+        listing={previewListing}
+        saving={saving}
+        onClose={() => setPreviewListing(null)}
+        onPublish={publishPreview}
+      />}
       {quickOfferListing && <QuickOfferModal listing={quickOfferListing} onClose={() => setQuickOfferListing(null)} />}
     </div>
   );
@@ -278,4 +335,94 @@ function slugify(value) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 80);
+}
+
+
+function StorePagePreviewModal({ listing, saving, onClose, onPublish }) {
+  const liveSlug = slugify(listing.name);
+  const isRestaurant = listing.category === "Food & Produce";
+  const isSalon = listing.category === "Salons";
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Preview store page"
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 1000,
+        background: "rgba(0,0,0,.72)",
+        display: "flex",
+        flexDirection: "column",
+        padding: 12,
+      }}
+    >
+      <div style={{
+        width: "100%",
+        maxWidth: 1240,
+        margin: "0 auto",
+        background: "#fff",
+        borderRadius: 14,
+        overflow: "hidden",
+        display: "flex",
+        flexDirection: "column",
+        minHeight: 0,
+        flex: 1,
+      }}>
+        <div style={{
+          padding: "10px 12px",
+          borderBottom: "1px solid #ddd",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 10,
+          flexWrap: "wrap",
+          background: "#fff",
+        }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontWeight: 800, color: COLORS.ink, fontSize: 13 }}>Store page preview — not live yet</div>
+            <div style={{ fontSize: 11, color: "#666", marginTop: 2, overflowWrap: "anywhere" }}>
+              After confirmation: https://stallwale.in/store/{liveSlug}
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={saving}
+              className="stall-btn"
+              style={{ background: "#fff", color: COLORS.ink, border: `1.5px solid ${COLORS.ink}`, borderRadius: 8, padding: "8px 12px", fontSize: 12, fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 6 }}
+            >
+              <X size={14} /> Back to edit
+            </button>
+            <button
+              type="button"
+              onClick={onPublish}
+              disabled={saving}
+              className="stall-btn"
+              style={{ background: COLORS.ink, color: "#fff", border: "none", borderRadius: 8, padding: "8px 13px", fontSize: 12, fontWeight: 800, display: "inline-flex", alignItems: "center", gap: 6 }}
+            >
+              <CheckCircle2 size={14} /> {saving ? "Publishing…" : "Confirm & publish"}
+            </button>
+          </div>
+        </div>
+
+        <div style={{ flex: 1, overflowY: "auto", minHeight: 0, background: "#f3f3f3" }}>
+          <div style={{ padding: 10 }}>
+            {isRestaurant ? (
+              <RestaurantBusinessPage listing={listing} onBack={onClose} />
+            ) : isSalon ? (
+              <SalonBusinessPage listing={listing} onBack={onClose} />
+            ) : (
+              <div style={{ maxWidth: 760, margin: "30px auto", background: "#fff", border: "1px solid #ddd", borderRadius: 14, padding: 24 }}>
+                <h2 style={{ marginTop: 0 }}>Preview unavailable for this category</h2>
+                <p style={{ color: "#666" }}>The saved public page template will be used after publishing.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
