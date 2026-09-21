@@ -16,7 +16,7 @@ export function RestaurantBusinessPage({ listing, onBack }) {
     <TemplateShell>
       <div style={pageWrap}>
         <Back onBack={onBack} />
-        <section style={restaurantHero}>
+        <section style={{ ...restaurantHero, gridTemplateColumns: photos[0] ? "210px minmax(0,1fr)" : "1fr" }}>
           {photos[0] && <img src={photos[0]} alt={listing.name} style={heroPhoto} />}
           <div style={heroContent}>
             <div style={rowWrap}>
@@ -147,13 +147,13 @@ function TemplateShell({ children }) {
 const csv = (value) => String(value || "").split(",").map(x => x.trim()).filter(Boolean).join(" · ");
 const pageWrap = { maxWidth: 1120, margin: "0 auto", padding: "18px 16px 50px" };
 const box = { background: "#fff", border: "1px solid #ddd", borderRadius: 16, padding: 22, boxShadow: "0 6px 22px rgba(0,0,0,.06)" };
-const restaurantHero = { ...box, display: "grid", gridTemplateColumns: "210px minmax(0,1fr)", gap: 26, padding: 18, alignItems: "center" };
+const restaurantHero = { ...box, display: "grid", gap: 26, padding: 18, alignItems: "center" };
 const heroPhoto = { width: "100%", height: 210, objectFit: "cover", borderRadius: 13 };
 const heroContent = { padding: "4px 8px 4px 0" };
 const infoAction = { display: "flex", justifyContent: "center", alignItems: "center", marginTop: 14, padding: "10px 12px", borderRadius: 10, background: "#eef9f3", color: COLORS.teal, textDecoration: "none", fontWeight: 800, fontSize: 12 };
 
 const rowWrap = { display: "flex", flexWrap: "wrap", gap: 7, alignItems: "center" };
-const title = { fontSize: 34, lineHeight: 1.1, margin: "12px 0 8px" };
+const title = { fontSize: "clamp(28px, 4vw, 40px)", lineHeight: 1.08, margin: "12px 0 8px", overflowWrap: "anywhere" };
 const description = { color: "#555", lineHeight: 1.6, margin: 0 };
 const rating = { display: "flex", alignItems: "center", gap: 6, marginTop: 13, fontWeight: 800 };
 const actions = { display: "flex", flexWrap: "wrap", gap: 9, marginTop: 18 };
