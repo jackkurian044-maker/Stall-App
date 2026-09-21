@@ -5,6 +5,7 @@ import stallLogoMark from "./logo-cropped.png";
 import { publicDb } from "./publicFirebase";
 import { COLORS } from "./constants";
 import { vendorLink } from "./geo";
+import { RestaurantBusinessPage, SalonBusinessPage } from "./BusinessTemplatePages";
 
 export default function PublicBusinessPage({ listingId }) {
   const [listing, setListing] = useState(null);
@@ -45,6 +46,9 @@ export default function PublicBusinessPage({ listingId }) {
 
   const active = ["verified","digital_growth","growth_setup"].includes(listing.planKey);
   if (!active) return <Shell><div style={box}><h2 style={{marginTop:0}}>This business page is not active</h2><p style={muted}>A STall public business page is available for active STall Verified and Growth listings.</p><button onClick={back} style={button}>Back to STall</button></div></Shell>;
+
+  if (listing.category === "Food & Produce") return <RestaurantBusinessPage listing={listing} onBack={back} />;
+  if (listing.category === "Salons") return <SalonBusinessPage listing={listing} onBack={back} />;
 
   const phone = String(listing.phone || "").replace(/\D/g, "");
   const wa = phone ? (phone.length === 10 ? "91"+phone : phone.startsWith("0") ? "91"+phone.slice(1) : phone) : "";
