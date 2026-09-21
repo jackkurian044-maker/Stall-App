@@ -73,7 +73,6 @@ export default function PublicBusinessPage({ listingId }) {
     const url = new URL(window.location.href);
     url.searchParams.set("preview", "layouts");
     url.searchParams.set("layout", layout);
-    url.searchParams.set("theme", previewTheme);
     window.history.replaceState({}, "", url.toString());
   };
 
