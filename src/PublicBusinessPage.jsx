@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { doc, getDoc } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, limit, query, where } from "firebase/firestore";
 import { ArrowLeft, CheckCircle2, Clock, Globe2, MapPin, MessageCircle, Navigation, Phone, Star } from "lucide-react";
 import stallLogoMark from "./logo-cropped.png";
 import { publicDb } from "./publicFirebase";
@@ -14,11 +14,67 @@ export default function PublicBusinessPage({ listingId }) {
 
   useEffect(() => {
     let alive = true;
-    getDoc(doc(publicDb, "vendors", listingId)).then((snap) => {
-      if (!alive) return;
-      setListing(snap.exists() ? { id: snap.id, ...snap.data() } : null);
-      setLoading(false);
-    }).catch((e) => {
+    const load = async () => {
+      try {
+        const key = String(listingId || "").trim().toLowerCase();
+        let snap = null;
+        if (key) {
+          snap = await getDoc(doc(publicDb, "vendors", key));
+          if (!snap.exists()) {
+            const qs = await getDocs(query(collection(publicDb, "vendors"), where("publicSlug", "==", key), limit(1)));
+            snap = qs.docs[0] || null;
+          }
+          // Legacy bridge for the first public STall page while old listings are migrated.
+          if (!snap && key === "kerala-swaad-restaurant-janakpuri") {
+            snap = await getDoc(doc(publicDb, "vendors", "SGbUMqLzX6pJSw6ESZ2R"));
+          }
+        }
+        if (!alive) return;
+        setListing(snap?.exists() ? { id: snap.id, ...snap.data() } : null);
+        setLoading(false);
+      } catch (e) {
+        if (!alive) return;
+        setError(e?.message || "Unable to load this business page.");
+        setLoading(false);
+      }
+    };
+    load();
+    return () => { alive = false; };
+  }, [listingId]);
+
+  useEffect(() => {
+    let alive = true;
+    // Keep canonical URLs stable and human-readable.
+    if (!listing) return;
+    const slug = slugify(listing.name);
+    const canonical = `${window.location.origin}/store/${slug}`;
+    document.title = `${listing.name} | STall`;
+    const description = listing.description || `${listing.name} on STall.`;
+    let meta = document.querySelector('meta[name="description"]');
+    if (!meta) { meta = document.createElement("meta"); meta.name = "description"; document.head.appendChild(meta); }
+    meta.content = description;
+    let canonicalEl = document.querySelector('link[rel="canonical"]');
+    if (!canonicalEl) { canonicalEl = document.createElement("link"); canonicalEl.rel = "canonical"; document.head.appendChild(canonicalEl); }
+    canonicalEl.href = canonical;
+    if (window.location.pathname !== `/store/${slug}`) window.history.replaceState({}, "", `/store/${slug}`);
+    return () => { alive = false; };
+  }, [listing]);
+
+  /* OLD_METADATA_PLACEHOLDER */
+
+  useEffect(() => {
+    if (!listing) return;
+    document.title = `${listing.name} | STall`;
+    const description = listing.description || `${listing.name} on STall.`;
+    let meta = document.querySelector('meta[name="description"]');
+    if (!meta) { meta = document.createElement("meta"); meta.name = "description"; document.head.appendChild(meta); }
+    meta.content = description;
+    let canonical = document.querySelector('link[rel="canonical"]');
+    if (!canonical) { canonical = document.createElement("link"); canonical.rel = "canonical"; document.head.appendChild(canonical); }
+    canonical.href = window.location.href;
+  }, [listing]);
+
+  const back = () => { window.location.href = "/"; };
       if (!alive) return;
       setError(e?.message || "Unable to load this business page.");
       setLoading(false);
@@ -114,3 +170,6 @@ const button={display:"inline-flex",alignItems:"center",gap:7,background:COLORS.
 const backLink={background:"transparent",border:0,padding:0,color:"#666",cursor:"pointer",display:"flex",gap:6,alignItems:"center",marginBottom:18};
 const pill={display:"inline-flex",alignItems:"center",gap:5,padding:"5px 9px",borderRadius:999,background:COLORS.ink,color:"#fff",fontSize:10.5,fontWeight:900};
 const muted={color:"#666",lineHeight:1.5};
+
+
+function slugify(value) { return String(value || "").toLowerCase().normalize("NFKD").replace(/[\\u0300-\\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80); }
