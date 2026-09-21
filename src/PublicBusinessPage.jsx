@@ -63,7 +63,10 @@ export default function PublicBusinessPage({ listingId }) {
 
   const back = () => { window.location.href = "/"; };
 
-  const renderListing = previewLayout ? { ...listing, pageLayout: previewLayout, pageTheme: "stall" } : listing;
+  const activeLayout = previewLayout || listing.pageLayout || "classic";
+  const renderListing = previewLayout
+    ? { ...listing, pageLayout: previewLayout }
+    : { ...listing, pageLayout: activeLayout };
 
   const selectPreviewLayout = (layout) => {
     setPreviewLayout(layout);
