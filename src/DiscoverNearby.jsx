@@ -4,6 +4,7 @@ import { MapPin, Locate, Search, Copy, Loader2 } from "lucide-react";
 import { db } from "./firebase";
 import { CATEGORIES, CATEGORY_COLORS, COLORS, DEFAULT_LOC, CITIES } from "./constants";
 import { uid, haversineKm } from "./geo";
+import { encodeGeohash } from "./geohash";
 import { loadGoogleMaps } from "./googleMaps";
 import { findExistingPlaceIds } from "./duplicateCheck";
 
