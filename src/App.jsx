@@ -100,7 +100,7 @@ export default function App() {
 
   useEffect(() => {
     trace("route observer", { mode, authenticated: !!user, admin: isAdmin, agent: !!agent, authLoading });
-    if (authLoading) return;
+    if (authLoading || mode === "landing") return;
 
     if (!user) {
       if (["mine", "admin", "admin-operations", "bulk", "agent", "agents", "reviews"].includes(mode)) setMode("find");
@@ -138,10 +138,10 @@ export default function App() {
     <div style={{ minHeight: "100vh", background: "#0a0a0a", display: "flex", flexDirection: "column" }}>
       <Header mode={mode} setMode={setMode} user={user} isAdmin={isAdmin} isAgent={!!agent} onSignOut={handleSignOut} />
       <div style={{ flex: 1 }}>
-        {authLoading ? (
-          <div style={{ padding: 40, textAlign: "center", color: "#9c9c9c", fontSize: 14 }}>Loading…</div>
-        ) : mode === "landing" ? (
+        {mode === "landing" ? (
           <StoreLandingPage listingId={landingStoreId} onBack={() => { setMode("find"); window.history.replaceState({}, "", "/"); }} />
+        ) : authLoading ? (
+          <div style={{ padding: 40, textAlign: "center", color: "#9c9c9c", fontSize: 14 }}>Loading…</div>
         ) : mode === "find" ? (
           <>
             <BusinessOwnerCTA onListFree={openVendorSignup} onClaim={openVendorClaim} />
