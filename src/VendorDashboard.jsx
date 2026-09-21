@@ -119,7 +119,7 @@ export default function VendorDashboard({ user, agent }) {
         }
       }
       const payload = {
-        name: form.name.trim(), category: form.category, description: form.description.trim(), products: form.products.trim(),
+        name: form.name.trim(), publicSlug: slugify(form.name), category: form.category, description: form.description.trim(), products: form.products.trim(),
         address: form.address.trim(), phone: form.phone.trim(), lat, lng, geohash: encodeGeohash(lat, lng, 9),
         website: form.website || null, mapsUrl: form.mapsUrl || null, placeId: form.placeId || null,
         rating: form.rating ?? null, ratingsCount: form.ratingsCount ?? null, hours: form.hours.trim(), photos: form.photos || [],
@@ -246,4 +246,15 @@ function TabButton({ active, onClick, icon, children }) {
 
 function InsightTile({ icon, value, label, color }) {
   return <div style={{ textAlign: "center", padding: "10px 6px", background: "#F7F6F2", borderRadius: 10 }}><div style={{ color, display: "flex", justifyContent: "center", marginBottom: 4 }}>{icon}</div><div style={{ fontSize: 18, fontWeight: 700, color: COLORS.ink }}>{value}</div><div style={{ fontSize: 10.5, color: "#555", textTransform: "uppercase", letterSpacing: "0.04em" }}>{label}</div></div>;
+}
+
+
+function slugify(value) {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
 }
