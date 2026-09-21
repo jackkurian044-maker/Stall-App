@@ -189,8 +189,13 @@ export default function PlanCheckout({ user, listing }) {
       <div style={{ display: "grid", gap: 10, marginTop: 16 }}>
         {PLAN_ORDER.map(key => {
           const p = STALL_PLANS[key];
-          const isCurrent = current === key;
-          const locked = current === "growth_setup" || (current === "digital_growth" && key !== "growth_setup");
+          // STall Verified is a one-time base entitlement. It remains ACTIVE when a
+          // vendor also has a higher monthly plan, so the UI never asks them to pay ₹99 again.
+          const isVerifiedActive = key === "verified" && Boolean(
+            listing?.isVerified || listing?.planKey === "verified" || premium?.basePlanKey === "verified"
+          );
+          const isCurrent = isVerifiedActive || current === key;
+          const locked = key !== "verified" && (current === "growth_setup" || (current === "digital_growth" && key !== "growth_setup"));
           const upgradePending = current === "digital_growth" && key === "growth_setup";
           const requestedLocked = Boolean(requestedPlan && current !== requestedPlan && requestedPlan !== key && !allowPlanChange);
           return (
