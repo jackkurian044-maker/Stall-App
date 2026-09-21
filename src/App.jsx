@@ -30,14 +30,13 @@ export default function App() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("store")) {
-      const storeId = (params.get("store") || "").trim();
-      if (storeId) {
-        setLandingStoreId(storeId);
-        setMode("landing");
-        window.history.replaceState({}, "", window.location.pathname);
-        return;
-      }
+    const pathMatch = window.location.pathname.match(/^\/business\/([^/]+)\/?$/i);
+    const storeId = (params.get("store") || (pathMatch ? pathMatch[1] : "") || "").trim();
+    if (storeId) {
+      setLandingStoreId(storeId);
+      setMode("landing");
+      if (params.get("store") || pathMatch) window.history.replaceState({}, "", window.location.pathname);
+      return;
     }
     if (params.get("upgrade") === "1") {
       try {
@@ -101,7 +100,7 @@ export default function App() {
 
   useEffect(() => {
     trace("route observer", { mode, authenticated: !!user, admin: isAdmin, agent: !!agent, authLoading });
-    if (authLoading) return;
+    if (authLoading || mode === "landing") return;
 
     if (!user) {
       if (["mine", "admin", "admin-operations", "bulk", "agent", "agents", "reviews"].includes(mode)) setMode("find");
@@ -139,10 +138,10 @@ export default function App() {
     <div style={{ minHeight: "100vh", background: "#0a0a0a", display: "flex", flexDirection: "column" }}>
       <Header mode={mode} setMode={setMode} user={user} isAdmin={isAdmin} isAgent={!!agent} onSignOut={handleSignOut} />
       <div style={{ flex: 1 }}>
-        {authLoading ? (
+        {mode === "landing" ? (
+          <StoreLandingPage listingId={landingStoreId} onBack={() => { setMode("find"); window.history.replaceState({}, "", "/"); }} />
+        ) : authLoading ? (
           <div style={{ padding: 40, textAlign: "center", color: "#9c9c9c", fontSize: 14 }}>Loading…</div>
-        ) : mode === "landing" ? (
-          <StoreLandingPage listingId={landingStoreId} onBack={() => { setMode("find"); window.history.replaceState({}, "", window.location.pathname); }} />
         ) : mode === "find" ? (
           <>
             <BusinessOwnerCTA onListFree={openVendorSignup} onClaim={openVendorClaim} />

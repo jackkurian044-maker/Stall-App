@@ -13,39 +13,84 @@ export default function StoreLandingPage({ listingId, onBack }) {
     let alive = true;
     getDoc(doc(db, "vendors", listingId)).then(snap => {
       if (!alive) return;
-      setListing(snap.exists() ? { id: snap.id, ...snap.data() } : null);
+      const data = snap.exists() ? { id: snap.id, ...snap.data() } : null;
+      setListing(data);
       setLoading(false);
+
+      if (data) {
+        const description = data.description || `${data.name} on STall.`;
+        document.title = `${data.name} | STall`;
+        const setMeta = (name, content) => {
+          let el = document.querySelector(`meta[name="${name}"]`);
+          if (!el) {
+            el = document.createElement("meta");
+            el.setAttribute("name", name);
+            document.head.appendChild(el);
+          }
+          el.setAttribute("content", content);
+        };
+        setMeta("description", description);
+        setMeta("robots", "index,follow");
+      }
     }).catch(() => {
       if (alive) setLoading(false);
     });
     return () => { alive = false; };
   }, [listingId]);
 
+  useEffect(() => {
+    if (!listing) return;
+    const canonical = document.querySelector('link[rel="canonical"]') || document.head.appendChild(document.createElement("link"));
+    canonical.setAttribute("rel", "canonical");
+    canonical.setAttribute("href", window.location.href);
+    return () => {
+      document.title = "STall";
+    };
+  }, [listing]);
+
   if (loading) return <div style={page}><div style={box}>Loading business page…</div></div>;
   if (!listing) return <div style={page}><div style={box}><h2>Business not found</h2><button onClick={onBack} style={button}>Back to STall</button></div></div>;
 
-  const paid = ["digital_growth", "growth_setup"].includes(listing.planKey);
-  if (!paid) return <div style={page}><div style={box}><h2>This business page is not active</h2><p style={muted}>A STall Landing Page is included with Digital Growth and Growth Setup.</p><button onClick={onBack} style={button}>Back to STall</button></div></div>;
+  const activePagePlan = ["verified", "digital_growth", "growth_setup"].includes(listing.planKey);
+  if (!activePagePlan) return <div style={page}><div style={box}><h2>This business page is not active</h2><p style={muted}>A STall public business page is available for active STall Verified and Growth listings.</p><button onClick={onBack} style={button}>Back to STall</button></div></div>;
 
   const phone = String(listing.phone || "").replace(/\D/g, "");
   const wa = phone ? (phone.length === 10 ? "91" + phone : phone.startsWith("0") ? "91" + phone.slice(1) : phone) : "";
   const website = listing.website || listing.mapsUrl || vendorLink(listing);
-  const isGrowth = listing.planKey === "growth_setup";
+  const isGrowth = ["digital_growth", "growth_setup"].includes(listing.planKey);
+  const isGrowthSetup = listing.planKey === "growth_setup";
   const products = String(listing.products || "").split(",").map(x => x.trim()).filter(Boolean).slice(0, 10);
   const ratingText = listing.ratingsCount != null ? " · " + listing.ratingsCount + " Google ratings" : "";
 
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    name: listing.name,
+    description: listing.description || undefined,
+    telephone: listing.phone || undefined,
+    address: listing.address ? { "@type": "PostalAddress", streetAddress: listing.address } : undefined,
+    url: window.location.href,
+    aggregateRating: listing.rating != null && listing.ratingsCount ? {
+      "@type": "AggregateRating",
+      ratingValue: Number(listing.rating),
+      reviewCount: Number(listing.ratingsCount),
+    } : undefined,
+  };
+  const schemaJson = JSON.stringify(schema);
+
   return (
     <div style={page}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: schemaJson }} />
       <div style={{ maxWidth: 900, margin: "0 auto", padding: "18px 16px 50px" }}>
         <button onClick={onBack} style={{ background: "transparent", border: 0, padding: 0, color: "#666", cursor: "pointer", display: "flex", gap: 6, alignItems: "center", marginBottom: 18 }}><ArrowLeft size={15} /> Back to STall</button>
 
         <section style={{ ...box, overflow: "hidden", padding: 0 }}>
-          {listing.photos?.[0] && <img src={listing.photos[0]} alt="" style={{ width: "100%", height: 280, objectFit: "cover" }} />}
+          {listing.photos?.[0] && <img src={listing.photos[0]} alt={listing.name} style={{ width: "100%", height: 280, objectFit: "cover" }} />}
           <div style={{ padding: 24 }}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 7, alignItems: "center" }}>
               <span style={pill}>{listing.category}</span>
-              <span style={{ ...pill, background: COLORS.marigold, color: COLORS.ink }}><CheckCircle2 size={12} /> STall Verified</span>
-              {isGrowth && <span style={{ ...pill, background: COLORS.teal, color: "#fff" }}>Growth Setup</span>}
+              {listing.isVerified || listing.planKey === "verified" ? <span style={{ ...pill, background: COLORS.marigold, color: COLORS.ink }}><CheckCircle2 size={12} /> STall Verified</span> : null}
+              {isGrowthSetup && <span style={{ ...pill, background: COLORS.teal, color: "#fff" }}>Growth Setup</span>}
             </div>
             <h1 style={{ fontSize: 34, lineHeight: 1.1, margin: "12px 0 8px" }}>{listing.name}</h1>
             {listing.description && <p style={{ color: "#555", lineHeight: 1.6, margin: 0 }}>{listing.description}</p>}
