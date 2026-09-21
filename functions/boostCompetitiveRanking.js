@@ -220,6 +220,9 @@ exports.oauthCallback = functions.runWith({ secrets: [googleOAuthConfig] }).http
     const listingPhone = normalizePhone(listing.phone);
     const listingPlaceId = String(listing.placeId || "").trim();
 
+    const accountsRes = await axios.get("https://mybusinessaccountmanagement.googleapis.com/v1/accounts", {
+      headers: { Authorization: `Bearer ${access_token}` },
+    });
     const accounts = accountsRes.data.accounts || [];
     if (!accounts.length) throw new Error("No Google Business Profile accounts were returned");
 
