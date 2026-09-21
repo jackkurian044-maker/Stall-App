@@ -288,7 +288,8 @@ function PhotoStrip({ photos, name }) {
 }
 
 function TemplateShell({ children, listing }) {
-  const theme = getPageTheme(listing?.pageTheme);\n  return <div style={{ minHeight: "100vh", background: theme.bg, color: "var(--ink)", "--ink": theme.ink, "--accent": theme.accent, "--teal": theme.teal, "--surface": theme.surface, "--soft": theme.soft }}>
+  const theme = getPageTheme(listing?.pageTheme);
+  return <div style={{ minHeight: "100vh", background: theme.bg, color: "var(--ink)", "--ink": theme.ink, "--accent": theme.accent, "--teal": theme.teal, "--surface": theme.surface, "--soft": theme.soft }}>
     {children}
     <footer style={footer}>
       <a href="/" style={{ display: "inline-flex", alignItems: "center", gap: 7, textDecoration: "none", color: "#777" }}>
