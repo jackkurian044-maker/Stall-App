@@ -52,6 +52,8 @@ export default function PublicBusinessPage({ listingId }) {
   const isGrowth = ["digital_growth","growth_setup"].includes(listing.planKey);
   const products = String(listing.products || "").split(",").map(x=>x.trim()).filter(Boolean).slice(0,10);
   const ratingText = listing.ratingsCount != null ? " · "+listing.ratingsCount+" Google ratings" : "";
+  const todaySpecial = String(listing.todaySpecial || "").trim();
+  const everydaySpecial = String(listing.everydaySpecial || "").trim();
   const schema = {"@context":"https://schema.org","@type":"LocalBusiness",name:listing.name,description:listing.description||undefined,telephone:listing.phone||undefined,address:listing.address?{"@type":"PostalAddress",streetAddress:listing.address}:undefined,url:window.location.href,aggregateRating:listing.rating!=null&&listing.ratingsCount?{"@type":"AggregateRating",ratingValue:Number(listing.rating),reviewCount:Number(listing.ratingsCount)}:undefined};
 
   return <Shell>
@@ -80,6 +82,10 @@ export default function PublicBusinessPage({ listingId }) {
         {listing.hours && <Info icon={<Clock size={17}/>} title="Hours" value={listing.hours}/>}
         {products.length>0 && <Info icon={<Star size={17}/>} title="Products / Services" value={products.join(" · ")}/>}
       </div>
+      {(todaySpecial || everydaySpecial) && <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:12,marginTop:12}}>
+        {todaySpecial && <section style={{...box,marginTop:0,border:"2px solid "+COLORS.marigold,background:"#fffaf0"}}><div style={{fontSize:11,fontWeight:900,textTransform:"uppercase",color:"#8a6d1d"}}>Today’s special</div><div style={{fontSize:21,fontWeight:900,marginTop:6,lineHeight:1.25}}>{todaySpecial}</div></section>}
+        {everydaySpecial && <section style={{...box,marginTop:0,border:"2px solid "+COLORS.teal,background:"#f5fbf9"}}><div style={{fontSize:11,fontWeight:900,textTransform:"uppercase",color:COLORS.teal}}>Everyday special</div><div style={{fontSize:21,fontWeight:900,marginTop:6,lineHeight:1.25}}>{everydaySpecial}</div></section>}
+      </div>}
       {listing.offer && <section style={{...box,marginTop:12,border:"2px solid "+COLORS.marigold}}><div style={{fontSize:11,fontWeight:900,textTransform:"uppercase",color:"#8a6d1d"}}>Current offer</div><div style={{fontSize:22,fontWeight:900,marginTop:5}}>{listing.offer}</div></section>}
       <script type="application/ld+json" dangerouslySetInnerHTML={{__html:JSON.stringify(schema)}}/>
     </div>
