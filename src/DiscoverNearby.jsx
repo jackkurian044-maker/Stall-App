@@ -193,6 +193,7 @@ export default function DiscoverNearby() {
           phone: details.formatted_phone_number || "",
           lat: r.lat,
           lng: r.lng,
+          geohash: encodeGeohash(r.lat, r.lng, 9),
           website: details.website || null,
           mapsUrl: details.url || null,
           placeId: r.placeId,
