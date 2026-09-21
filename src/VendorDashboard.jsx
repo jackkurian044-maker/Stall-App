@@ -22,7 +22,7 @@ const emptyForm = {
   name: "", category: CATEGORIES[0], description: "", products: "",
   address: "", phone: "", lat: "", lng: "", website: null, mapsUrl: null, placeId: null,
   rating: null, ratingsCount: null, hours: "", photos: [], preferredLink: null,
-  offer: "", offerExpiresAt: "",
+  offer: "", offerExpiresAt: "", todaySpecial: "", everydaySpecial: "",
 };
 
 const cardStyle = {
@@ -99,7 +99,7 @@ export default function VendorDashboard({ user, agent }) {
       lat: String(l.lat), lng: String(l.lng), website: l.website || null, mapsUrl: l.mapsUrl || null,
       placeId: l.placeId || null, rating: l.rating ?? null, ratingsCount: l.ratingsCount ?? null,
       hours: l.hours || "", photos: l.photos || [], preferredLink: l.preferredLink || null,
-      offer: l.offer || "", offerExpiresAt: toDateInputValue(l.offerExpiresAt),
+      offer: l.offer || "", offerExpiresAt: toDateInputValue(l.offerExpiresAt), todaySpecial: l.todaySpecial || "", everydaySpecial: l.everydaySpecial || "",
     });
   };
 
@@ -123,7 +123,7 @@ export default function VendorDashboard({ user, agent }) {
         address: form.address.trim(), phone: form.phone.trim(), lat, lng, geohash: encodeGeohash(lat, lng, 9),
         website: form.website || null, mapsUrl: form.mapsUrl || null, placeId: form.placeId || null,
         rating: form.rating ?? null, ratingsCount: form.ratingsCount ?? null, hours: form.hours.trim(), photos: form.photos || [],
-        preferredLink: form.preferredLink || null, offer: form.offer.trim(),
+        preferredLink: form.preferredLink || null, todaySpecial: form.todaySpecial.trim(), everydaySpecial: form.everydaySpecial.trim(), offer: form.offer.trim(),
         offerExpiresAt: form.offerExpiresAt ? new Date(`${form.offerExpiresAt}T23:59:59`) : null,
       };
       if (editingId) await updateDoc(doc(db, "vendors", editingId), payload);
@@ -172,6 +172,8 @@ export default function VendorDashboard({ user, agent }) {
             {field("Description", <textarea style={{ ...inputStyle, resize: "vertical", minHeight: 56 }} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="What makes this worth the walk?" />)}
             {field("Products (comma separated)", <input style={inputStyle} value={form.products} onChange={(e) => setForm({ ...form, products: e.target.value })} placeholder="mango pickle, lime pickle" />)}
             {field("Phone (optional)", <input style={inputStyle} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />)}
+            {field("Today’s special", <input style={inputStyle} value={form.todaySpecial} onChange={(e) => setForm({ ...form, todaySpecial: e.target.value })} placeholder="e.g. Kerala parotta + chicken curry — ₹199 today" />)}
+            {field("Everyday special", <input style={inputStyle} value={form.everydaySpecial} onChange={(e) => setForm({ ...form, everydaySpecial: e.target.value })} placeholder="e.g. Appam + stew — available every day" />)}
             {field("Current offer (optional — e.g. \"20% off today\" or \"Buy 1 get 1, this month\")", <input style={inputStyle} value={form.offer} onChange={(e) => setForm({ ...form, offer: e.target.value })} placeholder="e.g. Festive discount — 15% off all items" />)}
             {form.offer && field("Offer ends on (optional — leave blank to show until you remove it)", <input type="date" style={inputStyle} value={form.offerExpiresAt} onChange={(e) => setForm({ ...form, offerExpiresAt: e.target.value })} />)}
             {form.website && form.mapsUrl && field("When someone taps this listing, open…", <div style={{ display: "flex", gap: 8 }}>{[{ id: "mapsUrl", label: "Google Business profile" }, { id: "website", label: "Website" }].map((opt) => <button key={opt.id} type="button" onClick={() => setForm({ ...form, preferredLink: opt.id })} className="stall-btn" style={{ flex: 1, borderRadius: 7, padding: "8px 10px", fontSize: 12.5, fontWeight: 600, border: `1.5px solid ${COLORS.ink}`, background: (form.preferredLink || "mapsUrl") === opt.id ? COLORS.ink : "#fff", color: (form.preferredLink || "mapsUrl") === opt.id ? "#fff" : COLORS.ink }}>{opt.label}</button>)}</div>)}
