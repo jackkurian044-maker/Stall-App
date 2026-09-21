@@ -278,6 +278,15 @@ function Back({ onBack }) {
   return <button onClick={onBack} style={backLink}><ArrowLeft size={15} /> Back to STall</button>;
 }
 
+function PhotoStrip({ photos, name }) {
+  return <section style={{ ...box, marginTop: 12 }}>
+    <div style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: COLORS.teal, marginBottom: 10 }}>More photos</div>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 10 }}>
+      {photos.slice(1).map((photo, index) => <img key={photo + index} src={photo} alt={name + " photo " + (index + 2)} style={{ width: "100%", height: 150, objectFit: "cover", borderRadius: 12 }} />)}
+    </div>
+  </section>;
+}
+
 function TemplateShell({ children }) {
   return <div style={{ minHeight: "100vh", background: "#f7f3eb", color: COLORS.ink }}>
     {children}
