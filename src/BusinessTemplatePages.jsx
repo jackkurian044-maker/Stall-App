@@ -288,7 +288,7 @@ function PhotoStrip({ photos, name }) {
 }
 
 function TemplateShell({ children, listing }) {
-  const theme = getPageTheme("stall");
+  const theme = getPageTheme(listing?.pageTheme || listing?.pageLayout);
   return <div style={{ minHeight: "100vh", background: theme.bg, color: "var(--ink)", "--ink": theme.ink, "--accent": theme.accent, "--teal": theme.teal, "--surface": theme.surface, "--soft": theme.soft }}>
     {children}
     <footer style={footer}>
@@ -329,11 +329,9 @@ const pill = { display: "inline-flex", alignItems: "center", gap: 5, padding: "5
 
 function getPageTheme(key) {
   const themes = {
-    stall: { bg: "#f7f3eb", ink: "#161616", accent: "#f2b84b", teal: "#0d766e", surface: "#fff", soft: "#f5fbf9" },
-    ocean: { bg: "#eef7fb", ink: "#102a43", accent: "#168aad", teal: "#0b7285", surface: "#fff", soft: "#edf8fb" },
-    emerald: { bg: "#eff8f2", ink: "#183b2b", accent: "#3b9c63", teal: "#237a57", surface: "#fff", soft: "#effaf3" },
-    royal: { bg: "#f4f1fb", ink: "#24153f", accent: "#7c4dca", teal: "#5b35a6", surface: "#fff", soft: "#f7f3ff" },
-    sunset: { bg: "#fff4ed", ink: "#3b2118", accent: "#e86f3d", teal: "#b4532c", surface: "#fff", soft: "#fff5ef" },
+    classic: { bg: "#f7f3eb", ink: "#161616", accent: "#f2b84b", teal: "#0d766e", surface: "#fff", soft: "#f5fbf9" },
+    spotlight: { bg: "#eef7fb", ink: "#102a43", accent: "#168aad", teal: "#0b7285", surface: "#fff", soft: "#edf8fb" },
+    compact: { bg: "#eff8f2", ink: "#183b2b", accent: "#3b9c63", teal: "#237a57", surface: "#fff", soft: "#effaf3" },
   };
-  return themes[key] || themes.stall;
+  return themes[key] || themes.classic;
 }
