@@ -357,6 +357,7 @@ export default function AgentDashboard({ user, agent }) {
         batch.set(ref, {
           name: r.name, category: r.category, description: "", products: "",
           address: r.vicinity || "", phone: "", lat: r.lat, lng: r.lng,
+          geohash: encodeGeohash(r.lat, r.lng, 9),
           website: null, mapsUrl: null, placeId: r.placeId,
           rating: r.rating, ratingsCount: r.ratingsCount,
           hours: "", photos: [], ownerId: null, claimCode: code,
