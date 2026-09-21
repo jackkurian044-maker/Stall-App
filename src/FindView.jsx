@@ -13,7 +13,7 @@ import {
 import { geohashQueryBounds, distanceBetween } from "geofire-common";
 import { MapPin, Search, Locate, ChevronLeft, ChevronRight } from "lucide-react";
 import { db } from "./firebase";
-import { CATEGORIES, COLORS, DEFAULT_LOC } from "./constants";
+import { CATEGORIES, COLORS } from "./constants";
 import { bearingRad } from "./geo";
 import { autoRefreshStale } from "./ratingSync";
 import VendorTicket from "./VendorTicket";
@@ -191,8 +191,8 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
     setLocateError("");
     setCityFilter("");
     if (!navigator.geolocation) {
-      setLocateError("Your browser doesn't support location — enter coordinates below instead.");
-      setUserLoc(DEFAULT_LOC);
+      setLocateError("Your browser doesn't support location — use the manual location option below.");
+      setUserLoc(null);
       setLocating(false);
       return;
     }
