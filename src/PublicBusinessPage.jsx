@@ -16,11 +16,6 @@ export default function PublicBusinessPage({ listingId }) {
     const requested = params.get("layout");
     return ["classic", "spotlight", "compact"].includes(requested) ? requested : null;
   });
-  const [previewTheme, setPreviewTheme] = useState(() => {
-    const params = new URLSearchParams(window.location.search);
-    const requested = params.get("theme");
-    return ["stall", "ocean", "emerald", "royal", "sunset"].includes(requested) ? requested : "stall";
-  });
   const layoutPreviewEnabled = new URLSearchParams(window.location.search).get("preview") === "layouts";
 
   useEffect(() => {
@@ -68,16 +63,7 @@ export default function PublicBusinessPage({ listingId }) {
 
   const back = () => { window.location.href = "/"; };
 
-  const renderListing = previewLayout || previewTheme !== "stall" ? { ...listing, pageLayout: previewLayout || listing.pageLayout || "classic", pageTheme: previewTheme } : listing;
-
-  const selectPreviewTheme = (theme) => {
-    setPreviewTheme(theme);
-    const url = new URL(window.location.href);
-    url.searchParams.set("preview", "layouts");
-    url.searchParams.set("theme", theme);
-    url.searchParams.set("layout", previewLayout || listing?.pageLayout || "classic");
-    window.history.replaceState({}, "", url.toString());
-  };
+  const renderListing = previewLayout ? { ...listing, pageLayout: previewLayout, pageTheme: "stall" } : listing;
 
   const selectPreviewLayout = (layout) => {
     setPreviewLayout(layout);
@@ -97,7 +83,7 @@ export default function PublicBusinessPage({ listingId }) {
 
   if (listing.category === "Food & Produce") return (
     <>
-      {layoutPreviewEnabled && <LayoutPreviewSwitcher active={previewLayout || listing.pageLayout || "classic"} theme={previewTheme} onSelect={selectPreviewLayout} onThemeSelect={selectPreviewTheme} />}
+      {layoutPreviewEnabled && <LayoutPreviewSwitcher active={previewLayout || listing.pageLayout || "classic"} onSelect={selectPreviewLayout} />}
       <RestaurantBusinessPage listing={renderListing} onBack={back} />
     </>
   );
@@ -154,28 +140,14 @@ export default function PublicBusinessPage({ listingId }) {
   </Shell>;
 }
 
-function LayoutPreviewSwitcher({ active, theme, onSelect, onThemeSelect }) {
+function LayoutPreviewSwitcher({ active, onSelect }) {
   const layouts = [["classic", "Classic"], ["spotlight", "Spotlight"], ["compact", "Compact"]];
-  const themes = [
-    ["stall", "STall Teal"],
-    ["ocean", "Ocean Blue"],
-    ["emerald", "Emerald"],
-    ["royal", "Royal"],
-    ["sunset", "Sunset"],
-  ];
-  const themeAccent = { stall: "#f2b84b", ocean: "#168aad", emerald: "#3b9c63", royal: "#7c4dca", sunset: "#e86f3d" };
   return (
-    <div style={{ position: "sticky", top: 0, zIndex: 50, background: "#161616", borderBottom: "1px solid #333", padding: "10px 16px", display: "grid", gap: 8, boxShadow: "0 4px 18px rgba(0,0,0,.18)" }}>
+    <div style={{ position: "sticky", top: 0, zIndex: 50, background: "#161616", borderBottom: "1px solid #333", padding: "10px 16px", boxShadow: "0 4px 18px rgba(0,0,0,.18)" }}>
       <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
         <span style={{ color: "#cfcfcf", fontSize: 11, fontWeight: 800, marginRight: 4 }}>LAYOUT</span>
         {layouts.map(([value, label]) => (
-          <button key={value} type="button" onClick={() => onSelect(value)} style={{ border: active === value ? "2px solid " + (themeAccent[theme] || themeAccent.stall) : "1px solid #555", background: active === value ? (themeAccent[theme] || themeAccent.stall) : "#222", color: active === value ? "#161616" : "#fff", borderRadius: 999, padding: "7px 14px", fontWeight: 900, fontSize: 11, cursor: "pointer" }}>{label}</button>
-        ))}
-      </div>
-      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-        <span style={{ color: "#cfcfcf", fontSize: 11, fontWeight: 800, marginRight: 4 }}>COLOR</span>
-        {themes.map(([value, label]) => (
-          <button key={value} type="button" aria-label={label} title={label} onClick={() => onThemeSelect(value)} style={{ border: theme === value ? "3px solid #fff" : "2px solid #555", background: themeAccent[value], color: "#fff", borderRadius: 999, padding: "7px 12px", fontWeight: 900, fontSize: 11, cursor: "pointer", boxShadow: theme === value ? "0 0 0 2px " + themeAccent[value] : "none" }}>{label}</button>
+          <button key={value} type="button" onClick={() => onSelect(value)} style={{ border: active === value ? "2px solid #f2b84b" : "1px solid #555", background: active === value ? "#f2b84b" : "#222", color: active === value ? "#161616" : "#fff", borderRadius: 999, padding: "7px 14px", fontWeight: 900, fontSize: 11, cursor: "pointer" }}>{label}</button>
         ))}
       </div>
     </div>
