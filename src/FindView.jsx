@@ -114,30 +114,31 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
     toggleFavorite(db, user.uid, vendorId, isFavorited);
   };
 
-  // Picks up ?q= (search box), ?lat=&lng= (the landing page's "Use Current
-  // Location" button), ?city= (auto-detected nearest city, or the fallback
-  // default when geolocation fails), and ?approx=1 (set only for that
-  // fallback, since it's a city-center guess rather than a real GPS fix —
-  // real fixes keep the tight default radius even when auto-labeled with a
-  // nearby city name).
+  // Picks up ?q= and optional explicit customer-selected coordinates.
+  // Coordinates are accepted only when source=customer-location is present.
+  // This prevents stale/default coordinates from silently becoming the
+  // customer's search location; normal customer discovery always uses
+  // fresh browser geolocation or the manual coordinate option below.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const q = params.get("q");
     const city = params.get("city");
     const approx = params.get("approx") === "1";
+    const source = params.get("source");
     const lat = parseFloat(params.get("lat"));
     const lng = parseFloat(params.get("lng"));
     if (q) setQuery(q);
-    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+    if (source === "customer-location" && Number.isFinite(lat) && Number.isFinite(lng)) {
       setUserLoc({ lat, lng });
       locFromUrlRef.current = true;
       if (approx) setRadiusKm(25);
     }
     if (city) setCityFilter(city);
-    if (q || city || approx || (params.has("lat") && params.has("lng"))) {
+    if (q || city || approx || params.has("source") || (params.has("lat") && params.has("lng"))) {
       params.delete("q");
       params.delete("city");
       params.delete("approx");
+      params.delete("source");
       params.delete("lat");
       params.delete("lng");
       const rest = params.toString();
