@@ -17,6 +17,38 @@ const statusTone = (status) => {
   return { bg: "#31191b", color: "#ff9b9f" };
 };
 
+function getPaidPlan(v, premium) {
+  const monthlyPremium = Boolean(premium?.isPremium || v?.isPremium);
+  if (monthlyPremium) {
+    const tier = premium?.tier || v?.subscriptionTier || v?.planKey;
+    return {
+      active: true,
+      label: tier === "growth_setup" ? "Growth Setup" : "Digital Growth",
+      type: "monthly",
+      updatedAt: premium?.updatedAt || v?.planUpdatedAt || premium?.activatedAt || v?.planUpdatedAt,
+    };
+  }
+  const verified = Boolean(
+    v?.isVerified ||
+    v?.planKey === "verified" ||
+    premium?.basePlanKey === "verified"
+  );
+  if (verified) {
+    return {
+      active: true,
+      label: "STall Verified · ₹99 one-time",
+      type: "verified",
+      updatedAt: v?.planUpdatedAt || premium?.updatedAt || premium?.activatedAt,
+    };
+  }
+  return {
+    active: false,
+    label: "No paid plan",
+    type: "free",
+    updatedAt: v?.planUpdatedAt || premium?.updatedAt || null,
+  };
+}
+
 function HealthBadge({ status, label }) {
   const tone = statusTone(status);
   return (
@@ -37,7 +69,7 @@ function getHealth(v, premium, gbp) {
   if ((v.photos || []).length > 0) score += 10;
   if (v.offer) score += 5;
   if (v.ownerId) score += 15;
-  if (premium?.isPremium) score += 5;
+  if (getPaidPlan(v, premium).active) score += 5;
   if (gbp?.connected) score += 10;
   return Math.min(100, score);
 }
@@ -101,9 +133,10 @@ export default function AdminOperationsCentre() {
   const rows = useMemo(() => vendors.map((v) => {
     const p = v.ownerId ? premium[v.ownerId] : null;
     const g = v.ownerId ? gbp[v.ownerId] : null;
+    const paidPlan = getPaidPlan(v, p);
     const score = getHealth(v, p, g);
     const health = score >= 80 ? "healthy" : score >= 55 ? "attention" : "critical";
-    return { v, p, g, score, health, commission: commissionByVendor[v.id] || null, agent: v.addedByAgentId ? agentById[v.addedByAgentId] : null };
+    return { v, p, g, paidPlan, score, health, commission: commissionByVendor[v.id] || null, agent: v.addedByAgentId ? agentById[v.addedByAgentId] : null };
   }), [vendors, premium, gbp, commissionByVendor, agentById]);
 
   const counts = useMemo(() => ({
@@ -188,7 +221,7 @@ export default function AdminOperationsCentre() {
                   <HealthBadge status={r.health} label={`${r.score}/100`} />
                 </div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 9 }}>
-                  <HealthBadge status={r.p?.isPremium ? "active" : "inactive"} label={r.p?.isPremium ? "Premium" : "Free"} />
+                  <HealthBadge status={r.paidPlan.active ? "active" : "inactive"} label={r.paidPlan.active ? r.paidPlan.label : "Free"} />
                   <HealthBadge status={r.g?.connected ? "active" : "inactive"} label={r.g?.connected ? "GBP connected" : "GBP not connected"} />
                   {r.commission?.status && <HealthBadge status={r.commission.status === "paid" ? "active" : "attention"} label={`Commission: ${r.commission.status}`} />}
                 </div>
@@ -215,7 +248,7 @@ export default function AdminOperationsCentre() {
             </div>
 
             <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
-              <HealthBadge status={selected.p?.isPremium ? "active" : "inactive"} label={selected.p?.isPremium ? `Premium · ${selected.p.status || "active"}` : "Premium not active"} />
+              <HealthBadge status={selected.paidPlan.active ? "active" : "inactive"} label={selected.paidPlan.active ? selected.paidPlan.label : "No paid plan"} />
               <HealthBadge status={selected.g?.connected ? "active" : "attention"} label={selected.g?.connected ? "Google Business Profile connected" : "Google Business Profile needs connection"} />
               <HealthBadge status={selected.v.phone ? "active" : "attention"} label={selected.v.phone ? "Business phone recorded" : "Business phone missing"} />
               <HealthBadge status={(selected.v.photos || []).length ? "active" : "attention"} label={(selected.v.photos || []).length ? `${selected.v.photos.length} photos recorded` : "No photos recorded"} />
@@ -227,7 +260,7 @@ export default function AdminOperationsCentre() {
               <div><span style={{ color: "#888" }}>Owner ID:</span> {selected.v.ownerId || "—"}</div>
               <div><span style={{ color: "#888" }}>Agent:</span> {selected.agent?.name || selected.v.addedByAgentId || "—"}</div>
               <div><span style={{ color: "#888" }}>Commission:</span> {selected.commission?.status || "—"}</div>
-              <div><span style={{ color: "#888" }}>Premium updated:</span> {selected.p?.updatedAt?.toDate?.()?.toLocaleString?.() || "—"}</div>
+              <div><span style={{ color: "#888" }}>Plan updated:</span> {selected.paidPlan.updatedAt?.toDate?.()?.toLocaleString?.() || "—"}</div>
             </div>
 
             <div style={{ marginTop: 15, padding: 11, background: "#0d0d0d", borderRadius: 9, border: "1px solid #292929" }}>
