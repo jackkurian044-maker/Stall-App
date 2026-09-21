@@ -1,28 +1,53 @@
 import React from "react";
 import {
   ArrowLeft, CheckCircle2, Clock, Globe2, MapPin, MessageCircle,
-  Navigation, Phone, Scissors, Star, Utensils,
+  Navigation, Phone, Scissors, Star, Utensils, Share2, Crown, Menu as MenuIcon,
 } from "lucide-react";
 import stallLogoMark from "./logo-cropped.png";
 import { COLORS } from "./constants";
 import { vendorLink } from "./geo";
 
 export function RestaurantBusinessPage({ listing, onBack }) {
+  const phone = String(listing.phone || "").replace(/\D/g, "");
+  const wa = phone ? (phone.length === 10 ? "91" + phone : phone.startsWith("0") ? "91" + phone.slice(1) : phone) : "";
+  const maps = listing.mapsUrl || vendorLink(listing);
+  const photos = Array.isArray(listing.photos) ? listing.photos.filter(Boolean) : [];
   return (
     <TemplateShell>
       <div style={pageWrap}>
         <Back onBack={onBack} />
-        <Hero listing={listing} icon={<Utensils size={15} />} />
-        <div style={specialGrid}>
-          <Special title="Today's offer" value={listing.todayOffer} tone="gold" />
-          <Special title="Weekend offer" value={listing.weekendOffer} tone="teal" />
-        </div>
+        <section style={restaurantHero}>
+          {photos[0] && <img src={photos[0]} alt={listing.name} style={heroPhoto} />}
+          <div style={heroContent}>
+            <div style={rowWrap}>
+              <span style={pill}>{listing.category}</span>
+              {(listing.isVerified || listing.planKey === "verified") && <span style={{ ...pill, background: COLORS.marigold, color: COLORS.ink }}><CheckCircle2 size={12} /> STall Verified</span>}
+            </div>
+            <h1 style={title}>{listing.name}</h1>
+            {listing.description && <p style={description}>{listing.description}</p>}
+            {listing.rating != null && <div style={rating}><Star size={16} fill={COLORS.marigold} color={COLORS.marigold} /> {Number(listing.rating).toFixed(1)}{listing.ratingsCount != null ? " · " + listing.ratingsCount + " Google ratings" : ""}</div>}
+            <div style={actions}>
+              {wa && <a href={"https://wa.me/" + wa} target="_blank" rel="noreferrer" style={{ ...button, background: "#25D366" }}><MessageCircle size={15} /> WhatsApp</a>}
+              {phone && <a href={"tel:" + phone} style={button}><Phone size={15} /> Call</a>}
+              <a href={maps} target="_blank" rel="noreferrer" style={outlineButton}><Navigation size={15} /> Directions</a>
+              <button onClick={() => navigator.share?.({ title: listing.name, url: window.location.href })} style={outlineButton}><Share2 size={15} /> Share</button>
+            </div>
+          </div>
+        </section>
+
         <div style={infoGrid}>
-          <Info icon={<MapPin size={17} />} title="Location" value={listing.address || "Location available on STall"} />
+          <Info icon={<MapPin size={17} />} title="Location" value={listing.address || "Location available on STall"} action={maps} actionLabel="View on Google Maps" />
           {listing.hours && <Info icon={<Clock size={17} />} title="Hours" value={listing.hours} />}
-          <Info icon={<Utensils size={17} />} title="Menu / Specials" value={csv(listing.products) || "Menu details coming soon"} />
+          <Info icon={<Utensils size={17} />} title="Menu / Specials" value={csv(listing.products) || "Menu details coming soon"} action={wa ? "https://wa.me/" + wa : null} actionLabel={wa ? "Ask on WhatsApp" : null} />
         </div>
+
+        <div style={specialGrid}>
+          <Special title="Today's Special" value={listing.todaySpecial} tone="gold" />
+          <Special title="Everyday Special" value={listing.everydaySpecial} tone="teal" />
+        </div>
+
         {listing.offer && <Offer value={listing.offer} />}
+        {photos.length > 1 && <PhotoStrip photos={photos} name={listing.name} />}
       </div>
     </TemplateShell>
   );
@@ -120,8 +145,13 @@ function TemplateShell({ children }) {
 }
 
 const csv = (value) => String(value || "").split(",").map(x => x.trim()).filter(Boolean).join(" · ");
-const pageWrap = { maxWidth: 900, margin: "0 auto", padding: "18px 16px 50px" };
-const box = { background: "#fff", border: "2px solid " + COLORS.ink, borderRadius: 16, padding: 22, boxShadow: "0 8px 25px rgba(0,0,0,.06)" };
+const pageWrap = { maxWidth: 1120, margin: "0 auto", padding: "18px 16px 50px" };
+const box = { background: "#fff", border: "1px solid #ddd", borderRadius: 16, padding: 22, boxShadow: "0 6px 22px rgba(0,0,0,.06)" };
+const restaurantHero = { ...box, display: "grid", gridTemplateColumns: "210px minmax(0,1fr)", gap: 26, padding: 18, alignItems: "center" };
+const heroPhoto = { width: "100%", height: 210, objectFit: "cover", borderRadius: 13 };
+const heroContent = { padding: "4px 8px 4px 0" };
+const infoAction = { display: "flex", justifyContent: "center", alignItems: "center", marginTop: 14, padding: "10px 12px", borderRadius: 10, background: "#eef9f3", color: COLORS.teal, textDecoration: "none", fontWeight: 800, fontSize: 12 };
+
 const rowWrap = { display: "flex", flexWrap: "wrap", gap: 7, alignItems: "center" };
 const title = { fontSize: 34, lineHeight: 1.1, margin: "12px 0 8px" };
 const description = { color: "#555", lineHeight: 1.6, margin: 0 };
