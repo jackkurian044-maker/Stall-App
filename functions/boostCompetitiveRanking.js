@@ -119,7 +119,68 @@ async function getGbpPerformanceStats(vendorId) {
   }
 }
 
-// Keep the Google Business Profile website field pointed at the business's\n// canonical STall store page. The selected pageLayout is stored on the vendor,\n// so the same URL always opens the owner's current default layout.\nfunction buildPublicStoreUrl(listing) {\n  const slug = String(listing?.publicSlug || listing?.name || "")\n    .toLowerCase()\n    .normalize("NFKD")\n    .replace(/[\\u0300-\\u036f]/g, "")\n    .replace(/[^a-z0-9]+/g, "-")\n    .replace(/^-+|-+$/g, "")\n    .slice(0, 80);\n  return slug ? "https://stallwale.in/store/" + slug : null;\n}\n\nexports.syncGbpWebsite = functions.runWith({ secrets: [googleOAuthConfig] }).https.onCall(async (data, context) => {\n  if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Login required");\n  const vendorId = context.auth.uid;\n  const listingId = String(data?.listingId || "").trim();\n  if (!listingId) throw new functions.https.HttpsError("invalid-argument", "Listing ID is required");\n\n  try {\n    const [listingSnap, connSnap] = await Promise.all([\n      db.collection("vendors").doc(listingId).get(),\n      db.collection("gbp_connections").doc(vendorId).get(),\n    ]);\n    if (!listingSnap.exists) throw new functions.https.HttpsError("not-found", "Listing not found");\n    const listing = listingSnap.data();\n    if (listing.ownerId !== vendorId) throw new functions.https.HttpsError("permission-denied", "You do not own this listing");\n    if (!connSnap.exists || !connSnap.data().connected || !connSnap.data().locationId) {\n      return { connected: false, synced: false, websiteUrl: buildPublicStoreUrl(listing) };\n    }\n\n    const websiteUrl = buildPublicStoreUrl(listing);\n    if (!websiteUrl) throw new functions.https.HttpsError("failed-precondition", "Listing name is required to build its public store URL");\n\n    const connectionData = connSnap.data();\n    const accessToken = await getValidToken(vendorId, connectionData);\n    const resourceName = String(connectionData.locationId).startsWith("locations/")\n      ? String(connectionData.locationId)\n      : "locations/" + String(connectionData.locationId);\n    const url = "https://mybusinessbusinessinformation.googleapis.com/v1/" + resourceName;\n    const response = await axios.patch(url, { websiteUri: websiteUrl }, {\n      params: { updateMask: "websiteUri" },\n      headers: { Authorization: "Bearer " + accessToken, "Content-Type": "application/json" },\n    });\n\n    await db.collection("gbp_connections").doc(vendorId).set({\n      websiteUri: websiteUrl,\n      websiteUriSyncedAt: admin.firestore.FieldValue.serverTimestamp(),\n      websiteUriSyncStatus: "synced",\n    }, { merge: true });\n\n    return { connected: true, synced: true, websiteUrl, googleLocation: response.data?.name || resourceName };\n  } catch (err) {\n    console.error("GBP website sync failed:", err.response?.status, err.response?.data || err.message);\n    if (err instanceof functions.https.HttpsError) throw err;\n    throw new functions.https.HttpsError("unavailable", "Google Business Profile website could not be updated right now.");\n  }\n});\n\nexports.weeklyBoostRankingScan = functions.runWith({ secrets: [googleOAuthConfig] }).pubsub.schedule("every monday 08:00").timeZone("Asia/Kolkata").onRun(async () => {
+// Keep the Google Business Profile website field pointed at the business's
+// canonical STall store page. The selected pageLayout is stored on the vendor,
+// so the same URL always opens the owner's current default layout.
+function buildPublicStoreUrl(listing) {
+  const slug = String(listing?.publicSlug || listing?.name || "")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+  return slug ? "https://stallwale.in/store/" + slug : null;
+}
+
+exports.syncGbpWebsite = functions.runWith({ secrets: [googleOAuthConfig] }).https.onCall(async (data, context) => {
+  if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Login required");
+  const vendorId = context.auth.uid;
+  const listingId = String(data?.listingId || "").trim();
+  if (!listingId) throw new functions.https.HttpsError("invalid-argument", "Listing ID is required");
+
+  try {
+    const [listingSnap, connSnap] = await Promise.all([
+      db.collection("vendors").doc(listingId).get(),
+      db.collection("gbp_connections").doc(vendorId).get(),
+    ]);
+    if (!listingSnap.exists) throw new functions.https.HttpsError("not-found", "Listing not found");
+    const listing = listingSnap.data();
+    if (listing.ownerId !== vendorId) throw new functions.https.HttpsError("permission-denied", "You do not own this listing");
+    if (!connSnap.exists || !connSnap.data().connected || !connSnap.data().locationId) {
+      return { connected: false, synced: false, websiteUrl: buildPublicStoreUrl(listing) };
+    }
+
+    const websiteUrl = buildPublicStoreUrl(listing);
+    if (!websiteUrl) throw new functions.https.HttpsError("failed-precondition", "Listing name is required to build the public store URL");
+
+    const connectionData = connSnap.data();
+    const accessToken = await getValidToken(vendorId, connectionData);
+    const resourceName = String(connectionData.locationId).startsWith("locations/")
+      ? String(connectionData.locationId)
+      : "locations/" + String(connectionData.locationId);
+    const url = "https://mybusinessbusinessinformation.googleapis.com/v1/" + resourceName;
+    const response = await axios.patch(url, { websiteUri: websiteUrl }, {
+      params: { updateMask: "websiteUri" },
+      headers: { Authorization: "Bearer " + accessToken, "Content-Type": "application/json" },
+    });
+
+    await db.collection("gbp_connections").doc(vendorId).set({
+      websiteUri: websiteUrl,
+      websiteUriSyncedAt: admin.firestore.FieldValue.serverTimestamp(),
+      websiteUriSyncStatus: "synced",
+    }, { merge: true });
+
+    return { connected: true, synced: true, websiteUrl, googleLocation: response.data?.name || resourceName };
+  } catch (err) {
+    console.error("GBP website sync failed:", err.response?.status, err.response?.data || err.message);
+    if (err instanceof functions.https.HttpsError) throw err;
+    throw new functions.https.HttpsError("unavailable", "Google Business Profile website could not be updated right now.");
+  }
+});
+
+// Remove/reapply the canonical store URL whenever the vendor saves changes.
+exports.weeklyBoostRankingScan = functions.runWith({ secrets: [googleOAuthConfig] }).pubsub.schedule("every monday 08:00").timeZone("Asia/Kolkata").onRun(async () => {
   console.log("weeklyBoostRankingScan: starting");
   const vendorsSnap = await db.collection("vendors").get();
   const vendors = vendorsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
