@@ -4,6 +4,7 @@ import { Plus, Trash2, RefreshCw, Star, Flag, Check, X as XIcon, Sparkles, Crown
 import { db, auth } from "./firebase";
 import { CATEGORIES, CATEGORY_COLORS, COLORS } from "./constants";
 import { uid, toDateInputValue } from "./geo";
+import { encodeGeohash } from "./geohash";
 import { autoRefreshStale, isRatingStale, refreshVendorIfStale } from "./ratingSync";
 import LocationSearch from "./LocationSearch";
 import ImageUpload from "./ImageUpload";
