@@ -8,6 +8,153 @@ import { COLORS } from "./constants";
 import { vendorLink } from "./geo";
 
 export function RestaurantBusinessPage({ listing, onBack }) {
+  const layout = listing.pageLayout || "classic";
+  if (layout === "spotlight") return <RestaurantSpotlightPage listing={listing} onBack={onBack} />;
+  if (layout === "compact") return <RestaurantCompactPage listing={listing} onBack={onBack} />;
+  return <RestaurantClassicPage listing={listing} onBack={onBack} />;
+}
+
+export function SalonBusinessPage({ listing, onBack }) {
+  const layout = listing.pageLayout || "classic";
+  if (layout === "spotlight") return <SalonSpotlightPage listing={listing} onBack={onBack} />;
+  if (layout === "compact") return <SalonCompactPage listing={listing} onBack={onBack} />;
+  return <SalonClassicPage listing={listing} onBack={onBack} />;
+}
+
+function ActionBar({ listing, salon = false, compact = false }) {
+  const phone = String(listing.phone || "").replace(/\\D/g, "");
+  const wa = phone ? (phone.length === 10 ? "91" + phone : phone.startsWith("0") ? "91" + phone.slice(1) : phone) : "";
+  const maps = listing.mapsUrl || vendorLink(listing);
+  const website = listing.website || listing.mapsUrl || maps;
+  const isGrowth = ["digital_growth", "growth_setup"].includes(listing.planKey);
+  return <div style={{ ...actions, marginTop: compact ? 12 : 18 }}>
+    {wa && <a href={"https://wa.me/" + wa} target="_blank" rel="noreferrer" style={button}><MessageCircle size={15} /> WhatsApp</a>}
+    {phone && <a href={"tel:" + phone} style={button}><Phone size={15} /> Call</a>}
+    {isGrowth && <a href={website} target="_blank" rel="noreferrer" style={{ ...button, background: COLORS.marigold, color: COLORS.ink }}><Globe2 size={15} /> {salon ? "Book Now" : "Order / Book"}</a>}
+    <a href={maps} target="_blank" rel="noreferrer" style={outlineButton}><Navigation size={15} /> Directions</a>
+    <button onClick={() => navigator.share?.({ title: listing.name, url: window.location.href })} style={outlineButton}><Share2 size={15} /> Share</button>
+  </div>;
+}
+
+function PublicIdentity({ listing }) {
+  return <div>
+    <div style={rowWrap}>
+      <span style={pill}>{listing.category}</span>
+      {(listing.isVerified || listing.planKey === "verified") && <span style={{ ...pill, background: COLORS.marigold, color: COLORS.ink }}><CheckCircle2 size={12} /> STall Verified</span>}
+    </div>
+    <h1 style={title}>{listing.name}</h1>
+    {listing.description && <p style={description}>{listing.description}</p>}
+    {listing.rating != null && <div style={rating}><Star size={16} fill={COLORS.marigold} color={COLORS.marigold} /> {Number(listing.rating).toFixed(1)}{listing.ratingsCount != null ? " · " + listing.ratingsCount + " Google ratings" : ""}</div>}
+  </div>;
+}
+
+function RestaurantSpotlightPage({ listing, onBack }) {
+  const photos = Array.isArray(listing.photos) ? listing.photos.filter(Boolean) : [];
+  return <TemplateShell>
+    <div style={pageWrap}>
+      <Back onBack={onBack} />
+      <section style={{ ...spotlightBox, overflow: "hidden" }}>
+        {photos[0] && <img src={photos[0]} alt={listing.name} style={spotlightPhoto} />}
+        <div style={{ padding: 24 }}>
+          <PublicIdentity listing={listing} />
+          <ActionBar listing={listing} />
+        </div>
+      </section>
+      <div style={specialGrid}>
+        <Special title="Today’s Special" value={listing.todaySpecial} tone="gold" />
+        <Special title="Everyday Special" value={listing.everydaySpecial} tone="teal" />
+      </div>
+      <div style={infoGrid}>
+        <Info icon={<Utensils size={17} />} title="Menu / Specials" value={csv(listing.products) || "Menu details coming soon"} />
+        <Info icon={<MapPin size={17} />} title="Location" value={listing.address || "Location available on STall"} />
+        {listing.hours && <Info icon={<Clock size={17} />} title="Hours" value={listing.hours} />}
+      </div>
+      {listing.offer && <Offer value={listing.offer} />}
+      {photos.length > 1 && <PhotoStrip photos={photos} name={listing.name} />}
+    </div>
+  </TemplateShell>;
+}
+
+function RestaurantCompactPage({ listing, onBack }) {
+  const photos = Array.isArray(listing.photos) ? listing.photos.filter(Boolean) : [];
+  return <TemplateShell>
+    <div style={pageWrap}>
+      <Back onBack={onBack} />
+      <section style={{ ...compactBox, gridTemplateColumns: photos[0] ? "110px minmax(0,1fr)" : "1fr" }}>
+        {photos[0] && <img src={photos[0]} alt={listing.name} style={compactPhoto} />}
+        <div>
+          <PublicIdentity listing={listing} />
+          <ActionBar listing={listing} compact />
+        </div>
+      </section>
+      <div style={compactInfoGrid}>
+        <Info icon={<Utensils size={17} />} title="Menu / Specials" value={csv(listing.products) || "Menu details coming soon"} />
+        <Info icon={<MapPin size={17} />} title="Location" value={listing.address || "Location available on STall"} />
+        {listing.hours && <Info icon={<Clock size={17} />} title="Hours" value={listing.hours} />}
+      </div>
+      <div style={specialGrid}>
+        <Special title="Today’s Special" value={listing.todaySpecial} tone="gold" />
+        <Special title="Everyday Special" value={listing.everydaySpecial} tone="teal" />
+      </div>
+      {listing.offer && <Offer value={listing.offer} />}
+      {photos.length > 1 && <PhotoStrip photos={photos} name={listing.name} />}
+    </div>
+  </TemplateShell>;
+}
+
+function SalonSpotlightPage({ listing, onBack }) {
+  const photos = Array.isArray(listing.photos) ? listing.photos.filter(Boolean) : [];
+  return <TemplateShell>
+    <div style={pageWrap}>
+      <Back onBack={onBack} />
+      <section style={{ ...spotlightBox, overflow: "hidden" }}>
+        {photos[0] && <img src={photos[0]} alt={listing.name} style={spotlightPhoto} />}
+        <div style={{ padding: 24 }}>
+          <PublicIdentity listing={listing} />
+          <ActionBar listing={listing} salon />
+        </div>
+      </section>
+      <div style={specialGrid}>
+        <Special title="Today’s Offer" value={listing.todayOffer} tone="gold" />
+        <Special title="Weekend Offer" value={listing.weekendOffer} tone="teal" />
+      </div>
+      <div style={infoGrid}>
+        <Info icon={<Scissors size={17} />} title="Services" value={csv(listing.products) || "Services coming soon"} />
+        <Info icon={<MapPin size={17} />} title="Location" value={listing.address || "Location available on STall"} />
+        {listing.hours && <Info icon={<Clock size={17} />} title="Hours" value={listing.hours} />}
+      </div>
+      {listing.offer && <Offer value={listing.offer} />}
+    </div>
+  </TemplateShell>;
+}
+
+function SalonCompactPage({ listing, onBack }) {
+  const photos = Array.isArray(listing.photos) ? listing.photos.filter(Boolean) : [];
+  return <TemplateShell>
+    <div style={pageWrap}>
+      <Back onBack={onBack} />
+      <section style={{ ...compactBox, gridTemplateColumns: photos[0] ? "110px minmax(0,1fr)" : "1fr" }}>
+        {photos[0] && <img src={photos[0]} alt={listing.name} style={compactPhoto} />}
+        <div>
+          <PublicIdentity listing={listing} />
+          <ActionBar listing={listing} salon compact />
+        </div>
+      </section>
+      <div style={compactInfoGrid}>
+        <Info icon={<Scissors size={17} />} title="Services" value={csv(listing.products) || "Services coming soon"} />
+        <Info icon={<MapPin size={17} />} title="Location" value={listing.address || "Location available on STall"} />
+        {listing.hours && <Info icon={<Clock size={17} />} title="Hours" value={listing.hours} />}
+      </div>
+      <div style={specialGrid}>
+        <Special title="Today’s Offer" value={listing.todayOffer} tone="gold" />
+        <Special title="Weekend Offer" value={listing.weekendOffer} tone="teal" />
+      </div>
+      {listing.offer && <Offer value={listing.offer} />}
+    </div>
+  </TemplateShell>;
+}
+
+function RestaurantClassicPage({ listing, onBack }) {
   const phone = String(listing.phone || "").replace(/\D/g, "");
   const wa = phone ? (phone.length === 10 ? "91" + phone : phone.startsWith("0") ? "91" + phone.slice(1) : phone) : "";
   const maps = listing.mapsUrl || vendorLink(listing);
@@ -53,15 +200,15 @@ export function RestaurantBusinessPage({ listing, onBack }) {
   );
 }
 
-export function SalonBusinessPage({ listing, onBack }) {
+function SalonClassicPage({ listing, onBack }) {
   return (
     <TemplateShell>
       <div style={pageWrap}>
         <Back onBack={onBack} />
         <Hero listing={listing} icon={<Scissors size={15} />} salon />
         <div style={specialGrid}>
-          <Special title="Today's special" value={listing.todaySpecial} tone="gold" />
-          <Special title="Everyday special" value={listing.everydaySpecial} tone="teal" />
+          <Special title="Today’s Offer" value={listing.todayOffer} tone="gold" />
+          <Special title="Weekend Offer" value={listing.weekendOffer} tone="teal" />
         </div>
         <div style={infoGrid}>
           <Info icon={<Scissors size={17} />} title="Services" value={csv(listing.products) || "Services coming soon"} />
@@ -151,6 +298,11 @@ const heroPhoto = { width: "100%", height: 210, objectFit: "cover", borderRadius
 const heroContent = { padding: "4px 8px 4px 0" };
 const infoAction = { display: "flex", justifyContent: "center", alignItems: "center", marginTop: 14, padding: "10px 12px", borderRadius: 10, background: "#eef9f3", color: COLORS.teal, textDecoration: "none", fontWeight: 800, fontSize: 12 };
 
+const spotlightBox = { ...box, padding: 0 };
+const spotlightPhoto = { width: "100%", height: 330, objectFit: "cover", display: "block" };
+const compactBox = { ...box, display: "grid", gap: 18, alignItems: "center", padding: 16 };
+const compactPhoto = { width: "110px", height: "110px", objectFit: "cover", borderRadius: 12 };
+const compactInfoGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(190px,1fr))", gap: 10, marginTop: 10 };
 const rowWrap = { display: "flex", flexWrap: "wrap", gap: 7, alignItems: "center" };
 const title = { fontSize: "clamp(28px, 4vw, 40px)", lineHeight: 1.08, margin: "12px 0 8px", overflowWrap: "anywhere" };
 const description = { color: "#555", lineHeight: 1.6, margin: 0 };
