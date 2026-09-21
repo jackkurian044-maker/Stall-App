@@ -32,6 +32,10 @@
     ],
     "rewrites": [
       {
+        "source": "/business/**",
+        "destination": "/business.html"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }
