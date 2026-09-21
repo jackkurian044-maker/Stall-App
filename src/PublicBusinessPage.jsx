@@ -11,6 +11,12 @@ export default function PublicBusinessPage({ listingId }) {
   const [listing, setListing] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [previewLayout, setPreviewLayout] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    const requested = params.get("layout");
+    return ["classic", "spotlight", "compact"].includes(requested) ? requested : null;
+  });
+  const layoutPreviewEnabled = new URLSearchParams(window.location.search).get("preview") === "layouts";
 
   useEffect(() => {
     let alive = true;
@@ -57,6 +63,19 @@ export default function PublicBusinessPage({ listingId }) {
 
   const back = () => { window.location.href = "/"; };
 
+  const activeLayout = previewLayout || listing.pageLayout || "classic";
+  const renderListing = previewLayout
+    ? { ...listing, pageLayout: previewLayout }
+    : { ...listing, pageLayout: activeLayout };
+
+  const selectPreviewLayout = (layout) => {
+    setPreviewLayout(layout);
+    const url = new URL(window.location.href);
+    url.searchParams.set("preview", "layouts");
+    url.searchParams.set("layout", layout);
+    window.history.replaceState({}, "", url.toString());
+  };
+
   if (loading) return <Shell><div style={box}><h2 style={{marginTop:0}}>Loading business page…</h2></div></Shell>;
   if (error) return <Shell><div style={box}><h2 style={{marginTop:0}}>Business page unavailable</h2><p style={muted}>{error}</p><button onClick={back} style={button}>Back to STall</button></div></Shell>;
   if (!listing) return <Shell><div style={box}><h2 style={{marginTop:0}}>Business not found</h2><button onClick={back} style={button}>Back to STall</button></div></Shell>;
@@ -64,8 +83,18 @@ export default function PublicBusinessPage({ listingId }) {
   const active = ["verified","digital_growth","growth_setup"].includes(listing.planKey);
   if (!active) return <Shell><div style={box}><h2 style={{marginTop:0}}>This business page is not active</h2><p style={muted}>A STall public business page is available for active STall Verified and Growth listings.</p><button onClick={back} style={button}>Back to STall</button></div></Shell>;
 
-  if (listing.category === "Food & Produce") return <RestaurantBusinessPage listing={listing} onBack={back} />;
-  if (listing.category === "Salons") return <SalonBusinessPage listing={listing} onBack={back} />;
+  if (listing.category === "Food & Produce") return (
+    <>
+      {layoutPreviewEnabled && <LayoutPreviewSwitcher active={previewLayout || listing.pageLayout || "classic"} onSelect={selectPreviewLayout} />}
+      <RestaurantBusinessPage listing={renderListing} onBack={back} />
+    </>
+  );
+  if (listing.category === "Salons") return (
+    <>
+      {layoutPreviewEnabled && <LayoutPreviewSwitcher active={previewLayout || listing.pageLayout || "classic"} onSelect={selectPreviewLayout} />}
+      <SalonBusinessPage listing={renderListing} onBack={back} />
+    </>
+  );
 
   const phone = String(listing.phone || "").replace(/\D/g, "");
   const wa = phone ? (phone.length === 10 ? "91"+phone : phone.startsWith("0") ? "91"+phone.slice(1) : phone) : "";
@@ -111,6 +140,20 @@ export default function PublicBusinessPage({ listingId }) {
       <script type="application/ld+json" dangerouslySetInnerHTML={{__html:JSON.stringify(schema)}}/>
     </div>
   </Shell>;
+}
+
+function LayoutPreviewSwitcher({ active, onSelect }) {
+  const layouts = [["classic", "Classic"], ["spotlight", "Spotlight"], ["compact", "Compact"]];
+  return (
+    <div style={{ position: "sticky", top: 0, zIndex: 50, background: "#161616", borderBottom: "1px solid #333", padding: "10px 16px", boxShadow: "0 4px 18px rgba(0,0,0,.18)" }}>
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+        <span style={{ color: "#cfcfcf", fontSize: 11, fontWeight: 800, marginRight: 4 }}>LAYOUT</span>
+        {layouts.map(([value, label]) => (
+          <button key={value} type="button" onClick={() => onSelect(value)} style={{ border: active === value ? "2px solid #f2b84b" : "1px solid #555", background: active === value ? "#f2b84b" : "#222", color: active === value ? "#161616" : "#fff", borderRadius: 999, padding: "7px 14px", fontWeight: 900, fontSize: 11, cursor: "pointer" }}>{label}</button>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function Shell({children}) {

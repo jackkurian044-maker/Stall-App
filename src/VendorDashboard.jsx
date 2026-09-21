@@ -5,6 +5,7 @@ import {
 } from "firebase/firestore";
 import { Plus, Trash2, KeyRound, RefreshCw, Star, Zap, BarChart2, Eye, Phone, MessageCircle, Navigation } from "lucide-react";
 import { db } from "./firebase";
+import { getFunctions, httpsCallable } from "firebase/functions";
 import { CATEGORIES, COLORS } from "./constants";
 import LocationSearch from "./LocationSearch";
 import ImageUpload from "./ImageUpload";
@@ -22,7 +23,7 @@ const emptyForm = {
   name: "", category: CATEGORIES[0], description: "", products: "",
   address: "", phone: "", lat: "", lng: "", website: null, mapsUrl: null, placeId: null,
   rating: null, ratingsCount: null, hours: "", photos: [], preferredLink: null,
-  offer: "", offerExpiresAt: "", todaySpecial: "", everydaySpecial: "", todayOffer: "", weekendOffer: "",
+  offer: "", offerExpiresAt: "", todaySpecial: "", everydaySpecial: "", todayOffer: "", weekendOffer: "", pageLayout: "classic",
 };
 
 const cardStyle = {
@@ -99,7 +100,7 @@ export default function VendorDashboard({ user, agent }) {
       lat: String(l.lat), lng: String(l.lng), website: l.website || null, mapsUrl: l.mapsUrl || null,
       placeId: l.placeId || null, rating: l.rating ?? null, ratingsCount: l.ratingsCount ?? null,
       hours: l.hours || "", photos: l.photos || [], preferredLink: l.preferredLink || null,
-      offer: l.offer || "", offerExpiresAt: toDateInputValue(l.offerExpiresAt), todaySpecial: l.todaySpecial || "", everydaySpecial: l.everydaySpecial || "", todayOffer: l.todayOffer || "", weekendOffer: l.weekendOffer || "",
+      offer: l.offer || "", offerExpiresAt: toDateInputValue(l.offerExpiresAt), todaySpecial: l.todaySpecial || "", everydaySpecial: l.everydaySpecial || "", todayOffer: l.todayOffer || "", weekendOffer: l.weekendOffer || "", pageLayout: l.pageLayout || "classic",
     });
   };
 
@@ -119,15 +120,30 @@ export default function VendorDashboard({ user, agent }) {
         }
       }
       const payload = {
-        name: form.name.trim(), publicSlug: slugify(form.name), category: form.category, description: form.description.trim(), products: form.products.trim(),
+        name: form.name.trim(), publicSlug: slugify(form.name), category: form.category, pageLayout: form.pageLayout || "classic", description: form.description.trim(), products: form.products.trim(),
         address: form.address.trim(), phone: form.phone.trim(), lat, lng, geohash: encodeGeohash(lat, lng, 9),
         website: form.website || null, mapsUrl: form.mapsUrl || null, placeId: form.placeId || null,
         rating: form.rating ?? null, ratingsCount: form.ratingsCount ?? null, hours: form.hours.trim(), photos: form.photos || [],
         preferredLink: form.preferredLink || null, todaySpecial: form.todaySpecial.trim(), everydaySpecial: form.everydaySpecial.trim(), todayOffer: form.todayOffer.trim(), weekendOffer: form.weekendOffer.trim(), offer: form.offer.trim(),
         offerExpiresAt: form.offerExpiresAt ? new Date(`${form.offerExpiresAt}T23:59:59`) : null,
       };
-      if (editingId) await updateDoc(doc(db, "vendors", editingId), payload);
-      else await addDoc(collection(db, "vendors"), { ...payload, ownerId: user.uid, addedByAgentId: agent ? user.uid : null, claimCode: null, createdAt: serverTimestamp(), ratingUpdatedAt: payload.placeId ? serverTimestamp() : null });
+      let savedListingId = editingId;
+      if (editingId) {
+        await updateDoc(doc(db, "vendors", editingId), payload);
+      } else {
+        const created = await addDoc(collection(db, "vendors"), { ...payload, ownerId: user.uid, addedByAgentId: agent ? user.uid : null, claimCode: null, createdAt: serverTimestamp(), ratingUpdatedAt: payload.placeId ? serverTimestamp() : null });
+        savedListingId = created.id;
+      }
+      // When a Google Business Profile is connected, make the canonical STall
+      // store page the profile website. This uses the saved pageLayout as the
+      // default presentation without changing the public URL.
+      if (savedListingId) {
+        try {
+          await httpsCallable(getFunctions(), "syncGbpWebsite")({ listingId: savedListingId });
+        } catch (syncErr) {
+          console.warn("STall GBP website sync skipped/failed:", syncErr?.message || syncErr);
+        }
+      }
       setForm(emptyForm);
       setEditingId(null);
     } catch { setError("Couldn't save — please try again."); }
@@ -169,6 +185,11 @@ export default function VendorDashboard({ user, agent }) {
           <form onSubmit={submit}>
             {field("Name", <input style={inputStyle} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Amma's Pickle Stand" />)}
             {field("Category", <select style={inputStyle} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>{CATEGORIES.map((c) => <option key={c}>{c}</option>)}</select>)}
+            {field("Store page layout", <select style={inputStyle} value={form.pageLayout || "classic"} onChange={(e) => setForm({ ...form, pageLayout: e.target.value })}>
+              <option value="classic">Classic — current approved layout</option>
+              <option value="spotlight">Spotlight — large visual hero</option>
+              <option value="compact">Compact — clean business-first layout</option>
+            </select>)}
             {field("Description", <textarea style={{ ...inputStyle, resize: "vertical", minHeight: 56 }} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="What makes this worth the walk?" />)}
             {field("Products (comma separated)", <input style={inputStyle} value={form.products} onChange={(e) => setForm({ ...form, products: e.target.value })} placeholder="mango pickle, lime pickle" />)}
             {field("Phone (optional)", <input style={inputStyle} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />)}

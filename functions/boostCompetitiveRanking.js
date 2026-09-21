@@ -119,6 +119,67 @@ async function getGbpPerformanceStats(vendorId) {
   }
 }
 
+// Keep the Google Business Profile website field pointed at the business's
+// canonical STall store page. The selected pageLayout is stored on the vendor,
+// so the same URL always opens the owner's current default layout.
+function buildPublicStoreUrl(listing) {
+  const slug = String(listing?.publicSlug || listing?.name || "")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+  return slug ? "https://stallwale.in/store/" + slug : null;
+}
+
+exports.syncGbpWebsite = functions.runWith({ secrets: [googleOAuthConfig] }).https.onCall(async (data, context) => {
+  if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Login required");
+  const vendorId = context.auth.uid;
+  const listingId = String(data?.listingId || "").trim();
+  if (!listingId) throw new functions.https.HttpsError("invalid-argument", "Listing ID is required");
+
+  try {
+    const [listingSnap, connSnap] = await Promise.all([
+      db.collection("vendors").doc(listingId).get(),
+      db.collection("gbp_connections").doc(vendorId).get(),
+    ]);
+    if (!listingSnap.exists) throw new functions.https.HttpsError("not-found", "Listing not found");
+    const listing = listingSnap.data();
+    if (listing.ownerId !== vendorId) throw new functions.https.HttpsError("permission-denied", "You do not own this listing");
+    if (!connSnap.exists || !connSnap.data().connected || !connSnap.data().locationId) {
+      return { connected: false, synced: false, websiteUrl: buildPublicStoreUrl(listing) };
+    }
+
+    const websiteUrl = buildPublicStoreUrl(listing);
+    if (!websiteUrl) throw new functions.https.HttpsError("failed-precondition", "Listing name is required to build the public store URL");
+
+    const connectionData = connSnap.data();
+    const accessToken = await getValidToken(vendorId, connectionData);
+    const resourceName = String(connectionData.locationId).startsWith("locations/")
+      ? String(connectionData.locationId)
+      : "locations/" + String(connectionData.locationId);
+    const url = "https://mybusinessbusinessinformation.googleapis.com/v1/" + resourceName;
+    const response = await axios.patch(url, { websiteUri: websiteUrl }, {
+      params: { updateMask: "websiteUri" },
+      headers: { Authorization: "Bearer " + accessToken, "Content-Type": "application/json" },
+    });
+
+    await db.collection("gbp_connections").doc(vendorId).set({
+      websiteUri: websiteUrl,
+      websiteUriSyncedAt: admin.firestore.FieldValue.serverTimestamp(),
+      websiteUriSyncStatus: "synced",
+    }, { merge: true });
+
+    return { connected: true, synced: true, websiteUrl, googleLocation: response.data?.name || resourceName };
+  } catch (err) {
+    console.error("GBP website sync failed:", err.response?.status, err.response?.data || err.message);
+    if (err instanceof functions.https.HttpsError) throw err;
+    throw new functions.https.HttpsError("unavailable", "Google Business Profile website could not be updated right now.");
+  }
+});
+
+// Remove/reapply the canonical store URL whenever the vendor saves changes.
 exports.weeklyBoostRankingScan = functions.runWith({ secrets: [googleOAuthConfig] }).pubsub.schedule("every monday 08:00").timeZone("Asia/Kolkata").onRun(async () => {
   console.log("weeklyBoostRankingScan: starting");
   const vendorsSnap = await db.collection("vendors").get();
@@ -201,17 +262,89 @@ exports.oauthCallback = functions.runWith({ secrets: [googleOAuthConfig] }).http
     const { access_token, refresh_token, expires_in } = tokenRes.data;
     if (!access_token) throw new Error("Google did not return an access token");
 
+    // Match the Google profile to the STall listing instead of silently taking
+    // the first account/location. A manager may have several GBP accounts.
+    const vendorSnap = await db.collection("vendors").where("ownerId", "==", vendorId).limit(1).get();
+    const listing = vendorSnap.empty ? null : vendorSnap.docs[0].data();
+    if (!listing) throw new Error("STall business listing not found for this account");
+
+    const normalize = (value) => String(value || "")
+      .toLowerCase()
+      .replace(/&/g, "and")
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim()
+      .replace(/\s+/g, " ");
+
+    const normalizePhone = (value) => String(value || "").replace(/\D/g, "").slice(-10);
+    const listingName = normalize(listing.name);
+    const listingAddress = normalize(listing.address);
+    const listingPhone = normalizePhone(listing.phone);
+    const listingPlaceId = String(listing.placeId || "").trim();
+
     const accountsRes = await axios.get("https://mybusinessaccountmanagement.googleapis.com/v1/accounts", {
       headers: { Authorization: `Bearer ${access_token}` },
     });
-    const account = accountsRes.data.accounts?.[0];
-    if (!account?.name) throw new Error("No Google Business Profile account was returned");
+    const accounts = accountsRes.data.accounts || [];
+    if (!accounts.length) throw new Error("No Google Business Profile accounts were returned");
 
-    const locationsRes = await axios.get(`https://mybusinessbusinessinformation.googleapis.com/v1/${account.name}/locations`, {
-      headers: { Authorization: `Bearer ${access_token}` },
-      params: { readMask: "name,title,storefrontAddress,websiteUri,phoneNumbers,categories,metadata" },
-    });
-    const location = locationsRes.data.locations?.[0] || null;
+    const candidates = [];
+    for (const account of accounts) {
+      if (!account?.name) continue;
+      const locationsRes = await axios.get(`https://mybusinessbusinessinformation.googleapis.com/v1/${account.name}/locations`, {
+        headers: { Authorization: `Bearer ${access_token}` },
+        params: { readMask: "name,title,storefrontAddress,websiteUri,phoneNumbers,categories,metadata" },
+      });
+      for (const location of locationsRes.data.locations || []) {
+        const googlePlaceId = String(location.metadata?.placeId || "").trim();
+        const googleAddress = [
+          location.storefrontAddress?.addressLines?.join(" "),
+          location.storefrontAddress?.locality,
+          location.storefrontAddress?.administrativeArea,
+          location.storefrontAddress?.postalCode,
+          location.storefrontAddress?.regionCode,
+        ].filter(Boolean).join(" ");
+        const googlePhone = normalizePhone(location.phoneNumbers?.primaryPhone);
+        const placeMatch = listingPlaceId && googlePlaceId && listingPlaceId === googlePlaceId;
+        const nameMatch = listingName && normalize(location.title) === listingName;
+        const addressMatch = listingAddress && normalize(googleAddress) === listingAddress;
+        const phoneMatch = listingPhone && googlePhone && listingPhone === googlePhone;
+        let score = 0;
+        if (placeMatch) score += 100;
+        if (nameMatch) score += 10;
+        if (addressMatch) score += 5;
+        if (phoneMatch) score += 5;
+        candidates.push({ account, location, score });
+      }
+    }
+
+    candidates.sort((a, b) => b.score - a.score);
+    const top = candidates[0];
+    const second = candidates[1];
+    if (!top || top.score === 0 || (second && second.score === top.score)) {
+      throw new Error("Could not uniquely match your Google Business Profile to the STall listing. Please make sure the Google business name, address, phone, or Place ID matches your STall listing.");
+    }
+
+    const account = top.account;
+    const location = top.location;
+    const websiteUrl = buildPublicStoreUrl(listing);
+    if (!websiteUrl) throw new Error("STall listing name is required to build the public store URL");
+
+    // As soon as the GBP connection succeeds, make the canonical STall store
+    // page the Google profile website. The URL is stable; its selected
+    // pageLayout controls the default presentation.
+    const resourceName = String(location.name || "").startsWith("locations/")
+      ? String(location.name)
+      : "locations/" + String(location.name || "");
+    if (!resourceName || resourceName === "locations/") throw new Error("Google Business Profile location is missing");
+
+    await axios.patch(
+      `https://mybusinessbusinessinformation.googleapis.com/v1/${resourceName}`,
+      { websiteUri: websiteUrl },
+      {
+        params: { updateMask: "websiteUri" },
+        headers: { Authorization: `Bearer ${access_token}`, "Content-Type": "application/json" },
+      }
+    );
 
     await db.collection("gbp_connections").doc(vendorId).set({
       connected: true,
@@ -221,6 +354,10 @@ exports.oauthCallback = functions.runWith({ secrets: [googleOAuthConfig] }).http
       accountName: account.name,
       locationName: location?.title || "Your Business",
       locationId: location?.name || "",
+      googlePlaceId: location.metadata?.placeId || null,
+      websiteUri: websiteUrl,
+      websiteUriSyncedAt: admin.firestore.FieldValue.serverTimestamp(),
+      websiteUriSyncStatus: "synced",
       connectedAt: admin.firestore.FieldValue.serverTimestamp(),
       lastPolled: null,
     }, { merge: true });
