@@ -22,7 +22,7 @@ export function SalonBusinessPage({ listing, onBack }) {
 }
 
 function ActionBar({ listing, salon = false, compact = false }) {
-  const phone = String(listing.phone || "").replace(/\\D/g, "");
+  const phone = String(listing.phone || "").replace(/\D/g, "");
   const wa = phone ? (phone.length === 10 ? "91" + phone : phone.startsWith("0") ? "91" + phone.slice(1) : phone) : "";
   const maps = listing.mapsUrl || vendorLink(listing);
   const website = listing.website || listing.mapsUrl || maps;
