@@ -527,31 +527,8 @@ exports.beginGbpOauth = functions.https.onCall(async (data, context) => {
   return { state };
 });
 
-exports.oauthCallback = functions.https.onRequest(async (req, res) => {
-  const { code, state } = req.query;
-  if (!code || !state) return res.status(400).send("Missing code or state");
-  try {
-    const stateRef = db.collection("oauth_states").doc(state);
-    const stateDoc = await stateRef.get();
-    if (!stateDoc.exists) return res.status(400).send("Invalid or expired connection request. Please try connecting again.");
-    const { vendorId, expiresAt } = stateDoc.data();
-    await stateRef.delete();
-    if (!expiresAt || expiresAt.toDate() < new Date()) return res.status(400).send("This connection request expired. Please try connecting again.");
-    const cfg = { client_id: functions.config().google.client_id, client_secret: functions.config().google.client_secret, redirect_uri: functions.config().google.redirect_uri };
-    const tokenRes = await axios.post("https://oauth2.googleapis.com/token", { code, client_id: cfg.client_id, client_secret: cfg.client_secret, redirect_uri: cfg.redirect_uri, grant_type: "authorization_code" });
-    const { access_token, refresh_token, expires_in } = tokenRes.data;
-    const accountsRes = await axios.get("https://mybusinessaccountmanagement.googleapis.com/v1/accounts", { headers: { Authorization: `Bearer ${access_token}` } });
-    const account = accountsRes.data.accounts?.[0];
-    if (!account) return res.status(400).send("No GBP account found");
-    const locationsRes = await axios.get(`https://mybusinessbusinessinformation.googleapis.com/v1/${account.name}/locations`, { headers: { Authorization: `Bearer ${access_token}` }, params: { readMask: "name,title,storefrontAddress,phoneNumbers,websiteUri" } });
-    const location = locationsRes.data.locations?.[0];
-    await db.collection("gbp_connections").doc(vendorId).set({ connected: true, accessToken: access_token, refreshToken: refresh_token, tokenExpiresAt: new Date(Date.now() + expires_in * 1000), accountName: account.name, locationName: location?.title || "Your Business", locationId: location?.name || "", connectedAt: admin.firestore.FieldValue.serverTimestamp(), lastPolled: null }, { merge: true });
-    res.redirect(`https://stallapp.stallwale.in/?gbp=connected`);
-  } catch (err) {
-    console.error("OAuth callback error:", err.response?.data || err.message);
-    res.status(500).send("Connection failed. Please try again.");
-  }
-});
+// OAuth callback is provided by boostCompetitiveRanking.js using GOOGLE_OAUTH_CONFIG.
+// Keep a single production callback export to avoid config ambiguity.
 
 async function refreshAccessToken(vendorId, connectionData) {
   const cfg = { client_id: functions.config().google.client_id, client_secret: functions.config().google.client_secret, redirect_uri: functions.config().google.redirect_uri };
