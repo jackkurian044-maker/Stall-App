@@ -92,10 +92,24 @@ export default function VendorPremiumWorkspace({ user, listing, hideCheckout = f
     </div>
   );
 
-  const active = Boolean(premium?.isPremium || listing.isPremium);
+  // Show the store's actual paid entitlement first. STall Verified is a paid
+  // one-time plan and must not be shown as "Revoked" just because the separate
+  // monthly Premium record is inactive/revoked.
+  const verifiedActive = Boolean(
+    listing?.isVerified ||
+    listing?.planKey === "verified" ||
+    premium?.basePlanKey === "verified"
+  );
+  const monthlyPremiumActive = Boolean(premium?.isPremium || listing?.isPremium);
+  const active = monthlyPremiumActive || verifiedActive;
   const adminGranted = premium?.status === "admin_granted";
   const cancelling = premium?.status === "cancelling";
-  const source = adminGranted ? "STall granted" : premium?.status === "admin_revoked" ? "Revoked" : active ? "Subscription" : "Not active";
+  const monthlyPlanName = premium?.tier === "growth_setup" ? "Growth Setup" : "Digital Growth";
+  const source = monthlyPremiumActive
+    ? (adminGranted ? "STall granted · " + monthlyPlanName : monthlyPlanName)
+    : verifiedActive
+      ? "STall Verified · ₹99 one-time"
+      : "Not active";
   const boostActive = Boolean(boost?.isActive || boost?.active || boost?.status === "active");
   const gbpConnected = Boolean(gbp?.connected || gbp?.isConnected || gbp?.status === "connected" || gbp?.placeId || gbp?.locationId);
   const directActions = stats.calls + stats.whatsapp;
@@ -196,7 +210,7 @@ export default function VendorPremiumWorkspace({ user, listing, hideCheckout = f
             <div className="font-display" style={{ fontSize: 24, fontWeight: 800, marginTop: 5 }}>{listing.name}</div>
             <div style={{ fontSize: 12.5, opacity: .76, marginTop: 4 }}>Store-specific growth, reputation and visibility tools.</div>
           </div>
-          <div style={{ padding: "8px 12px", borderRadius: 999, background: active ? `${COLORS.teal}28` : "rgba(255,255,255,.10)", color: active ? "#9ff0d5" : "#fff", fontSize: 11, fontWeight: 900 }}>{premiumLoading ? "CHECKING…" : active ? "PREMIUM ACTIVE" : "PREMIUM NOT ACTIVE"}</div>
+          <div style={{ padding: "8px 12px", borderRadius: 999, background: active ? `${COLORS.teal}28` : "rgba(255,255,255,.10)", color: active ? "#9ff0d5" : "#fff", fontSize: 11, fontWeight: 900 }}>{premiumLoading ? "CHECKING…" : monthlyPremiumActive ? "PREMIUM ACTIVE" : verifiedActive ? "STALL VERIFIED ACTIVE" : "PREMIUM NOT ACTIVE"}</div>
         </div>
         <div style={{ display: "flex", gap: 18, flexWrap: "wrap", marginTop: 18, paddingTop: 13, borderTop: "1px solid rgba(255,255,255,.16)", fontSize: 11.5, opacity: .82 }}>
           <span>Plan: <strong style={{ color: "#fff" }}>{source}</strong></span>
@@ -222,7 +236,14 @@ export default function VendorPremiumWorkspace({ user, listing, hideCheckout = f
         </section>
       )}
 
-      {active && (
+      {verifiedActive && !monthlyPremiumActive && (
+        <section style={{ ...cardStyle, background: "#F7F6F2", border: "1.5px solid #ddd" }}>
+          <div className="font-display" style={{ fontSize: 17, fontWeight: 800 }}>Paid plan</div>
+          <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>STall Verified · ₹99 one-time · Active for this business</div>
+        </section>
+      )}
+
+      {monthlyPremiumActive && (
         <section style={{ ...cardStyle, background: "#F7F6F2", border: "1.5px solid #ddd" }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", flexWrap: "wrap" }}>
             <div><div className="font-display" style={{ fontSize: 17, fontWeight: 800 }}>Premium membership</div><div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>{premium?.currency === "AED" ? "AED " : "₹"}{premium?.amount ? (premium.amount / 100).toLocaleString("en-IN") : "—"}/{premium?.billingCycle === "annual" ? "year" : "month"} · {cancelling ? "Cancellation scheduled" : "Active"}</div></div>
@@ -249,7 +270,7 @@ export default function VendorPremiumWorkspace({ user, listing, hideCheckout = f
       <section style={{ ...cardStyle, background: "#fff" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 900, fontSize: 13 }}><ShieldCheck size={17} /> Premium health</div>
         <div style={{ display: "grid", gap: 8, marginTop: 12, fontSize: 12.5 }}>
-          <HealthRow ok={active} text="Premium access is active for this store." />
+          <HealthRow ok={active} text={monthlyPremiumActive ? "Premium access is active for this store." : verifiedActive ? "Paid STall Verified access is active for this store." : "No paid plan is active for this store."} />
           <HealthRow ok={gbpConnected} text={gbpConnected ? "Google Business connection is active." : "Google Business connection is still pending."} />
           <HealthRow ok={boostActive} text={boostActive ? "A store boost is currently active." : "No store boost is currently active."} />
           <HealthRow ok={directActions > 0} text={directActions > 0 ? `${directActions} direct customer actions recorded.` : "Keep improving the listing to generate direct customer actions."} />
