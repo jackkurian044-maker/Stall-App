@@ -24,7 +24,7 @@ export default function PublicBusinessPage({ listingId }) {
             const qs = await getDocs(query(collection(publicDb, "vendors"), where("publicSlug", "==", key), limit(1)));
             snap = qs.docs[0] || null;
           }
-          // Legacy bridge for the first public STall page while old listings are migrated.
+          // Legacy bridge for Kerala Swaad until its existing vendor document is migrated.
           if (!snap && key === "kerala-swaad-restaurant-janakpuri") {
             snap = await getDoc(doc(publicDb, "vendors", "SGbUMqLzX6pJSw6ESZ2R"));
           }
@@ -43,55 +43,16 @@ export default function PublicBusinessPage({ listingId }) {
   }, [listingId]);
 
   useEffect(() => {
-    let alive = true;
-    // Keep canonical URLs stable and human-readable.
-    if (!listing) return;
-    const slug = slugify(listing.name);
-    const canonical = `${window.location.origin}/store/${slug}`;
-    document.title = `${listing.name} | STall`;
-    const description = listing.description || `${listing.name} on STall.`;
-    let meta = document.querySelector('meta[name="description"]');
-    if (!meta) { meta = document.createElement("meta"); meta.name = "description"; document.head.appendChild(meta); }
-    meta.content = description;
-    let canonicalEl = document.querySelector('link[rel="canonical"]');
-    if (!canonicalEl) { canonicalEl = document.createElement("link"); canonicalEl.rel = "canonical"; document.head.appendChild(canonicalEl); }
-    canonicalEl.href = canonical;
-    if (window.location.pathname !== `/store/${slug}`) window.history.replaceState({}, "", `/store/${slug}`);
-    return () => { alive = false; };
-  }, [listing]);
-
-  /* OLD_METADATA_PLACEHOLDER */
-
-  useEffect(() => {
     if (!listing) return;
     document.title = `${listing.name} | STall`;
     const description = listing.description || `${listing.name} on STall.`;
     let meta = document.querySelector('meta[name="description"]');
     if (!meta) { meta = document.createElement("meta"); meta.name = "description"; document.head.appendChild(meta); }
     meta.content = description;
-    let canonical = document.querySelector('link[rel="canonical"]');
-    if (!canonical) { canonical = document.createElement("link"); canonical.rel = "canonical"; document.head.appendChild(canonical); }
-    canonical.href = window.location.href;
-  }, [listing]);
-
-  const back = () => { window.location.href = "/"; };
-      if (!alive) return;
-      setError(e?.message || "Unable to load this business page.");
-      setLoading(false);
-    });
-    return () => { alive = false; };
-  }, [listingId]);
-
-  useEffect(() => {
-    if (!listing) return;
-    document.title = `${listing.name} | STall`;
-    const description = listing.description || `${listing.name} on STall.`;
-    let meta = document.querySelector('meta[name="description"]');
-    if (!meta) { meta = document.createElement("meta"); meta.name = "description"; document.head.appendChild(meta); }
-    meta.content = description;
-    let canonical = document.querySelector('link[rel="canonical"]');
-    if (!canonical) { canonical = document.createElement("link"); canonical.rel = "canonical"; document.head.appendChild(canonical); }
-    canonical.href = window.location.href;
+    const canonical = document.querySelector('link[rel="canonical"]') || document.createElement("link");
+    canonical.rel = "canonical";
+    canonical.href = `${window.location.origin}/store/${slugify(listing.name)}`;
+    if (!canonical.parentNode) document.head.appendChild(canonical);
   }, [listing]);
 
   const back = () => { window.location.href = "/"; };
@@ -172,4 +133,12 @@ const pill={display:"inline-flex",alignItems:"center",gap:5,padding:"5px 9px",bo
 const muted={color:"#666",lineHeight:1.5};
 
 
-function slugify(value) { return String(value || "").toLowerCase().normalize("NFKD").replace(/[\\u0300-\\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80); }
+function slugify(value) {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+}
