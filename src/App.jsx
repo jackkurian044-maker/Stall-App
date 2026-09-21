@@ -29,6 +29,15 @@ export default function App() {
   const [landingStoreId, setLandingStoreId] = useState("");
 
   useEffect(() => {
+    const host = window.location.hostname.toLowerCase();
+    const path = window.location.pathname;
+    // Keep the app subdomain unchanged. Only the apex-domain homepage
+    // redirects to the public STall business-growth landing page.
+    if ((host === "stallwale.in" || host === "www.stallwale.in") && path === "/") {
+      window.location.replace("https://stall.stallwale.in/business-growth.html");
+      return;
+    }
+
     const params = new URLSearchParams(window.location.search);
     const pathMatch = window.location.pathname.match(/^\/business\/([^/]+)\/?$/i);
     const storeId = (params.get("store") || (pathMatch ? pathMatch[1] : "") || "").trim();
