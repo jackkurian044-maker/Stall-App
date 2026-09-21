@@ -59,6 +59,14 @@ jobs:
         run: npx --yes firebase-tools@latest deploy --only firestore:rules,firestore:indexes --project stall-app-1aab7 --non-interactive
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
+      - name: Deploy GBP OAuth - begin authorization
+        run: npx --yes firebase-tools@latest deploy --only functions:beginGbpOauth --project stall-app-1aab7 --non-interactive
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
+      - name: Deploy GBP OAuth - callback
+        run: npx --yes firebase-tools@latest deploy --only functions:oauthCallback --project stall-app-1aab7 --non-interactive
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
       - name: Deploy Lead Engine - Google Ads webhook
         run: npx --yes firebase-tools@latest deploy --only functions:googleAdsLeadWebhook --project stall-app-1aab7 --non-interactive
         env:
