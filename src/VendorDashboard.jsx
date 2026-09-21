@@ -5,6 +5,7 @@ import {
 } from "firebase/firestore";
 import { Plus, Trash2, KeyRound, RefreshCw, Star, Zap, BarChart2, Eye, Phone, MessageCircle, Navigation } from "lucide-react";
 import { db } from "./firebase";
+import { getFunctions, httpsCallable } from "firebase/functions";
 import { CATEGORIES, COLORS } from "./constants";
 import LocationSearch from "./LocationSearch";
 import ImageUpload from "./ImageUpload";
@@ -126,8 +127,23 @@ export default function VendorDashboard({ user, agent }) {
         preferredLink: form.preferredLink || null, todaySpecial: form.todaySpecial.trim(), everydaySpecial: form.everydaySpecial.trim(), todayOffer: form.todayOffer.trim(), weekendOffer: form.weekendOffer.trim(), offer: form.offer.trim(),
         offerExpiresAt: form.offerExpiresAt ? new Date(`${form.offerExpiresAt}T23:59:59`) : null,
       };
-      if (editingId) await updateDoc(doc(db, "vendors", editingId), payload);
-      else await addDoc(collection(db, "vendors"), { ...payload, ownerId: user.uid, addedByAgentId: agent ? user.uid : null, claimCode: null, createdAt: serverTimestamp(), ratingUpdatedAt: payload.placeId ? serverTimestamp() : null });
+      let savedListingId = editingId;
+      if (editingId) {
+        await updateDoc(doc(db, "vendors", editingId), payload);
+      } else {
+        const created = await addDoc(collection(db, "vendors"), { ...payload, ownerId: user.uid, addedByAgentId: agent ? user.uid : null, claimCode: null, createdAt: serverTimestamp(), ratingUpdatedAt: payload.placeId ? serverTimestamp() : null });
+        savedListingId = created.id;
+      }
+      // When a Google Business Profile is connected, make the canonical STall
+      // store page the profile website. This uses the saved pageLayout as the
+      // default presentation without changing the public URL.
+      if (savedListingId) {
+        try {
+          await httpsCallable(getFunctions(), "syncGbpWebsite")({ listingId: savedListingId });
+        } catch (syncErr) {
+          console.warn("STall GBP website sync skipped/failed:", syncErr?.message || syncErr);
+        }
+      }
       setForm(emptyForm);
       setEditingId(null);
     } catch { setError("Couldn't save — please try again."); }
