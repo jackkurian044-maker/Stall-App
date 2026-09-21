@@ -30,14 +30,13 @@ export default function App() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("store")) {
-      const storeId = (params.get("store") || "").trim();
-      if (storeId) {
-        setLandingStoreId(storeId);
-        setMode("landing");
-        window.history.replaceState({}, "", window.location.pathname);
-        return;
-      }
+    const pathMatch = window.location.pathname.match(/^\/business\/([^/]+)\/?$/i);
+    const storeId = (params.get("store") || (pathMatch ? pathMatch[1] : "") || "").trim();
+    if (storeId) {
+      setLandingStoreId(storeId);
+      setMode("landing");
+      if (params.get("store") || pathMatch) window.history.replaceState({}, "", window.location.pathname);
+      return;
     }
     if (params.get("upgrade") === "1") {
       try {
@@ -142,7 +141,7 @@ export default function App() {
         {authLoading ? (
           <div style={{ padding: 40, textAlign: "center", color: "#9c9c9c", fontSize: 14 }}>Loading…</div>
         ) : mode === "landing" ? (
-          <StoreLandingPage listingId={landingStoreId} onBack={() => { setMode("find"); window.history.replaceState({}, "", window.location.pathname); }} />
+          <StoreLandingPage listingId={landingStoreId} onBack={() => { setMode("find"); window.history.replaceState({}, "", "/"); }} />
         ) : mode === "find" ? (
           <>
             <BusinessOwnerCTA onListFree={openVendorSignup} onClaim={openVendorClaim} />
