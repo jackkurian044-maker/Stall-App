@@ -288,7 +288,7 @@ function PhotoStrip({ photos, name }) {
 }
 
 function TemplateShell({ children, listing }) {
-  const theme = getPageTheme(listing?.pageTheme);
+  const theme = getPageTheme("stall");
   return <div style={{ minHeight: "100vh", background: theme.bg, color: "var(--ink)", "--ink": theme.ink, "--accent": theme.accent, "--teal": theme.teal, "--surface": theme.surface, "--soft": theme.soft }}>
     {children}
     <footer style={footer}>
