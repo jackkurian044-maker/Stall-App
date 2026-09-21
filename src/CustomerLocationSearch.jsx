@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Search } from "lucide-react";
-import { COLORS, DEFAULT_LOC } from "./constants";
+import { COLORS } from "./constants";
 import { loadGoogleMaps } from "./googleMaps";
 
 const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_PLACES_API_KEY;
@@ -33,15 +33,11 @@ export default function CustomerLocationSearch({ onSelect, placeholder }) {
     loadGoogleMaps(GOOGLE_API_KEY)
       .then(() => {
         if (cancelled || !inputRef.current) return;
-        // Same local-bias pattern as LocationSearch: prefer results near
-        // the app's default city without hard-excluding anything else.
-        const bounds = new window.google.maps.LatLngBounds(
-          { lat: DEFAULT_LOC.lat - 0.5, lng: DEFAULT_LOC.lng - 0.5 },
-          { lat: DEFAULT_LOC.lat + 0.5, lng: DEFAULT_LOC.lng + 0.5 }
-        );
+        // Do not bias customer location suggestions toward any hard-coded city.
+        // The customer's chosen location must come from their own selection
+        // or the browser's current location flow in FindView.
         const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
           fields: ["formatted_address", "geometry", "name"],
-          bounds,
           componentRestrictions: { country: "in" },
         });
         autocomplete.addListener("place_changed", () => {
