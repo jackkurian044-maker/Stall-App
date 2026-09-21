@@ -133,14 +133,13 @@ function Back({ onBack }) {
 
 function TemplateShell({ children }) {
   return <div style={{ minHeight: "100vh", background: "#f7f3eb", color: COLORS.ink }}>
-    <header style={{ background: "#161616", borderBottom: "1px solid #2a2a2a", boxShadow: "0 2px 14px rgba(0,0,0,.35)", padding: "14px 24px", display: "flex", alignItems: "center" }}>
-      <a href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", color: "#fff" }}>
-        <img src={stallLogoMark} alt="STall" style={{ width: 40, height: "auto" }} />
-        <span style={{ fontWeight: 700, fontSize: "1.28rem" }}>all</span>
-        <span style={{ fontSize: 11, letterSpacing: ".04em", color: "#9c9c9c", fontWeight: 600 }}>what's around the corner</span>
-      </a>
-    </header>
     {children}
+    <footer style={footer}>
+      <a href="/" style={{ display: "inline-flex", alignItems: "center", gap: 7, textDecoration: "none", color: "#777" }}>
+        <img src={stallLogoMark} alt="STall" style={{ width: 24, height: "auto" }} />
+        <span style={{ fontSize: 11, fontWeight: 700 }}>Powered by STall</span>
+      </a>
+    </footer>
   </div>;
 }
 
@@ -162,4 +161,5 @@ const infoGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax
 const button = { display: "inline-flex", alignItems: "center", gap: 7, background: COLORS.ink, color: "#fff", textDecoration: "none", border: 0, borderRadius: 9, padding: "10px 14px", fontWeight: 800, fontSize: 12.5 };
 const outlineButton = { ...button, background: "#fff", color: COLORS.ink, border: "1px solid " + COLORS.ink };
 const backLink = { background: "transparent", border: 0, padding: 0, color: "#666", cursor: "pointer", display: "flex", gap: 6, alignItems: "center", marginBottom: 18 };
+const footer = { maxWidth: 1120, margin: "0 auto", padding: "18px 16px 28px", display: "flex", justifyContent: "flex-end", opacity: 0.8 };
 const pill = { display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 9px", borderRadius: 999, background: COLORS.ink, color: "#fff", fontSize: 10.5, fontWeight: 900 };
