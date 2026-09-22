@@ -333,9 +333,9 @@ const visitInfoItem = { display:"flex", alignItems:"flex-start", gap:11, padding
 const visitInfoIcon = { width:34, height:34, flex:"0 0 34px", borderRadius:11, background:"#f6f6f6", color:"var(--ink)", display:"flex", alignItems:"center", justifyContent:"center" };
 const visitInfoText = { marginTop:5, color:"#4f4f4f", fontSize:12, lineHeight:1.5, fontWeight:750 };
 const hoursList = { marginTop:5, display:"grid", gap:7 };
-const hoursRow = { display:"grid", gridTemplateColumns:"88px minmax(0,1fr)", gap:10, alignItems:"baseline", fontSize:12 };
-const hoursDay = { color:"#222", fontWeight:900 };
-const hoursTime = { color:"#4f4f4f", fontWeight:750 };
+const hoursRow = { display:"flex", justifyContent:"space-between", alignItems:"baseline", gap:12, fontSize:12, width:"100%" };
+const hoursDay = { color:"#222", fontWeight:900, flex:"0 0 78px" };
+const hoursTime = { color:"#4f4f4f", fontWeight:750, whiteSpace:"nowrap", textAlign:"right", flex:"1 1 auto" };
 
 const mapCta = { display:"inline-flex", alignItems:"center", justifyContent:"center", gap:7, color:"#fff", background:"var(--ink)", borderRadius:11, padding:"11px 14px", textDecoration:"none", fontWeight:850, fontSize:12.5, width:"fit-content" };
 const bottomCta = { marginTop:26, padding:"28px 30px", borderRadius:26, background:"linear-gradient(135deg,var(--ink),var(--teal))", color:"#fff", display:"flex", justifyContent:"space-between", gap:20, alignItems:"center", boxShadow:"0 20px 50px rgba(0,0,0,.16)" };
