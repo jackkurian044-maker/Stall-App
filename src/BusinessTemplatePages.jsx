@@ -75,7 +75,7 @@ function StorePage({ listing, onBack, salon, layout }) {
               {isGrowth && website && <a href={website} target="_blank" rel="noreferrer" style={primaryCta}><Globe2 size={17}/>{ctaLabel}</a>}
               {wa && <a href={"https://wa.me/" + wa} target="_blank" rel="noreferrer" style={whatsappCta}><MessageCircle size={17}/> WhatsApp</a>}
               {phone && <a href={"tel:" + phone} style={secondaryCta}><Phone size={16}/> Call</a>}
-              <a href={maps} target="_blank" rel="noreferrer" style={secondaryCta}><Navigation size={16}/> Directions</a>}
+              <a href={maps} target="_blank" rel="noreferrer" style={secondaryCta}><Navigation size={16}/> Directions</a>
             </div>
             <div style={trustRow}>
               <span><Clock size={14}/> {listing.hours || "Hours available"} </span>
@@ -95,7 +95,7 @@ function StorePage({ listing, onBack, salon, layout }) {
           </section>
         )}
 
-        <section style={contentGrid}>
+        <section style={contentGrid} className="content-grid">
           <div style={mainColumn}>
             <section style={storyCard}>
               <div style={sectionEyebrow}><span style={eyebrowLine}/>{salon ? "THE EXPERIENCE" : "WHY VISIT"}</div>
@@ -144,7 +144,7 @@ function StorePage({ listing, onBack, salon, layout }) {
           </aside>
         </section>
 
-        <section style={bottomCta}>
+        <section style={bottomCta} className="bottom-cta">
           <div>
             <div style={bottomKicker}>READY WHEN YOU ARE</div>
             <h2 style={bottomTitle}>{salon ? "Your next appointment starts here." : "Make your next visit a good one."}</h2>
@@ -301,7 +301,7 @@ if (typeof document !== "undefined") {
         .gallery-grid { grid-template-columns: 1fr 1fr !important; }
         .visit-card { grid-template-columns: 1fr !important; }
         .visit-card > div:last-child { align-items: flex-start !important; }
-        .bottom-cta { flex-direction: column !important; align-items: flex-start !important; }
+        .bottom-cta { flex-direction: column !important; align-items: flex-start !important; }\n        .bottom-cta .bottom-actions { width: 100%; }
         .stall-premium-store-responsive + * {}
       }
     `;
