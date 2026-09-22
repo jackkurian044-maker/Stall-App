@@ -132,7 +132,7 @@ function StorePage({ listing, onBack, salon, layout }) {
                     <div style={visitInfoIcon}><Clock size={16}/></div>
                     <div>
                       <div style={visitLabel}>HOURS</div>
-                      <div style={visitInfoText}>{listing.hours}</div>
+                      <OpeningHours value={listing.hours} />
                     </div>
                   </div>
                 )}
@@ -213,6 +213,31 @@ function TemplateShell({ children, listing, theme }) {
 
 function Back({ onBack }) {
   return <button onClick={onBack} style={backLink}><ArrowLeft size={15}/> Back</button>;
+}
+
+function OpeningHours({ value }) {
+  const lines = formatHours(value);
+  if (!lines.length) return null;
+  return (
+    <div style={hoursList}>
+      {lines.map((line, i) => {
+        const match = line.match(/^([^:]+):\\s*(.+)$/);
+        return (
+          <div key={line + i} style={hoursRow}>
+            <span style={hoursDay}>{match ? match[1] : line}</span>
+            {match && <span style={hoursTime}>{match[2]}</span>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function formatHours(value) {
+  const text = String(value || "").replace(/\\u2009/g, " ").replace(/\\s+/g, " ").trim();
+  if (!text) return [];
+  const normalized = text.replace(/\\s*(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday):/gi, "\\n$1:");
+  return normalized.split(/\\n+/).map(x => x.trim()).filter(Boolean);
 }
 
 function cleanPhone(value) { return String(value || "").replace(/\D/g, ""); }
@@ -307,6 +332,11 @@ const visitDetails = { display:"flex", flexDirection:"column", gap:14, justifyCo
 const visitInfoItem = { display:"flex", alignItems:"flex-start", gap:11, paddingBottom:14, borderBottom:"1px solid rgba(0,0,0,.08)" };
 const visitInfoIcon = { width:34, height:34, flex:"0 0 34px", borderRadius:11, background:"#f6f6f6", color:"var(--ink)", display:"flex", alignItems:"center", justifyContent:"center" };
 const visitInfoText = { marginTop:5, color:"#4f4f4f", fontSize:12, lineHeight:1.5, fontWeight:750 };
+const hoursList = { marginTop:5, display:"grid", gap:7 };
+const hoursRow = { display:"grid", gridTemplateColumns:"88px minmax(0,1fr)", gap:10, alignItems:"baseline", fontSize:12 };
+const hoursDay = { color:"#222", fontWeight:900 };
+const hoursTime = { color:"#4f4f4f", fontWeight:750 };
+
 const mapCta = { display:"inline-flex", alignItems:"center", justifyContent:"center", gap:7, color:"#fff", background:"var(--ink)", borderRadius:11, padding:"11px 14px", textDecoration:"none", fontWeight:850, fontSize:12.5, width:"fit-content" };
 const bottomCta = { marginTop:26, padding:"28px 30px", borderRadius:26, background:"linear-gradient(135deg,var(--ink),var(--teal))", color:"#fff", display:"flex", justifyContent:"space-between", gap:20, alignItems:"center", boxShadow:"0 20px 50px rgba(0,0,0,.16)" };
 const bottomKicker = { fontSize:10, letterSpacing:".12em", fontWeight:900, opacity:.7 };
