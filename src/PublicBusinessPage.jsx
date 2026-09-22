@@ -63,7 +63,7 @@ export default function PublicBusinessPage({ listingId }) {
   }, [listing]);
 
   const back = () => { window.location.href = "/"; };
-  const isSalonCategory = (value) => { const normalized = String(value || "").trim().toLowerCase().replace(/\\s+/g, " "); return normalized === "salon" || normalized === "salons"; };
+  const isSalonCategory = (value) => { const normalized = String(value || "").trim().toLowerCase().replace(/\s+/g, " "); return normalized === "salon" || normalized === "salons"; };
 
   // listing can be null while the Firestore lookup is loading or missing.
   // Do not dereference it until after the loading/error/not-found guards below.
