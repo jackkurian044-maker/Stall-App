@@ -10,6 +10,7 @@ import LocationSearch from "./LocationSearch";
 import ImageUpload from "./ImageUpload";
 import { findDuplicateVendor } from "./duplicateCheck";
 import { resolveReport } from "./reports";
+import { SalonBusinessPage } from "./BusinessTemplatePages";
 
 const emptyForm = {
   name: "", category: CATEGORIES[0], description: "", products: "",
@@ -42,6 +43,7 @@ export default function AdminDashboard() {
   const [agents, setAgents] = useState([]);
   const [commissions, setCommissions] = useState([]);
   const [expandedAgentId, setExpandedAgentId] = useState(null);
+  const [previewListing, setPreviewListing] = useState(null);
   const refreshedRef = useRef(new Set());
 
   useEffect(() => {
@@ -317,6 +319,8 @@ STall — Find what’s around the corner.`;
     }
   };
 
+  const openSalonPreview = (v) => setPreviewListing(v);
+
   const openOwnerWhatsApp = (contact) => {
     if (!contact?.code || !contact?.name) {
       setOwnerMessageStatus("This listing does not have a valid claim ID.");
@@ -574,6 +578,7 @@ STall — Find what’s around the corner.`;
                 <div style={{ display: "flex", gap: 4, flexShrink: 0, alignItems: "center" }}>
                   {v.placeId && !v.phone && !v.ownerId && <button onClick={() => fetchVendorPhone(v)} disabled={phoneSyncingId === v.id} title="Fetch business phone from Google" className="stall-btn" style={{ display: "flex", alignItems: "center", gap: 4, background: phoneSyncingId === v.id ? "#f5f5f5" : "transparent", border: `1.5px solid ${COLORS.ink}`, color: phoneSyncingId === v.id ? "#999" : COLORS.ink, borderRadius: 7, padding: "5px 9px", fontSize: 11, fontWeight: 700, cursor: phoneSyncingId === v.id ? "wait" : "pointer" }}><RefreshCw size={12} className={phoneSyncingId === v.id ? "spin" : ""} /> {phoneSyncingId === v.id ? "Fetching…" : "Fetch Phone"}</button>}
                   {v.placeId && isRatingStale(v) && <span title="Rating/phone will sync from Google automatically" style={{ color: "#bbb", padding: 6, display: "flex" }}><RefreshCw size={14} /></span>}
+                  {String(v.category || "").trim().toLowerCase().match(/^(salon|salons|beauty|beauty salon|beauty salons|beauty & wellness|beauty and wellness|hair salon|hair & beauty|salon & spa|salon and spa|spa & salon|parlour|parlor)$/) && <button onClick={() => openSalonPreview(v)} className="stall-btn" style={{ background: "#fff", border: `1.5px solid ${COLORS.ink}`, color: COLORS.ink, borderRadius: 7, padding: "5px 9px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>Preview</button>}
                   {v.ownerId && <button onClick={() => togglePremium(v)} title={premiumMap[v.ownerId] ? "Remove premium access" : "Manually grant premium access"} className="stall-btn" style={{ display: "flex", alignItems: "center", gap: 4, background: premiumMap[v.ownerId] ? COLORS.marigold : "transparent", border: `1.5px solid ${COLORS.marigold}`, color: premiumMap[v.ownerId] ? COLORS.ink : COLORS.marigold, borderRadius: 7, padding: "5px 9px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}><Crown size={12} /> {premiumMap[v.ownerId] ? "Premium" : "Grant"}</button>}
                   {!v.ownerId && v.claimCode && (
                     <button
@@ -607,6 +612,23 @@ STall — Find what’s around the corner.`;
           </div>
         )}
         {phoneSyncStatus && <div style={{ fontSize: 11, color: COLORS.teal, marginTop: 8 }}>{phoneSyncStatus}</div>}
+      </div>
+    </div>
+
+}        {previewListing && <AdminSalonPreviewModal listing={previewListing} onClose={() => setPreviewListing(null)} />}
+  );
+}
+
+
+function AdminSalonPreviewModal({ listing, onClose }) {
+  return (
+    <div role="dialog" aria-modal="true" aria-label="Salon page preview" style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,.72)", display: "flex", flexDirection: "column", padding: 12 }}>
+      <div style={{ width: "100%", maxWidth: 1240, margin: "0 auto", background: "#fff", borderRadius: 14, overflow: "hidden", display: "flex", flexDirection: "column", minHeight: 0, flex: 1 }}>
+        <div style={{ padding: "10px 12px", borderBottom: "1px solid #ddd", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, background: "#fff" }}>
+          <div><div style={{ fontWeight: 800, color: COLORS.ink, fontSize: 13 }}>Salon page preview</div><div style={{ fontSize: 11, color: "#666", marginTop: 2 }}>Preview only — nothing is published or changed.</div></div>
+          <button type="button" onClick={onClose} className="stall-btn" style={{ background: COLORS.ink, color: "#fff", border: "none", borderRadius: 8, padding: "8px 13px", fontSize: 12, fontWeight: 800 }}>Close Preview</button>
+        </div>
+        <div style={{ flex: 1, overflowY: "auto", minHeight: 0, background: "#f3f3f3" }}><div style={{ padding: 10 }}><SalonBusinessPage listing={listing} onBack={onClose} /></div></div>
       </div>
     </div>
   );
