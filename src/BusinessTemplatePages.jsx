@@ -155,7 +155,7 @@ function StorePage({ listing, onBack, salon, layout }) {
           </div>
         </section>
 
-        <div style={mobileBar}>
+        <div style={mobileBar} className="stall-mobile-bar">
           {wa && <a href={"https://wa.me/" + wa} target="_blank" rel="noreferrer"><MessageCircle size={18}/><span>WhatsApp</span></a>}
           {phone && <a href={"tel:" + phone}><Phone size={18}/><span>Call</span></a>}
           <a href={maps} target="_blank" rel="noreferrer"><Navigation size={18}/><span>Directions</span></a>
@@ -285,7 +285,7 @@ if (typeof document !== "undefined") {
     style.textContent = `
       .stall-store-hero img { transition: transform .7s ease, filter .7s ease; }
       .stall-store-hero:hover img { transform: scale(1.025); filter: saturate(1.06); }
-      @media (max-width: 820px) {
+      @media (max-width: 820px) {\n        .stall-mobile-bar { display: flex !important; justify-content: space-around; align-items: center; }\n        .stall-mobile-bar a, .stall-mobile-bar button { color:#fff; text-decoration:none; background:transparent; border:0; display:flex; flex-direction:column; align-items:center; gap:3px; font-size:9px; font-weight:800; padding:4px 8px; }
         .stall-store-hero { grid-template-columns: 1fr !important; min-height: 0 !important; border-radius: 24px !important; }
         .stall-store-hero > div:first-child { min-height: 340px !important; }
         .stall-store-hero > div:first-child img { min-height: 340px !important; }
