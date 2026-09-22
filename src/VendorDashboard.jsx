@@ -20,6 +20,8 @@ import LeadEnginePanel from "./LeadEnginePanel";
 import BoostCampaignPanel from "./BoostCampaignPanel";
 import { RestaurantBusinessPage, SalonBusinessPage } from "./BusinessTemplatePages";
 
+const isSalonCategory = (value) => String(value || "").trim().toLowerCase().replace(/\s+/g, " ") === "salon" || String(value || "").trim().toLowerCase().replace(/\s+/g, " ") === "salons";
+
 const emptyForm = {
   name: "", category: CATEGORIES[0], description: "", products: "",
   address: "", phone: "", lat: "", lng: "", website: null, mapsUrl: null, placeId: null,
@@ -97,7 +99,7 @@ export default function VendorDashboard({ user, agent }) {
   const startEdit = (l) => {
     setEditingId(l.id);
     setForm({
-      name: l.name, category: l.category, description: l.description || "",
+      name: l.name, category: isSalonCategory(l.category) ? "Salons" : l.category, description: l.description || "",
       products: l.products || "", address: l.address || "", phone: l.phone || "",
       lat: String(l.lat), lng: String(l.lng), website: l.website || null, mapsUrl: l.mapsUrl || null,
       placeId: l.placeId || null, rating: l.rating ?? null, ratingsCount: l.ratingsCount ?? null,
@@ -159,7 +161,7 @@ export default function VendorDashboard({ user, agent }) {
         }
       }
       const payload = {
-        name: form.name.trim(), publicSlug: slugify(form.name), category: form.category, pageLayout: layoutOverride || form.pageLayout || "classic", description: form.description.trim(), products: form.products.trim(),
+        name: form.name.trim(), publicSlug: slugify(form.name), category: isSalonCategory(form.category) ? "Salons" : form.category, pageLayout: layoutOverride || form.pageLayout || "classic", description: form.description.trim(), products: form.products.trim(),
         address: form.address.trim(), phone: form.phone.trim(), lat, lng, geohash: encodeGeohash(lat, lng, 9),
         website: form.website || null, mapsUrl: form.mapsUrl || null, placeId: form.placeId || null,
         rating: form.rating ?? null, ratingsCount: form.ratingsCount ?? null, hours: form.hours.trim(), photos: form.photos || [],
@@ -244,7 +246,7 @@ export default function VendorDashboard({ user, agent }) {
             {field("Description", <textarea style={{ ...inputStyle, resize: "vertical", minHeight: 56 }} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="What makes this worth the walk?" />)}
             {field("Products (comma separated)", <input style={inputStyle} value={form.products} onChange={(e) => setForm({ ...form, products: e.target.value })} placeholder="mango pickle, lime pickle" />)}
             {field("Phone (optional)", <input style={inputStyle} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />)}
-            {form.category === "Salons" ? <>
+            {isSalonCategory(form.category) ? <>
               {field("Today’s offer", <input style={inputStyle} value={form.todayOffer} onChange={(e) => setForm({ ...form, todayOffer: e.target.value })} placeholder="e.g. Hair spa + blow dry — ₹999 today" />)}
               {field("Weekend offer", <input style={inputStyle} value={form.weekendOffer} onChange={(e) => setForm({ ...form, weekendOffer: e.target.value })} placeholder="e.g. Saturday & Sunday — 20% off hair services" />)}
             </> : <>
@@ -341,7 +343,7 @@ function slugify(value) {
 function StorePagePreviewModal({ listing, saving, onClose, onPublish }) {
   const liveSlug = slugify(listing.name);
   const isRestaurant = listing.category === "Food & Produce";
-  const isSalon = listing.category === "Salons";
+  const isSalon = isSalonCategory(listing.category);
 
   return (
     <div
