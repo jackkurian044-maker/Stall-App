@@ -302,28 +302,28 @@ function TemplateShell({ children, listing }) {
 
 const csv = (value) => String(value || "").split(",").map(x => x.trim()).filter(Boolean).join(" · ");
 const pageWrap = { maxWidth: 1120, margin: "0 auto", padding: "18px 16px 50px" };
-const box = { background: "var(--surface)", border: "1px solid #ddd", borderRadius: 16, padding: 22, boxShadow: "0 6px 22px rgba(0,0,0,.06)" };
-const restaurantHero = { ...box, display: "grid", gap: 26, padding: 18, alignItems: "center" };
-const heroPhoto = { width: "100%", height: 210, objectFit: "cover", borderRadius: 13 };
+const box = { background: "var(--surface)", border: "1px solid rgba(22,22,22,.08)", borderRadius: 20, padding: 22, boxShadow: "0 14px 40px rgba(22,22,22,.08)" };
+const restaurantHero = { ...box, display: "grid", gap: 28, padding: 16, alignItems: "stretch", background: "linear-gradient(145deg,var(--surface),var(--soft))" };
+const heroPhoto = { width: "100%", height: 260, objectFit: "cover", borderRadius: 16, boxShadow: "0 12px 30px rgba(0,0,0,.12)" };
 const heroContent = { padding: "4px 8px 4px 0" };
 const infoAction = { display: "flex", justifyContent: "center", alignItems: "center", marginTop: 14, padding: "10px 12px", borderRadius: 10, background: "#eef9f3", color: "var(--teal)", textDecoration: "none", fontWeight: 800, fontSize: 12 };
 
-const spotlightBox = { ...box, padding: 0 };
-const spotlightPhoto = { width: "100%", height: 330, objectFit: "cover", display: "block" };
+const spotlightBox = { ...box, padding: 0, borderRadius: 24, overflow: "hidden", boxShadow: "0 20px 55px rgba(16,42,67,.14)" };
+const spotlightPhoto = { width: "100%", height: 390, objectFit: "cover", display: "block", filter: "saturate(1.05)" };
 const compactBox = { ...box, display: "grid", gap: 18, alignItems: "center", padding: 16 };
 const compactPhoto = { width: "110px", height: "110px", objectFit: "cover", borderRadius: 12 };
 const compactInfoGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(190px,1fr))", gap: 10, marginTop: 10 };
 const rowWrap = { display: "flex", flexWrap: "wrap", gap: 7, alignItems: "center" };
-const title = { fontSize: "clamp(28px, 4vw, 40px)", lineHeight: 1.08, margin: "12px 0 8px", overflowWrap: "anywhere" };
+const title = { fontSize: "clamp(30px, 4.5vw, 46px)", lineHeight: 1.04, letterSpacing: "-.035em", fontWeight: 950, margin: "14px 0 9px", overflowWrap: "anywhere" };
 const description = { color: "#555", lineHeight: 1.6, margin: 0 };
 const rating = { display: "flex", alignItems: "center", gap: 6, marginTop: 13, fontWeight: 800 };
 const actions = { display: "flex", flexWrap: "wrap", gap: 9, marginTop: 18 };
-const specialGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 12, marginTop: 12 };
-const infoGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12, marginTop: 12 };
-const button = { display: "inline-flex", alignItems: "center", gap: 7, background: "var(--ink)", color: "#fff", textDecoration: "none", border: 0, borderRadius: 9, padding: "10px 14px", fontWeight: 800, fontSize: 12.5 };
-const outlineButton = { ...button, background: "#fff", color: "var(--ink)", border: "1px solid " + "var(--ink)" };
+const specialGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 14, marginTop: 14 };
+const infoGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 14, marginTop: 14 };
+const button = { display: "inline-flex", alignItems: "center", gap: 7, background: "var(--ink)", color: "#fff", textDecoration: "none", border: 0, borderRadius: 12, padding: "11px 15px", fontWeight: 850, fontSize: 12.5, boxShadow: "0 7px 18px rgba(0,0,0,.12)" };
+const outlineButton = { ...button, background: "rgba(255,255,255,.82)", color: "var(--ink)", border: "1px solid rgba(22,22,22,.18)", boxShadow: "none" };
 const backLink = { background: "transparent", border: 0, padding: 0, color: "#666", cursor: "pointer", display: "flex", gap: 6, alignItems: "center", marginBottom: 18 };
-const footer = { maxWidth: 1120, margin: "0 auto", padding: "18px 16px 28px", display: "flex", justifyContent: "flex-end", opacity: 0.8 };
+const footer = { maxWidth: 1120, margin: "0 auto", padding: "22px 16px 34px", display: "flex", justifyContent: "center", opacity: 0.72 };
 const pill = { display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 9px", borderRadius: 999, background: "var(--ink)", color: "#fff", fontSize: 10.5, fontWeight: 900 };
 
 
