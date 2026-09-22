@@ -251,9 +251,9 @@ function OpeningHours({ value }) {
 }
 
 function formatHours(value) {
-  const text = String(value || "").replace(/\\u2009/g, " ").replace(/\\s+/g, " ").trim();
+  const text = String(value || "").replace(/\u2009/g, " ").replace(/\s+/g, " ").trim();
   if (!text) return [];
-  const normalized = text.replace(/\\s*(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday):/gi, "\\n$1:");
+  const normalized = text.replace(/\s*(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday):/gi, "\n$1:");
   return normalized.split(/\\n+/).map(x => x.trim()).filter(Boolean);
 }
 
