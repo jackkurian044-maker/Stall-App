@@ -114,7 +114,7 @@ export default function VendorDashboard({ user, agent }) {
       ...(current || {}),
       id: editingId || "preview",
       name: form.name.trim(),
-      category: form.category,
+      category: isSalonCategory(form.category) ? "Salons" : form.category,
       description: form.description.trim(),
       products: form.products.trim(),
       address: form.address.trim(),
