@@ -193,7 +193,7 @@ function Gallery({ photos, name }) {
 function TemplateShell({ children, listing, theme }) {
   return <div style={{ minHeight: "100vh", background: theme.bg, color: theme.ink, "--ink": theme.ink, "--accent": theme.accent, "--teal": theme.teal, "--surface": "#fff" }}>
     {children}
-    <footer style={footer}><span>© {new Date().getFullYear()} {listing?.name || "Business"}</span></footer>
+    <footer style={footer}><span>© {new Date().getFullYear()} {listing?.name || "Business"}</span><span style={{margin:"0 7px",opacity:.45}}>·</span><span>Powered by <strong>STall</strong></span></footer>
   </div>;
 }
 
