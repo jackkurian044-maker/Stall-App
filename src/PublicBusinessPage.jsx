@@ -64,7 +64,9 @@ export default function PublicBusinessPage({ listingId }) {
 
   const back = () => { window.location.href = "/"; };
 
-  const activeLayout = previewLayout || listing.pageLayout || "classic";
+  // listing can be null while the Firestore lookup is loading or missing.
+  // Do not dereference it until after the loading/error/not-found guards below.
+  const activeLayout = previewLayout || listing?.pageLayout || "classic";
   const renderListing = previewLayout
     ? { ...listing, pageLayout: previewLayout }
     : { ...listing, pageLayout: activeLayout };
