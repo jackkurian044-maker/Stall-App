@@ -348,7 +348,8 @@ const visitLabel = { fontSize:9.5, letterSpacing:".11em", fontWeight:950, color:
 const visitDetails = { display:"flex", flexDirection:"column", gap:16, justifyContent:"center", padding:"18px 0 18px 28px", borderLeft:"1px solid rgba(0,0,0,.08)", minWidth:0 };
 const visitInfoItem = { display:"flex", alignItems:"flex-start", gap:11, paddingBottom:14, borderBottom:"1px solid rgba(0,0,0,.08)" };
 const visitInfoIcon = { width:34, height:34, flex:"0 0 34px", borderRadius:11, background:"#f6f6f6", color:"var(--ink)", display:"flex", alignItems:"center", justifyContent:"center" };
-const visitInfoText = { marginTop:5, color:"#4f4f4f", fontSize:12, lineHeight:1.5, fontWeight:750 };\nconst addressText = { marginTop:7, color:"#3f4744", fontSize:15, lineHeight:1.65, fontWeight:650, maxWidth:520 };
+const visitInfoText = { marginTop:5, color:"#4f4f4f", fontSize:12, lineHeight:1.5, fontWeight:750 };
+const addressText = { marginTop:7, color:"#3f4744", fontSize:15, lineHeight:1.65, fontWeight:650, maxWidth:520 };
 const hoursList = { marginTop:8, display:"grid", gap:0, width:"100%" };
 const hoursRow = { display:"grid", gridTemplateColumns:"92px minmax(0,1fr)", alignItems:"center", gap:12, fontSize:13, width:"100%", padding:"8px 0", borderBottom:"1px solid rgba(0,0,0,.07)" };
 const hoursDay = { color:"#222", fontWeight:850 };
