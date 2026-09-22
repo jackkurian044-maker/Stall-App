@@ -151,6 +151,13 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
   // collection and filtering client-side. Re-runs (debounced) whenever
   // userLoc or radiusKm changes.
   useEffect(() => {
+    // Invalidate every older location request immediately. This is critical:
+    // if a previous search (for example Bengaluru) resolves after the user
+    // changes location or loses location permission, its results must never
+    // be allowed to repopulate the customer view.
+    const myRequestId = ++requestIdRef.current;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
     if (!userLoc) {
       setVendors([]);
       setLoading(false);
@@ -158,10 +165,8 @@ export default function FindView({ user, isAdmin, onRequestSignIn }) {
     }
 
     setLoading(true);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
 
     debounceRef.current = setTimeout(async () => {
-      const myRequestId = ++requestIdRef.current;
       try {
         const found = await fetchVendorsNear(userLoc, radiusKm);
         // Guard against a slower earlier request resolving after a newer
