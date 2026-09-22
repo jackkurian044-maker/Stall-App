@@ -20,7 +20,15 @@ import LeadEnginePanel from "./LeadEnginePanel";
 import BoostCampaignPanel from "./BoostCampaignPanel";
 import { RestaurantBusinessPage, SalonBusinessPage } from "./BusinessTemplatePages";
 
-const isSalonCategory = (value) => {\n  const normalized = String(value || "").trim().toLowerCase().replace(/\\s+/g, " ");\n  return new Set([\n    "salon", "salons", "beauty", "beauty salon", "beauty salons",\n    "beauty & wellness", "beauty and wellness", "hair salon",\n    "hair & beauty", "salon & spa", "salon and spa", "spa & salon",\n    "parlour", "parlor"\n  ]).has(normalized);\n};
+const isSalonCategory = (value) => {
+  const normalized = String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
+  return new Set([
+    "salon", "salons", "beauty", "beauty salon", "beauty salons",
+    "beauty & wellness", "beauty and wellness", "hair salon",
+    "hair & beauty", "salon & spa", "salon and spa", "spa & salon",
+    "parlour", "parlor"
+  ]).has(normalized);
+};
 
 const emptyForm = {
   name: "", category: CATEGORIES[0], description: "", products: "",
