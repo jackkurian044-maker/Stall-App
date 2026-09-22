@@ -16,4 +16,12 @@ async function boot() {
   }
 }
 boot();
-\n\n// Register STall as a Progressive Web App without changing the app's routing or data flow.\nif ("serviceWorker" in navigator) {\n  window.addEventListener("load", () => {\n    navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch((error) => {\n      console.warn("STall PWA service worker registration failed", error);\n    });\n  });\n}\n
+
+// Register STall as a Progressive Web App without changing the app's routing or data flow.
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch((error) => {
+      console.warn("STall PWA service worker registration failed", error);
+    });
+  });
+}
