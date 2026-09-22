@@ -261,8 +261,8 @@ function Special({ title, value, tone }) {
 }
 
 function Offer({ value }) {
-  return <section style={{ ...box, marginTop: 12, border: "2px solid " + "var(--accent)" }}>
-    <div style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#8a6d1d" }}>Current offer</div>
+  return <section style={{ ...box, marginTop: 14, border: "1px solid var(--accent)", background: "linear-gradient(135deg,var(--surface),var(--soft))", boxShadow: "0 18px 45px rgba(22,22,22,.10)" }}>
+    <div style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 10.5, fontWeight: 950, textTransform: "uppercase", letterSpacing: ".08em", color: "var(--teal)" }}><Crown size={13} /> Featured offer</div>
     <div style={{ fontSize: 22, fontWeight: 900, marginTop: 5 }}>{value}</div>
   </section>;
 }
@@ -288,8 +288,20 @@ function PhotoStrip({ photos, name }) {
 }
 
 function TemplateShell({ children, listing }) {
-  const theme = getPageTheme(listing?.pageTheme || listing?.pageLayout);
+  const layout = listing?.pageLayout || "classic";
+  const theme = getPageTheme(listing?.pageTheme || layout);
+  const layoutName = layout === "spotlight" ? "Spotlight" : layout === "compact" ? "Compact" : "Classic";
   return <div style={{ minHeight: "100vh", background: theme.bg, color: "var(--ink)", "--ink": theme.ink, "--accent": theme.accent, "--teal": theme.teal, "--surface": theme.surface, "--soft": theme.soft }}>
+    <div style={{ background: theme.ink, color: "#fff", padding: "9px 16px", position: "sticky", top: 0, zIndex: 40, boxShadow: "0 5px 18px rgba(0,0,0,.14)" }}>
+      <div style={{ maxWidth: 1120, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+        <a href="/" style={{ display: "inline-flex", alignItems: "center", gap: 7, color: "#fff", textDecoration: "none", fontWeight: 900, fontSize: 12 }}>
+          <img src={stallLogoMark} alt="STall" style={{ width: 23, height: "auto" }} /> STall
+        </a>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 10.5, fontWeight: 900, letterSpacing: ".08em", textTransform: "uppercase", opacity: .94 }}>
+          <Crown size={13} /> Premium · {layoutName}
+        </span>
+      </div>
+    </div>
     {children}
     <footer style={footer}>
       <a href="/" style={{ display: "inline-flex", alignItems: "center", gap: 7, textDecoration: "none", color: "#777" }}>
@@ -309,8 +321,8 @@ const heroContent = { padding: "4px 8px 4px 0" };
 const infoAction = { display: "flex", justifyContent: "center", alignItems: "center", marginTop: 14, padding: "10px 12px", borderRadius: 10, background: "#eef9f3", color: "var(--teal)", textDecoration: "none", fontWeight: 800, fontSize: 12 };
 
 const spotlightBox = { ...box, padding: 0, borderRadius: 24, overflow: "hidden", boxShadow: "0 20px 55px rgba(16,42,67,.14)" };
-const spotlightPhoto = { width: "100%", height: 390, objectFit: "cover", display: "block", filter: "saturate(1.05)" };
-const compactBox = { ...box, display: "grid", gap: 18, alignItems: "center", padding: 16 };
+const spotlightPhoto = { width: "100%", height: "min(56vw, 460px)", minHeight: 300, objectFit: "cover", display: "block", filter: "saturate(1.08)" };
+const compactBox = { ...box, display: "grid", gap: 18, alignItems: "center", padding: 18, border: "1px solid rgba(22,22,22,.10)", boxShadow: "0 18px 45px rgba(22,22,22,.09)" };
 const compactPhoto = { width: "110px", height: "110px", objectFit: "cover", borderRadius: 12 };
 const compactInfoGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(190px,1fr))", gap: 10, marginTop: 10 };
 const rowWrap = { display: "flex", flexWrap: "wrap", gap: 7, alignItems: "center" };
@@ -320,10 +332,10 @@ const rating = { display: "flex", alignItems: "center", gap: 6, marginTop: 13, f
 const actions = { display: "flex", flexWrap: "wrap", gap: 9, marginTop: 18 };
 const specialGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 14, marginTop: 14 };
 const infoGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 14, marginTop: 14 };
-const button = { display: "inline-flex", alignItems: "center", gap: 7, background: "var(--ink)", color: "#fff", textDecoration: "none", border: 0, borderRadius: 12, padding: "11px 15px", fontWeight: 850, fontSize: 12.5, boxShadow: "0 7px 18px rgba(0,0,0,.12)" };
+const button = { display: "inline-flex", alignItems: "center", gap: 7, background: "var(--ink)", color: "#fff", textDecoration: "none", border: 0, borderRadius: 12, padding: "11px 15px", fontWeight: 850, fontSize: 12.5, boxShadow: "0 8px 22px rgba(0,0,0,.14)", transition: "transform .15s ease, box-shadow .15s ease" };
 const outlineButton = { ...button, background: "rgba(255,255,255,.82)", color: "var(--ink)", border: "1px solid rgba(22,22,22,.18)", boxShadow: "none" };
 const backLink = { background: "transparent", border: 0, padding: 0, color: "#666", cursor: "pointer", display: "flex", gap: 6, alignItems: "center", marginBottom: 18 };
-const footer = { maxWidth: 1120, margin: "0 auto", padding: "22px 16px 34px", display: "flex", justifyContent: "center", opacity: 0.72 };
+const footer = { maxWidth: 1120, margin: "0 auto", padding: "28px 16px 38px", display: "flex", justifyContent: "center", opacity: 0.72 };
 const pill = { display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 9px", borderRadius: 999, background: "var(--ink)", color: "#fff", fontSize: 10.5, fontWeight: 900 };
 
 
