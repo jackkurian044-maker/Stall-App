@@ -144,7 +144,7 @@ export default function VendorDashboard({ user, agent }) {
     setPreviewListing(buildPreviewListing());
   };
 
-  const saveDraft = async () => {
+  const saveDraft = async (layoutOverride = null) => {
     setError("");
     const lat = parseFloat(form.lat), lng = parseFloat(form.lng);
     if (!form.name.trim()) return false;
@@ -159,7 +159,7 @@ export default function VendorDashboard({ user, agent }) {
         }
       }
       const payload = {
-        name: form.name.trim(), publicSlug: slugify(form.name), category: form.category, pageLayout: form.pageLayout || "classic", description: form.description.trim(), products: form.products.trim(),
+        name: form.name.trim(), publicSlug: slugify(form.name), category: form.category, pageLayout: layoutOverride || form.pageLayout || "classic", description: form.description.trim(), products: form.products.trim(),
         address: form.address.trim(), phone: form.phone.trim(), lat, lng, geohash: encodeGeohash(lat, lng, 9),
         website: form.website || null, mapsUrl: form.mapsUrl || null, placeId: form.placeId || null,
         rating: form.rating ?? null, ratingsCount: form.ratingsCount ?? null, hours: form.hours.trim(), photos: form.photos || [],
