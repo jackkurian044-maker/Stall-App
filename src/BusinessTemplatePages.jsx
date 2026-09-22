@@ -27,7 +27,7 @@ function StorePage({ listing, onBack, salon, layout }) {
   const maps = listing.mapsUrl || vendorLink(listing);
   const website = listing.website || listing.mapsUrl || maps;
   const isGrowth = ["digital_growth", "growth_setup"].includes(listing.planKey);
-  const theme = getPageTheme(listing.pageTheme || layout);
+  const theme = getPageTheme(layout);
   const services = csv(listing.products);
   const firstSpecial = salon ? listing.todayOffer : listing.todaySpecial;
   const secondSpecial = salon ? listing.weekendOffer : listing.everydaySpecial;
@@ -38,11 +38,11 @@ function StorePage({ listing, onBack, salon, layout }) {
 
   return (
     <TemplateShell listing={listing} theme={theme}>
-      <main style={pageWrap}>
+      <main style={{ ...pageWrap, ...(layout === "spotlight" ? spotlightPageWrap : layout === "compact" ? compactPageWrap : {}) }} className={`stall-layout-${layout}`}>
         <Back onBack={onBack} />
 
-        <section style={hero} className="stall-store-hero">
-          <div style={heroImageWrap}>
+        <section style={{ ...hero, ...(layout === "spotlight" ? spotlightHero : layout === "compact" ? compactHero : {}) }} className={`stall-store-hero stall-store-hero-${layout}`}>
+          <div style={{ ...heroImageWrap, ...(layout === "spotlight" ? spotlightHeroImageWrap : layout === "compact" ? compactHeroImageWrap : {}) }}>
             {primary ? (
               <img src={primary} alt={listing.name} style={heroImage} />
             ) : (
@@ -60,7 +60,7 @@ function StorePage({ listing, onBack, salon, layout }) {
             <div style={heroPhotoCount}>{photos.length > 1 ? `${photos.length} photos` : "Welcome"}</div>
           </div>
 
-          <div style={heroCard}>
+          <div style={{ ...heroCard, ...(layout === "spotlight" ? spotlightHeroCard : layout === "compact" ? compactHeroCard : {}) }}>
             <div style={brandKicker}>{salon ? "YOUR LOCAL BEAUTY DESTINATION" : "WELCOME TO OUR STORE"}</div>
             <h1 style={heroTitle}>{listing.name}</h1>
             {listing.description && <p style={heroDescription}>{listing.description}</p>}
@@ -95,9 +95,9 @@ function StorePage({ listing, onBack, salon, layout }) {
           </section>
         )}
 
-        <section style={contentGrid} className="content-grid">
+        <section style={{ ...contentGrid, ...(layout === "spotlight" ? spotlightContentGrid : layout === "compact" ? compactContentGrid : {}) }} className="content-grid">
           <div style={mainColumn}>
-            <section style={storyCard}>
+            <section style={{ ...storyCard, ...(layout === "spotlight" ? spotlightStoryCard : layout === "compact" ? compactStoryCard : {}) }}>
               <div style={sectionEyebrow}><span style={eyebrowLine}/>{salon ? "THE EXPERIENCE" : "WHY VISIT"}</div>
               <h2 style={sectionTitle}>{salon ? "Look good. Feel even better." : "Come for the experience."}</h2>
               <p style={storyText}>
@@ -127,7 +127,7 @@ function StorePage({ listing, onBack, salon, layout }) {
             </section>
           </div>
 
-          <aside style={sideColumn}>
+          <aside style={{ ...sideColumn, ...(layout === "spotlight" ? spotlightSideColumn : layout === "compact" ? compactSideColumn : {}) }}>
             <section style={sideCard}>
               <div style={sectionEyebrow}><span style={eyebrowLine}/>{salon ? "SERVICES" : "MENU & SPECIALS"}</div>
               <h3 style={sideTitle}>{services || (salon ? "Services coming soon" : "Menu details coming soon")}</h3>
@@ -144,7 +144,7 @@ function StorePage({ listing, onBack, salon, layout }) {
           </aside>
         </section>
 
-        <section style={bottomCta} className="bottom-cta">
+        <section style={{ ...bottomCta, ...(layout === "spotlight" ? spotlightBottomCta : layout === "compact" ? compactBottomCta : {}) }} className="bottom-cta">
           <div>
             <div style={bottomKicker}>READY WHEN YOU ARE</div>
             <h2 style={bottomTitle}>{salon ? "Your next appointment starts here." : "Make your next visit a good one."}</h2>
@@ -219,6 +219,23 @@ function getPageTheme(key) {
   return themes[key] || themes.classic;
 }
 
+const spotlightPageWrap = { maxWidth: 1240, margin: "0 auto", padding: "18px 18px 90px" };
+const compactPageWrap = { maxWidth: 1040, margin: "0 auto", padding: "10px 14px 78px" };
+const spotlightHero = { gridTemplateColumns: "1fr", minHeight: 650, position: "relative", background: "#111", boxShadow: "0 30px 90px rgba(0,0,0,.18)" };
+const spotlightHeroImageWrap = { minHeight: 650 };
+const spotlightHeroCard = { position: "absolute", left: 28, right: 28, bottom: 28, padding: "30px 32px", borderRadius: 24, background: "rgba(255,255,255,.94)", backdropFilter: "blur(16px)", boxShadow: "0 18px 55px rgba(0,0,0,.18)" };
+const spotlightContentGrid = { gridTemplateColumns: "1fr", gap: 16 };
+const spotlightStoryCard = { borderRadius: 28, padding: "34px" };
+const spotlightSideColumn = { display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: 14 };
+const spotlightBottomCta = { borderRadius: 30, padding: "34px", marginTop: 18 };
+const compactHero = { gridTemplateColumns: "260px minmax(0,1fr)", minHeight: 260, borderRadius: 20, boxShadow: "0 16px 45px rgba(0,0,0,.09)" };
+const compactHeroImageWrap = { minHeight: 260 };
+const compactHeroCard = { padding: "25px 28px" };
+const compactContentGrid = { gridTemplateColumns: "minmax(0,1fr) 300px", gap: 14, marginTop: 16 };
+const compactStoryCard = { borderRadius: 18, padding: "22px" };
+const compactSideColumn = { gap: 10 };
+const compactBottomCta = { borderRadius: 20, padding: "22px 24px", marginTop: 16 };
+
 const pageWrap = { maxWidth: 1180, margin: "0 auto", padding: "14px 18px 90px" };
 const backLink = { border:0, background:"transparent", color:"#6c6c6c", display:"flex", alignItems:"center", gap:6, padding:"7px 0", marginBottom:12, cursor:"pointer", fontWeight:700 };
 const hero = { display:"grid", gridTemplateColumns:"minmax(0,1.25fr) minmax(340px,.75fr)", minHeight:540, borderRadius:30, overflow:"hidden", background:"#fff", boxShadow:"0 28px 80px rgba(0,0,0,.13)" };
@@ -286,7 +303,7 @@ if (typeof document !== "undefined") {
       .stall-store-hero img { transition: transform .7s ease, filter .7s ease; }
       .stall-store-hero:hover img { transform: scale(1.025); filter: saturate(1.06); }
       @media (max-width: 820px) {\n        .stall-mobile-bar { display: flex !important; justify-content: space-around; align-items: center; }\n        .stall-mobile-bar a, .stall-mobile-bar button { color:#fff; text-decoration:none; background:transparent; border:0; display:flex; flex-direction:column; align-items:center; gap:3px; font-size:9px; font-weight:800; padding:4px 8px; }
-        .stall-store-hero { grid-template-columns: 1fr !important; min-height: 0 !important; border-radius: 24px !important; }
+        .stall-store-hero { grid-template-columns: 1fr !important; min-height: 0 !important; border-radius: 24px !important; }\n        .stall-store-hero-spotlight { min-height: 560px !important; }\n        .stall-store-hero-spotlight > div:first-child { min-height: 560px !important; }\n        .stall-store-hero-spotlight > div:last-child { position: absolute !important; left: 14px !important; right: 14px !important; bottom: 14px !important; padding: 22px !important; }\n        .stall-store-hero-compact { grid-template-columns: 1fr !important; }
         .stall-store-hero > div:first-child { min-height: 340px !important; }
         .stall-store-hero > div:first-child img { min-height: 340px !important; }
         .stall-store-hero > div:last-child { padding: 28px 22px !important; }
