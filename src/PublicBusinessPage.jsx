@@ -84,7 +84,7 @@ export default function PublicBusinessPage({ listingId }) {
   if (error) return <Shell><div style={box}><h2 style={{marginTop:0}}>Business page unavailable</h2><p style={muted}>{error}</p><button onClick={back} style={button}>Back to STall</button></div></Shell>;
   if (!listing) return <Shell><div style={box}><h2 style={{marginTop:0}}>Business not found</h2><button onClick={back} style={button}>Back to STall</button></div></Shell>;
 
-  const active = ["verified","digital_growth","growth_setup"].includes(listing.planKey);
+  const active = listing.isPremium === true || ["verified","digital_growth","growth_setup"].includes(listing.planKey);
   if (!active) return <Shell><div style={box}><h2 style={{marginTop:0}}>This business page is not active</h2><p style={muted}>A STall public business page is available for active STall Verified and Growth listings.</p><button onClick={back} style={button}>Back to STall</button></div></Shell>;
 
   if (listing.category === "Food & Produce") return (
