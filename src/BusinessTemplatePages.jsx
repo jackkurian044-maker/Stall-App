@@ -115,13 +115,27 @@ function StorePage({ listing, onBack, salon, layout }) {
             {photos.length > 1 && <Gallery photos={photos.slice(1)} name={listing.name} />}
 
             <section style={visitCard}>
-              <div>
+              <div style={visitIntro}>
                 <div style={sectionEyebrow}><MapPin size={14}/> PLAN YOUR VISIT</div>
-                <h2 style={{ ...sectionTitle, marginBottom: 7 }}>Come say hello.</h2>
-                <p style={storyText}>{listing.address || "Location details are available on Google Maps."}</p>
+                <h2 style={{ ...sectionTitle, marginBottom: 10 }}>Come say hello.</h2>
+                <div style={addressBlock}>
+                  <div style={addressIcon}><MapPin size={17}/></div>
+                  <div>
+                    <div style={visitLabel}>ADDRESS</div>
+                    <p style={{ ...storyText, marginTop: 4 }}>{listing.address || "Location details are available on Google Maps."}</p>
+                  </div>
+                </div>
               </div>
               <div style={visitDetails}>
-                {listing.hours && <div><Clock size={16}/><span>{listing.hours}</span></div>}
+                {listing.hours && (
+                  <div style={visitInfoItem}>
+                    <div style={visitInfoIcon}><Clock size={16}/></div>
+                    <div>
+                      <div style={visitLabel}>HOURS</div>
+                      <div style={visitInfoText}>{listing.hours}</div>
+                    </div>
+                  </div>
+                )}
                 <a href={maps} target="_blank" rel="noreferrer" style={mapCta}><Navigation size={15}/> Get directions</a>
               </div>
             </section>
@@ -284,9 +298,16 @@ const reviewText = { margin:"13px 0 7px", fontSize:13, opacity:.8 };
 const reviewCount = { fontSize:11, opacity:.55, fontWeight:800 };
 const galleryGrid = { display:"grid", gridTemplateColumns:"1.2fr 1fr 1fr", gap:10 };
 const galleryImage = { width:"100%", objectFit:"cover", borderRadius:16, display:"block" };
-const visitCard = { marginTop:20, background:"#fff", borderRadius:24, padding:"26px 28px", display:"grid", gridTemplateColumns:"1fr auto", gap:20, alignItems:"center", boxShadow:"0 15px 45px rgba(0,0,0,.06)" };
-const visitDetails = { display:"flex", flexDirection:"column", gap:13, alignItems:"flex-end", fontSize:12, color:"#666" };
-const mapCta = { display:"inline-flex", alignItems:"center", gap:7, color:"#fff", background:"var(--ink)", borderRadius:11, padding:"10px 13px", textDecoration:"none", fontWeight:850 };
+const visitCard = { marginTop:20, background:"#fff", borderRadius:24, padding:"28px", display:"grid", gridTemplateColumns:"minmax(0,1.25fr) minmax(250px,.75fr)", gap:28, alignItems:"stretch", boxShadow:"0 15px 45px rgba(0,0,0,.06)" };
+const visitIntro = { minWidth:0 };
+const addressBlock = { display:"flex", alignItems:"flex-start", gap:12, marginTop:18, paddingTop:17, borderTop:"1px solid rgba(0,0,0,.08)" };
+const addressIcon = { width:36, height:36, flex:"0 0 36px", borderRadius:12, background:"rgba(23,111,104,.09)", color:"var(--teal)", display:"flex", alignItems:"center", justifyContent:"center" };
+const visitLabel = { fontSize:9.5, letterSpacing:".11em", fontWeight:950, color:"#999", textTransform:"uppercase" };
+const visitDetails = { display:"flex", flexDirection:"column", gap:14, justifyContent:"center", padding:"18px 0 18px 24px", borderLeft:"1px solid rgba(0,0,0,.08)" };
+const visitInfoItem = { display:"flex", alignItems:"flex-start", gap:11, paddingBottom:14, borderBottom:"1px solid rgba(0,0,0,.08)" };
+const visitInfoIcon = { width:34, height:34, flex:"0 0 34px", borderRadius:11, background:"#f6f6f6", color:"var(--ink)", display:"flex", alignItems:"center", justifyContent:"center" };
+const visitInfoText = { marginTop:5, color:"#4f4f4f", fontSize:12, lineHeight:1.5, fontWeight:750 };
+const mapCta = { display:"inline-flex", alignItems:"center", justifyContent:"center", gap:7, color:"#fff", background:"var(--ink)", borderRadius:11, padding:"11px 14px", textDecoration:"none", fontWeight:850, fontSize:12.5, width:"fit-content" };
 const bottomCta = { marginTop:26, padding:"28px 30px", borderRadius:26, background:"linear-gradient(135deg,var(--ink),var(--teal))", color:"#fff", display:"flex", justifyContent:"space-between", gap:20, alignItems:"center", boxShadow:"0 20px 50px rgba(0,0,0,.16)" };
 const bottomKicker = { fontSize:10, letterSpacing:".12em", fontWeight:900, opacity:.7 };
 const bottomTitle = { fontSize:"clamp(23px,3vw,34px)", lineHeight:1.05, margin:"7px 0 0", letterSpacing:"-.035em" };
@@ -316,8 +337,9 @@ if (typeof document !== "undefined") {
         .stall-store-hero h1 { font-size: 38px !important; }
         .stall-store-hero .hero-actions a { flex: 1 1 auto; }
         .gallery-grid { grid-template-columns: 1fr 1fr !important; }
-        .visit-card { grid-template-columns: 1fr !important; }
-        .visit-card > div:last-child { align-items: flex-start !important; }
+        .visit-card { grid-template-columns: 1fr !important; gap:18px !important; }
+        .visit-card > div:last-child { align-items: flex-start !important; border-left:0 !important; border-top:1px solid rgba(0,0,0,.08); padding:18px 0 0 !important; }
+        .visit-card > div:first-child { width:100%; }
         .bottom-cta { flex-direction: column !important; align-items: flex-start !important; }\n        .bottom-cta .bottom-actions { width: 100%; }
         .stall-premium-store-responsive + * {}
       }
