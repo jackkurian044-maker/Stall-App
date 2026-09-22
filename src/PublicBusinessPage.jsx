@@ -63,6 +63,7 @@ export default function PublicBusinessPage({ listingId }) {
   }, [listing]);
 
   const back = () => { window.location.href = "/"; };
+  const isSalonCategory = (value) => { const normalized = String(value || "").trim().toLowerCase().replace(/\\s+/g, " "); return normalized === "salon" || normalized === "salons"; };
 
   // listing can be null while the Firestore lookup is loading or missing.
   // Do not dereference it until after the loading/error/not-found guards below.
@@ -92,7 +93,7 @@ export default function PublicBusinessPage({ listingId }) {
       <PublicPageBoundary fallback={<StoreLandingPage listingId={listing.id} onBack={back} />}><RestaurantBusinessPage listing={renderListing} onBack={back} /></PublicPageBoundary>
     </>
   );
-  if (listing.category === "Salons") return (
+  if (isSalonCategory(listing.category)) return (
     <>
       {layoutPreviewEnabled && <LayoutPreviewSwitcher active={previewLayout || listing.pageLayout || "classic"} onSelect={selectPreviewLayout} />}
       <PublicPageBoundary fallback={<StoreLandingPage listingId={listing.id} onBack={back} />}><SalonBusinessPage listing={renderListing} onBack={back} /></PublicPageBoundary>
