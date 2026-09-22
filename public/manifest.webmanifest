@@ -1,0 +1,21 @@
+{
+  "name": "STall — Local Business Discovery",
+  "short_name": "STall",
+  "description": "Find businesses, offers and services around you.",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#ffffff",
+  "theme_color": "#102a43",
+  "icons": [
+    {
+      "src": "/stall-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "shopping", "lifestyle"],
+  "prefer_related_applications": false
+}
