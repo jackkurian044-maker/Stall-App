@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { collection, doc, writeBatch, serverTimestamp } from "firebase/firestore";
 import { MapPin, Locate, Search, Copy, Loader2 } from "lucide-react";
 import { db } from "./firebase";
-import { CATEGORIES, CATEGORY_COLORS, COLORS, DEFAULT_LOC, CITIES } from "./constants";
+import { CATEGORIES, CATEGORY_COLORS, COLORS, CITIES } from "./constants";
 import { uid, haversineKm } from "./geo";
 import { encodeGeohash } from "./geohash";
 import { loadGoogleMaps } from "./googleMaps";
@@ -50,6 +50,7 @@ export default function DiscoverNearby() {
   const [importResults, setImportResults] = useState(null);
   const [importError, setImportError] = useState("");
   const [locateError, setLocateError] = useState("");
+  const [locationAccuracy, setLocationAccuracy] = useState(null);
 
   const pickCity = (city) => {
     setCenterLoc({ lat: city.lat, lng: city.lng });
@@ -61,29 +62,65 @@ export default function DiscoverNearby() {
     setLocating(true);
     setLocateError("");
     setCenterCityName(null);
+    setLocationAccuracy(null);
+    setCenterLoc(null);
+
     if (!navigator.geolocation) {
-      setLocateError("Your browser doesn't support location — pick a city or enter coordinates below instead.");
-      setCenterLoc(DEFAULT_LOC);
+      setLocateError("Your browser doesn't support live location — choose a market or enter coordinates below.");
       setLocating(false);
       return;
     }
-    navigator.geolocation.getCurrentPosition(
+
+    // Never fall back to DEFAULT_LOC/Bengaluru. The browser location is
+    // the only source allowed for this action. Use watchPosition so the
+    // browser can replace an initial network/Wi-Fi estimate with a newer
+    // device reading instead of locking STall to a stale city.
+    let best = null;
+    let settled = false;
+    let watchId = null;
+    let timerId = null;
+
+    const stop = () => {
+      if (watchId != null) navigator.geolocation.clearWatch(watchId);
+      if (timerId != null) window.clearTimeout(timerId);
+    };
+
+    const finish = (pos) => {
+      if (settled) return;
+      settled = true;
+      stop();
+      setCenterLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+      setLocationAccuracy(Number.isFinite(pos.coords.accuracy) ? pos.coords.accuracy : null);
+      setLocating(false);
+    };
+
+    const fail = (err) => {
+      if (settled) return;
+      settled = true;
+      stop();
+      setLocating(false);
+      if (err.code === err.PERMISSION_DENIED) {
+        setLocateError("Location access was denied — choose a market or enter coordinates below.");
+      } else {
+        setLocateError("Live location could not be confirmed — choose a market or enter coordinates below.");
+      }
+    };
+
+    watchId = navigator.geolocation.watchPosition(
       (pos) => {
-        setCenterLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        setLocating(false);
+        if (!best || (pos.coords.accuracy || Infinity) < (best.coords.accuracy || Infinity)) best = pos;
+        if (pos.coords.accuracy && pos.coords.accuracy <= 200) finish(pos);
       },
-      (err) => {
-        setLocating(false);
-        if (err.code === err.PERMISSION_DENIED) {
-          setLocateError("Location access was denied — pick a city above, or enter coordinates below.");
-        } else if (err.code === err.TIMEOUT) {
-          setLocateError("Location took too long to find — try again, pick a city, or enter coordinates below.");
-        } else {
-          setLocateError("Couldn't get your location — try again, pick a city, or enter coordinates below.");
-        }
-      },
-      { timeout: 12000, enableHighAccuracy: true, maximumAge: 0 }
+      fail,
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 30000 }
     );
+
+    // Give the device a short window to improve a coarse network reading.
+    timerId = window.setTimeout(() => {
+      if (settled) return;
+      if (best) finish(best);
+      else fail({ code: 3 });
+    }, 15000);
   };
 
   const useManualLoc = () => {
@@ -311,7 +348,7 @@ export default function DiscoverNearby() {
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
               <div style={{ fontSize: 12, color: COLORS.green, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
-                <MapPin size={14} /> CENTER SET{centerCityName ? ` · ${centerCityName}` : ""} · <span className="font-mono">{centerLoc.lat.toFixed(4)}, {centerLoc.lng.toFixed(4)}</span>
+                <MapPin size={14} /> CURRENT LOCATION SET{centerCityName ? ` · ${centerCityName}` : ""} · <span className="font-mono">{centerLoc.lat.toFixed(4)}, {centerLoc.lng.toFixed(4)}</span>{locationAccuracy != null ? ` · ±${Math.round(locationAccuracy)}m` : ""}
               </div>
               <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                 <button onClick={() => { setCenterLoc(null); setCenterCityName(null); }} style={{ background: "none", border: "none", fontSize: 11, textDecoration: "underline", cursor: "pointer" }}>change market</button>
