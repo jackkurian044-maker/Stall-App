@@ -71,11 +71,10 @@ export default function DiscoverNearby() {
       return;
     }
 
-    // Never fall back to DEFAULT_LOC/Bengaluru. The browser location is
-    // the only source allowed for this action. Do not accept the first
-    // desktop/Wi-Fi estimate: Chrome can deliver a stale city-level fix
-    // before a better device/GPS reading arrives. Collect fixes for a
-    // short window and use the most accurate reading received.
+    // Never fall back to DEFAULT_LOC/Bengaluru. Chrome/Windows can return
+    // a precise-looking network/Wi-Fi estimate for the wrong city, so
+    // accuracy alone is not enough. Verify the fresh browser fix against a
+    // second network signal before accepting it.
     let best = null;
     let settled = false;
     let watchId = null;
@@ -85,6 +84,113 @@ export default function DiscoverNearby() {
       if (watchId != null) navigator.geolocation.clearWatch(watchId);
       if (timerId != null) window.clearTimeout(timerId);
     };
+
+    const distanceKm = (a, b) => {
+      const R = 6371;
+      const dLat = ((b.lat - a.lat) * Math.PI) / 180;
+      const dLng = ((b.lng - a.lng) * Math.PI) / 180;
+      const s1 = Math.sin(dLat / 2) ** 2;
+      const s2 = Math.sin(dLng / 2) ** 2 * Math.cos(a.lat * Math.PI / 180) * Math.cos(b.lat * Math.PI / 180);
+      return 2 * R * Math.asin(Math.sqrt(s1 + s2));
+    };
+
+    const verifyWithNetwork = async (pos) => {
+      try {
+        if (!GOOGLE_API_KEY) return { ok: true };
+        const response = await fetch(
+          `https://www.googleapis.com/geolocation/v1/geolocate?key=${encodeURIComponent(GOOGLE_API_KEY)}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ considerIp: true }),
+          }
+        );
+        if (!response.ok) return { ok: true };
+        const data = await response.json();
+        const network = data?.location;
+        if (!Number.isFinite(network?.lat) || !Number.isFinite(network?.lng)) return { ok: true };
+
+        const gapKm = distanceKm(
+          { lat: pos.coords.latitude, lng: pos.coords.longitude },
+          network
+        );
+        const networkAccuracy = Number.isFinite(data.accuracy) ? data.accuracy : Infinity;
+
+        // Network/IP geolocation is only a safety check; never silently
+        // replace the browser's device location with an IP estimate.
+        if (networkAccuracy <= 50000 && gapKm > Math.max(50, networkAccuracy / 1000 * 3)) {
+          return { ok: false, gapKm, networkAccuracy };
+        }
+        return { ok: true };
+      } catch {
+        return { ok: true };
+      }
+    };
+
+    const finish = async (pos) => {
+      if (settled) return;
+      const accuracy = Number(pos.coords.accuracy);
+      if (!Number.isFinite(accuracy) || accuracy > 250) {
+        settled = true;
+        stop();
+        setLocating(false);
+        setLocateError(
+          Number.isFinite(accuracy)
+            ? `Chrome only provided an approximate location (±${Math.round(accuracy)}m). STall did not use it.`
+            : "Chrome did not provide a reliable accuracy reading. STall did not use the location."
+        );
+        return;
+      }
+
+      const verification = await verifyWithNetwork(pos);
+      if (settled) return;
+      if (!verification.ok) {
+        settled = true;
+        stop();
+        setLocating(false);
+        setLocateError(
+          `Device and network locations disagree by about ${Math.round(verification.gapKm)} km. STall did not silently choose a city. Check Windows/Chrome Location settings and try again.`
+        );
+        return;
+      }
+
+      settled = true;
+      stop();
+      setCenterLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+      setLocationAccuracy(accuracy);
+      setLocating(false);
+    };
+
+    const fail = (err) => {
+      if (settled) return;
+      settled = true;
+      stop();
+      setLocating(false);
+      if (err.code === err.PERMISSION_DENIED) {
+        setLocateError("Location access was denied — choose a market or enter coordinates below.");
+      } else {
+        setLocateError("Live location could not be confirmed — choose a market or enter coordinates below.");
+      }
+    };
+
+    watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        if (!best || (pos.coords.accuracy || Infinity) < (best.coords.accuracy || Infinity)) {
+          best = pos;
+        }
+      },
+      fail,
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 30000 }
+    );
+
+    // Give the device up to 12 seconds to improve the reading. Never accept
+    // an arbitrary city fallback when no trustworthy fix is available.
+    timerId = window.setTimeout(() => {
+      if (settled) return;
+      if (best) finish(best);
+      else fail({ code: 3 });
+    }, 12000);
+  };
 
     const finish = (pos) => {
       if (settled) return;
