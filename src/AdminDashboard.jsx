@@ -613,9 +613,8 @@ STall — Find what’s around the corner.`;
         )}
         {phoneSyncStatus && <div style={{ fontSize: 11, color: COLORS.teal, marginTop: 8 }}>{phoneSyncStatus}</div>}
       </div>
+      {previewListing && <AdminSalonPreviewModal listing={previewListing} onClose={() => setPreviewListing(null)} />}
     </div>
-
-}        {previewListing && <AdminSalonPreviewModal listing={previewListing} onClose={() => setPreviewListing(null)} />}
   );
 }
 
