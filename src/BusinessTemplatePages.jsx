@@ -78,7 +78,7 @@ function StorePage({ listing, onBack, salon, layout }) {
               <a href={maps} target="_blank" rel="noreferrer" style={secondaryCta}><Navigation size={16}/> Directions</a>
             </div>
             <div style={trustRow}>
-              <span><Clock size={14}/> {listing.hours || "Hours available"} </span>
+              <span><Clock size={14}/> {todayHours(listing.hours) || "Hours available"} </span>
               <span><MapPin size={14}/> {shortAddress(listing.address) || "Find us on Maps"}</span>
             </div>
           </div>
@@ -122,7 +122,7 @@ function StorePage({ listing, onBack, salon, layout }) {
                   <div style={addressIcon}><MapPin size={17}/></div>
                   <div>
                     <div style={visitLabel}>ADDRESS</div>
-                    <p style={{ ...storyText, marginTop: 4 }}>{listing.address || "Location details are available on Google Maps."}</p>
+                    <AddressDisplay value={listing.address || "Location details are available on Google Maps."} />
                   </div>
                 </div>
               </div>
@@ -213,6 +213,23 @@ function TemplateShell({ children, listing, theme }) {
 
 function Back({ onBack }) {
   return <button onClick={onBack} style={backLink}><ArrowLeft size={15}/> Back</button>;
+}
+
+function todayHours(value) {
+  const lines = formatHours(value);
+  if (!lines.length) return "";
+  const day = new Intl.DateTimeFormat("en-US", { weekday: "long" }).format(new Date());
+  const line = lines.find(x => x.toLowerCase().startsWith(day.toLowerCase() + ":"));
+  return line ? line.replace(new RegExp("^" + day + ":\\\\s*", "i"), "Today · ") : lines[0].replace(/^[^:]+:\\\\s*/, "");
+}
+
+function AddressDisplay({ value }) {
+  const parts = String(value || "").split(",").map(x => x.trim()).filter(Boolean);
+  return (
+    <div style={addressText}>
+      {parts.map((part, i) => <div key={part + i}>{part}</div>)}
+    </div>
+  );
 }
 
 function OpeningHours({ value }) {
@@ -331,7 +348,7 @@ const visitLabel = { fontSize:9.5, letterSpacing:".11em", fontWeight:950, color:
 const visitDetails = { display:"flex", flexDirection:"column", gap:14, justifyContent:"center", padding:"18px 0 18px 24px", borderLeft:"1px solid rgba(0,0,0,.08)" };
 const visitInfoItem = { display:"flex", alignItems:"flex-start", gap:11, paddingBottom:14, borderBottom:"1px solid rgba(0,0,0,.08)" };
 const visitInfoIcon = { width:34, height:34, flex:"0 0 34px", borderRadius:11, background:"#f6f6f6", color:"var(--ink)", display:"flex", alignItems:"center", justifyContent:"center" };
-const visitInfoText = { marginTop:5, color:"#4f4f4f", fontSize:12, lineHeight:1.5, fontWeight:750 };
+const visitInfoText = { marginTop:5, color:"#4f4f4f", fontSize:12, lineHeight:1.5, fontWeight:750 };\nconst addressText = { marginTop:4, color:"#4f4f4f", fontSize:14, lineHeight:1.55, fontWeight:650 };
 const hoursList = { marginTop:5, display:"grid", gap:7 };
 const hoursRow = { display:"flex", justifyContent:"space-between", alignItems:"baseline", gap:12, fontSize:12, width:"100%" };
 const hoursDay = { color:"#222", fontWeight:900, flex:"0 0 78px" };
