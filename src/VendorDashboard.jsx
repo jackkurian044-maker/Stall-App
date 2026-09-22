@@ -237,9 +237,9 @@ export default function VendorDashboard({ user, agent }) {
             {field("Name", <input style={inputStyle} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Amma's Pickle Stand" />)}
             {field("Category", <select style={inputStyle} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>{CATEGORIES.map((c) => <option key={c}>{c}</option>)}</select>)}
             {field("Store page layout", <select style={inputStyle} value={form.pageLayout || "classic"} onChange={(e) => setForm({ ...form, pageLayout: e.target.value })}>
-              <option value="classic">Classic — current approved layout</option>
-              <option value="spotlight">Spotlight — large visual hero</option>
-              <option value="compact">Compact — clean business-first layout</option>
+              <option value="classic">Classic Premium — elegant storefront</option>
+              <option value="spotlight">Spotlight Premium — visual showcase</option>
+              <option value="compact">Compact Premium — polished mobile-first</option>
             </select>)}
             {field("Description", <textarea style={{ ...inputStyle, resize: "vertical", minHeight: 56 }} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="What makes this worth the walk?" />)}
             {field("Products (comma separated)", <input style={inputStyle} value={form.products} onChange={(e) => setForm({ ...form, products: e.target.value })} placeholder="mango pickle, lime pickle" />)}
