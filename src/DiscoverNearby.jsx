@@ -71,75 +71,40 @@ export default function DiscoverNearby() {
       return;
     }
 
-    // Never fall back to DEFAULT_LOC/Bengaluru. The browser location is
-    // the only source allowed for this action. Do not accept the first
-    // desktop/Wi-Fi estimate: Chrome can deliver a stale city-level fix
-    // before a better device/GPS reading arrives. Collect fixes for a
-    // short window and use the most accurate reading received.
-    let best = null;
-    let settled = false;
-    let watchId = null;
-    let timerId = null;
-
-    const stop = () => {
-      if (watchId != null) navigator.geolocation.clearWatch(watchId);
-      if (timerId != null) window.clearTimeout(timerId);
-    };
-
-    const finish = (pos) => {
-      if (settled) return;
-      settled = true;
-      stop();
-      setCenterLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-      setLocationAccuracy(Number.isFinite(pos.coords.accuracy) ? pos.coords.accuracy : null);
-      setLocating(false);
-    };
-
-    const fail = (err) => {
-      if (settled) return;
-      settled = true;
-      stop();
-      setLocating(false);
-      if (err.code === err.PERMISSION_DENIED) {
-        setLocateError("Location access was denied — choose a market or enter coordinates below.");
-      } else {
-        setLocateError("Live location could not be confirmed — choose a market or enter coordinates below.");
-      }
-    };
-
-    watchId = navigator.geolocation.watchPosition(
+    // Every click must request a fresh device/browser location.
+    // Do not fall back to any fixed city and do not reuse a cached fix.
+    navigator.geolocation.getCurrentPosition(
       (pos) => {
-        if (!best || (pos.coords.accuracy || Infinity) < (best.coords.accuracy || Infinity)) {
-          best = pos;
+        const lat = Number(pos.coords.latitude);
+        const lng = Number(pos.coords.longitude);
+        const accuracy = Number(pos.coords.accuracy);
+
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+          setLocateError("Chrome did not return valid coordinates — choose a market or enter coordinates below.");
+          setLocating(false);
+          return;
+        }
+
+        setCenterLoc({ lat, lng });
+        setLocationAccuracy(Number.isFinite(accuracy) ? accuracy : null);
+        setLocating(false);
+      },
+      (err) => {
+        setLocating(false);
+        if (err.code === err.PERMISSION_DENIED) {
+          setLocateError("Location access was denied — choose a market or enter coordinates below.");
+        } else if (err.code === err.TIMEOUT) {
+          setLocateError("Chrome could not get a fresh location in time — try again.");
+        } else {
+          setLocateError("Live location could not be confirmed — choose a market or enter coordinates below.");
         }
       },
-      fail,
-      { enableHighAccuracy: true, maximumAge: 0, timeout: 30000 }
-    );
-
-    // Do not accept a coarse desktop/network location as "current".
-    // If the browser cannot produce a reasonably precise fix, stop instead
-    // of silently searching a potentially wrong city.
-    timerId = window.setTimeout(() => {
-      if (settled) return;
-      if (best) {
-        const accuracy = Number(best.coords.accuracy);
-        if (Number.isFinite(accuracy) && accuracy <= 250) {
-          finish(best);
-        } else {
-          settled = true;
-          stop();
-          setLocating(false);
-          setLocateError(
-            Number.isFinite(accuracy)
-              ? `Chrome only provided an approximate location (±${Math.round(accuracy)}m). STall did not use it.`
-              : "Chrome did not provide a reliable accuracy reading. STall did not use the location."
-          );
-        }
-      } else {
-        fail({ code: 3 });
+      {
+        enableHighAccuracy: true,
+        maximumAge: 0,
+        timeout: 30000,
       }
-    }, 12000);
+    );
   };
 
   const useManualLoc = () => {
