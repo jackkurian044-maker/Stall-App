@@ -72,9 +72,10 @@ export default function DiscoverNearby() {
     }
 
     // Never fall back to DEFAULT_LOC/Bengaluru. The browser location is
-    // the only source allowed for this action. Use watchPosition so the
-    // browser can replace an initial network/Wi-Fi estimate with a newer
-    // device reading instead of locking STall to a stale city.
+    // the only source allowed for this action. Do not accept the first
+    // desktop/Wi-Fi estimate: Chrome can deliver a stale city-level fix
+    // before a better device/GPS reading arrives. Collect fixes for a
+    // short window and use the most accurate reading received.
     let best = null;
     let settled = false;
     let watchId = null;
@@ -108,19 +109,22 @@ export default function DiscoverNearby() {
 
     watchId = navigator.geolocation.watchPosition(
       (pos) => {
-        if (!best || (pos.coords.accuracy || Infinity) < (best.coords.accuracy || Infinity)) best = pos;
-        if (pos.coords.accuracy && pos.coords.accuracy <= 200) finish(pos);
+        if (!best || (pos.coords.accuracy || Infinity) < (best.coords.accuracy || Infinity)) {
+          best = pos;
+        }
       },
       fail,
       { enableHighAccuracy: true, maximumAge: 0, timeout: 30000 }
     );
 
-    // Give the device a short window to improve a coarse network reading.
+    // Wait long enough for Chrome/OS to replace a coarse network estimate
+    // with the best available device reading. Never silently use Bengaluru
+    // or any other hard-coded city when this fails.
     timerId = window.setTimeout(() => {
       if (settled) return;
       if (best) finish(best);
       else fail({ code: 3 });
-    }, 15000);
+    }, 12000);
   };
 
   const useManualLoc = () => {
