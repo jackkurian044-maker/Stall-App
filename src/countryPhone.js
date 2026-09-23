@@ -8,8 +8,10 @@ export function normalizePhoneForCountry(phone, countryCode = "IN") {
   if (!digits) return "";
   const country = COUNTRY_OPTIONS.find((c) => c.code === countryCode) || COUNTRY_OPTIONS[0];
   const dial = country.dialCode;
-  if (digits.startsWith("00" + dial)) return digits.slice(2);
-  if (digits.startsWith(dial)) return digits;
+  if (digits.startsWith("00971")) return digits.slice(2);
+  if (digits.startsWith("971")) return digits;
+  if (digits.startsWith("0091")) return digits.slice(2);
+  if (digits.startsWith("91")) return digits;
   const local = digits.replace(/^0+/, "");
   return dial + local;
 }
