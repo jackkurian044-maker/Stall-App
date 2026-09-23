@@ -274,8 +274,10 @@ export default function AdminDashboard() {
     if (!raw) return "";
     const digits = raw.replace(/\D/g, "");
     if (!digits) return "";
-    if (raw.startsWith("+")) return digits;
     if (digits.length === 10) return `91${digits}`;
+    if (digits.length === 11 && digits.startsWith("0")) return `91${digits.slice(1)}`;
+    if (digits.length === 12 && digits.startsWith("91")) return digits;
+    if (digits.length === 14 && digits.startsWith("0091")) return digits.slice(2);
     return digits;
   };
 
@@ -342,7 +344,10 @@ STall — Find what’s around the corner.`;
       : `https://web.whatsapp.com/send?phone=${phone}&text=${encodedMessage}`;
 
     setOwnerMessageStatus("Opening WhatsApp…");
-    window.location.assign(whatsappUrl);
+    const popup = window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+    if (!popup) {
+      window.location.href = whatsappUrl;
+    }
   };
 
   const shareOwnerMessage = () => {
