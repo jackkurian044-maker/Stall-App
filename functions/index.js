@@ -711,3 +711,66 @@ Object.assign(exports, require("./boostCompetitiveRanking"));
 
 
 
+
+
+// Admin-only temporary entitlement for one-store functional testing.
+// This does not create a Razorpay subscription or payment record.
+exports.testGrowthSetupEntitlement = functions.https.onCall(async (data, context) => {
+  if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Login required");
+  const adminSnap = await db.collection("admins").doc(context.auth.uid).get();
+  if (!adminSnap.exists) throw new functions.https.HttpsError("permission-denied", "Admin access required");
+  const listingId = String(data?.listingId || "").trim();
+  if (!listingId) throw new functions.https.HttpsError("invalid-argument", "listingId is required");
+  const listingRef = db.collection("vendors").doc(listingId);
+  const listingSnap = await listingRef.get();
+  if (!listingSnap.exists) throw new functions.https.HttpsError("not-found", "Listing not found");
+  const listing = listingSnap.data();
+  if (!listing.ownerId) throw new functions.https.HttpsError("failed-precondition", "Listing must be claimed before testing");
+  if (!listing.testGrowthSetupBackup) {
+    await listingRef.update({
+      testGrowthSetupBackup: {
+        planKey: listing.planKey || "free",
+        subscriptionTier: listing.subscriptionTier || null,
+        isPremium: Boolean(listing.isPremium),
+        isVerified: Boolean(listing.isVerified),
+        basePlanKey: listing.basePlanKey || null,
+      },
+      isPremium: true,
+      isVerified: true,
+      planKey: "growth_setup",
+      subscriptionTier: "growth_setup",
+      planUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      testGrowthSetupActive: true,
+      testGrowthSetupActivatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  }
+  return { success: true, listingId, testMode: true };
+});
+
+exports.revertTestGrowthSetupEntitlement = functions.https.onCall(async (data, context) => {
+  if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Login required");
+  const adminSnap = await db.collection("admins").doc(context.auth.uid).get();
+  if (!adminSnap.exists) throw new functions.https.HttpsError("permission-denied", "Admin access required");
+  const listingId = String(data?.listingId || "").trim();
+  if (!listingId) throw new functions.https.HttpsError("invalid-argument", "listingId is required");
+  const listingRef = db.collection("vendors").doc(listingId);
+  const listingSnap = await listingRef.get();
+  if (!listingSnap.exists) throw new functions.https.HttpsError("not-found", "Listing not found");
+  const listing = listingSnap.data();
+  const backup = listing.testGrowthSetupBackup;
+  if (!backup) return { success: true, listingId, alreadyReverted: true };
+  const restored = {
+    isPremium: Boolean(backup.isPremium),
+    isVerified: Boolean(backup.isVerified),
+    planKey: backup.planKey || "free",
+    subscriptionTier: backup.subscriptionTier || null,
+    testGrowthSetupActive: admin.firestore.FieldValue.delete(),
+    testGrowthSetupActivatedAt: admin.firestore.FieldValue.delete(),
+    testGrowthSetupBackup: admin.firestore.FieldValue.delete(),
+    planUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  };
+  if (backup.basePlanKey) restored.basePlanKey = backup.basePlanKey;
+  else restored.basePlanKey = admin.firestore.FieldValue.delete();
+  await listingRef.update(restored);
+  return { success: true, listingId, reverted: true };
+});
