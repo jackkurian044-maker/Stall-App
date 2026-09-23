@@ -24,7 +24,7 @@ export function isRatingStale(vendor) {
 function getDetails(service, placeId) {
   return new Promise((resolve) => {
     service.getDetails(
-      { placeId, fields: ["rating", "user_ratings_total", "formatted_phone_number"] },
+      { placeId, fields: ["rating", "user_ratings_total", "formatted_phone_number", "international_phone_number"] },
       (place, status) => resolve({ place, status })
     );
   });
@@ -90,7 +90,7 @@ export async function refreshVendorIfStale(vendor, force = false) {
       await updateDoc(doc(db, "vendors", vendor.id), {
         rating: typeof place.rating === "number" ? place.rating : null,
         ratingsCount: typeof place.user_ratings_total === "number" ? place.user_ratings_total : null,
-        ...(place.formatted_phone_number ? { phone: place.formatted_phone_number } : {}),
+        ...(place.international_phone_number || place.formatted_phone_number ? { phone: place.international_phone_number || place.formatted_phone_number } : {}),
         ratingUpdatedAt: serverTimestamp(),
       });
     } catch {
