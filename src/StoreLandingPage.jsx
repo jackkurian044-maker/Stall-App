@@ -69,6 +69,7 @@ export default function StoreLandingPage({ listingId, onBack }) {
     return digits;
   })();
   const website = listing.website || listing.mapsUrl || vendorLink(listing);
+  const directUrl = "/direct/" + listing.id;
   const isGrowth = ["digital_growth", "growth_setup"].includes(listing.planKey);
   const isGrowthSetup = listing.planKey === "growth_setup";
   const products = String(listing.products || "").split(",").map(x => x.trim()).filter(Boolean).slice(0, 10);
@@ -112,7 +113,7 @@ export default function StoreLandingPage({ listingId, onBack }) {
             <div style={{ display: "flex", flexWrap: "wrap", gap: 9, marginTop: 18 }}>
               {wa && <a href={"https://wa.me/" + wa} target="_blank" rel="noreferrer" style={button}><MessageCircle size={15} /> WhatsApp</a>}
               {phone && <a href={"tel:" + phone} style={button}><Phone size={15} /> Call</a>}
-              {isGrowth && <a href={website} target="_blank" rel="noreferrer" style={{ ...button, background: COLORS.marigold, color: COLORS.ink }}><Globe2 size={15} /> Order / Book</a>}
+              {isGrowth && <a href={directUrl} style={{ ...button, background: COLORS.marigold, color: COLORS.ink }}><Globe2 size={15} /> Order / Book</a>}
               <a href={listing.mapsUrl || website} target="_blank" rel="noreferrer" style={{ ...button, background: "#fff", color: COLORS.ink, border: "1px solid " + COLORS.ink }}><Navigation size={15} /> Directions</a>
             </div>
           </div>
