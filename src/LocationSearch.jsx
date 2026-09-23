@@ -66,7 +66,7 @@ export default function LocationSearch({ address, lat, lng, website, mapsUrl, pl
         const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
           fields: [
             "formatted_address", "geometry", "name", "website", "url", "place_id",
-            "rating", "user_ratings_total", "formatted_phone_number", "opening_hours", "types",
+            "rating", "user_ratings_total", "formatted_phone_number", "international_phone_number", "opening_hours", "types",
           ],
           componentRestrictions: { country: ["in", "ae"] },
         });
@@ -90,7 +90,7 @@ export default function LocationSearch({ address, lat, lng, website, mapsUrl, pl
             placeId: place.place_id || null,
             rating: typeof place.rating === "number" ? place.rating : null,
             ratingsCount: typeof place.user_ratings_total === "number" ? place.user_ratings_total : null,
-            ...(place.formatted_phone_number ? { phone: place.formatted_phone_number } : {}),
+            ...(place.international_phone_number || place.formatted_phone_number ? { phone: place.international_phone_number || place.formatted_phone_number } : {}),
             hours: place.opening_hours?.weekday_text?.length ? place.opening_hours.weekday_text.join("\n") : null,
           });
         });
