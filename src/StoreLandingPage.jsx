@@ -71,7 +71,7 @@ export default function StoreLandingPage({ listingId, onBack }) {
   const website = listing.website || listing.mapsUrl || vendorLink(listing);
   const directUrl = "/direct/" + listing.id;
   const isGrowth = ["digital_growth", "growth_setup"].includes(listing.planKey);
-  const isGrowthSetup = listing.planKey === "growth_setup";
+  const isGrowthSetup = listing.planKey === "growth_setup" || (listing.isPremium && listing.subscriptionTier === "growth_setup");
   const products = String(listing.products || "").split(",").map(x => x.trim()).filter(Boolean).slice(0, 10);
   const ratingText = listing.ratingsCount != null ? " · " + listing.ratingsCount + " Google ratings" : "";
 
