@@ -24,6 +24,7 @@ function StorePage({ listing, onBack, salon, layout }) {
   const primary = photos[0];
   const phone = cleanPhone(listing.phone);
   const wa = whatsapp(phone);
+  const whatsappHref = wa ? getWhatsAppUrl(wa) : "";
   const maps = listing.mapsUrl || vendorLink(listing);
   const website = listing.website || listing.mapsUrl || maps;
   const isGrowth = ["digital_growth", "growth_setup"].includes(listing.planKey);
@@ -73,7 +74,7 @@ function StorePage({ listing, onBack, salon, layout }) {
             )}
             <div style={heroActions}>
               {isGrowth && website && <a href={website} target="_blank" rel="noreferrer" style={primaryCta}><Globe2 size={17}/>{ctaLabel}</a>}
-              {wa && <a href={"https://wa.me/" + wa} target="_blank" rel="noreferrer" style={whatsappCta}><MessageCircle size={17}/> WhatsApp</a>}
+              {wa && <a href={whatsappHref} target="_blank" rel="noreferrer" style={whatsappCta}><MessageCircle size={17}/> WhatsApp</a>}
               {phone && <a href={"tel:" + phone} style={secondaryCta}><Phone size={16}/> Call</a>}
               <a href={maps} target="_blank" rel="noreferrer" style={secondaryCta}><Navigation size={16}/> Directions</a>
             </div>
@@ -145,7 +146,7 @@ function StorePage({ listing, onBack, salon, layout }) {
             <section style={sideCard}>
               <div style={sectionEyebrow}><span style={eyebrowLine}/>{salon ? "SERVICES" : "MENU & SPECIALS"}</div>
               <h3 style={sideTitle}>{services || (salon ? "Services coming soon" : "Menu details coming soon")}</h3>
-              {wa && <a href={"https://wa.me/" + wa} target="_blank" rel="noreferrer" style={sideCta}><MessageCircle size={16}/> Ask us on WhatsApp</a>}
+              {wa && <a href={whatsappHref} target="_blank" rel="noreferrer" style={sideCta}><MessageCircle size={16}/> Ask us on WhatsApp</a>}
             </section>
             {hasSocialProof && (
               <section style={reviewCard}>
@@ -165,12 +166,12 @@ function StorePage({ listing, onBack, salon, layout }) {
           </div>
           <div style={bottomActions}>
             {isGrowth && website && <a href={website} target="_blank" rel="noreferrer" style={primaryCta}><Globe2 size={17}/>{ctaLabel}</a>}
-            {wa && <a href={"https://wa.me/" + wa} target="_blank" rel="noreferrer" style={whatsappCta}><MessageCircle size={17}/> WhatsApp</a>}
+            {wa && <a href={whatsappHref} target="_blank" rel="noreferrer" style={whatsappCta}><MessageCircle size={17}/> WhatsApp</a>}
           </div>
         </section>
 
         <div style={mobileBar} className="stall-mobile-bar">
-          {wa && <a href={"https://wa.me/" + wa} target="_blank" rel="noreferrer"><MessageCircle size={18}/><span>WhatsApp</span></a>}
+          {wa && <a href={whatsappHref} target="_blank" rel="noreferrer"><MessageCircle size={18}/><span>WhatsApp</span></a>}
           {phone && <a href={"tel:" + phone}><Phone size={18}/><span>Call</span></a>}
           <a href={maps} target="_blank" rel="noreferrer"><Navigation size={18}/><span>Directions</span></a>
           <button onClick={() => navigator.share?.({ title: listing.name, url: window.location.href })}><Share2 size={18}/><span>Share</span></button>
@@ -260,7 +261,19 @@ function formatHours(value) {
 function cleanPhone(value) { return String(value || "").replace(/\D/g, ""); }
 function whatsapp(phone) {
   if (!phone) return "";
-  return phone.length === 10 ? "91" + phone : phone.startsWith("0") ? "91" + phone.slice(1) : phone;
+  const digits = String(phone).replace(/\D/g, "");
+  if (digits.length === 10) return "91" + digits;
+  if (digits.length === 11 && digits.startsWith("0")) return "91" + digits.slice(1);
+  if (digits.length === 12 && digits.startsWith("91")) return digits;
+  if (digits.length === 14 && digits.startsWith("0091")) return digits.slice(2);
+  return digits;
+}
+function getWhatsAppUrl(phone) {
+  if (!phone) return "";
+  const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+  return isMobile
+    ? "https://wa.me/" + phone
+    : "https://web.whatsapp.com/send?phone=" + phone;
 }
 function csv(value) { return String(value || "").split(",").map(x => x.trim()).filter(Boolean).join(" · "); }
 function getPhotos(listing) { return Array.isArray(listing?.photos) ? listing.photos.filter(Boolean) : []; }
