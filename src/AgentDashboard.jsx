@@ -44,103 +44,16 @@ const normalizeWhatsAppPhone = (phone) => {
   if (!raw) return "";
   const digits = raw.replace(/\D/g, "");
   if (!digits) return "";
-  if (digits.length === 10) return `91${digits}`;
-  if (digits.length === 11 && digits.startsWith("0")) return `91${digits.slice(1)}`;
+  if (digits.startsWith("00971")) return digits.slice(2);
+  if (digits.startsWith("971")) return digits;
+  if (/^05\d{8}$/.test(digits)) return "971" + digits.slice(1);
+  if (/^04\d{7}$/.test(digits)) return "971" + digits.slice(1);
+  if (digits.length === 10) return "91" + digits;
+  if (digits.length === 11 && digits.startsWith("0")) return "91" + digits.slice(1);
   if (digits.length === 12 && digits.startsWith("91")) return digits;
+  if (digits.length === 14 && digits.startsWith("0091")) return digits.slice(2);
   return digits;
 };
-
-export default function AgentDashboard({ user, agent }) {
-  const [myVendors, setMyVendors] = useState([]);
-  const [commissions, setCommissions] = useState([]);
-  const [tab, setTab] = useState("overview"); // "overview" | "discover" | "outreach"
-  const [outreachStatus, setOutreachStatus] = useState("");
-
-  // ── Discover Nearby (view-only search) ──
-  const [centerLoc, setCenterLoc] = useState(null);
-  const [locating, setLocating] = useState(false);
-  const [manualLat, setManualLat] = useState("");
-  const [manualLng, setManualLng] = useState("");
-  const [radiusKm, setRadiusKm] = useState(2);
-  const [keyword, setKeyword] = useState("");
-  const [searching, setSearching] = useState(false);
-  const [searchError, setSearchError] = useState("");
-  const [results, setResults] = useState([]);
-  const [locateError, setLocateError] = useState("");
-
-  useEffect(() => {
-    const q = query(collection(db, "vendors"), where("addedByAgentId", "==", user.uid));
-    const unsub = onSnapshot(q, (snap) => setMyVendors(snap.docs.map((d) => ({ id: d.id, ...d.data() }))), () => {});
-    return unsub;
-  }, [user.uid]);
-
-  useEffect(() => {
-    const q = query(collection(db, "commissions"), where("agentId", "==", user.uid));
-    const unsub = onSnapshot(q, (snap) => setCommissions(snap.docs.map((d) => ({ id: d.id, ...d.data() }))), () => {});
-    return unsub;
-  }, [user.uid]);
-
-  const addedThisMonth = useMemo(() => {
-    const key = monthKey();
-    return myVendors.filter((v) => {
-      const d = v.createdAt?.toDate?.();
-      return d && monthKey(d) === key;
-    }).length;
-  }, [myVendors]);
-
-  const target = agent.monthlyTarget || 0;
-  const progressPct = target > 0 ? Math.min(100, Math.round((addedThisMonth / target) * 100)) : 0;
-  const pendingTotal = commissions.filter((c) => c.status === "pending").reduce((s, c) => s + (c.amount || 0), 0);
-  const paidTotal = commissions.filter((c) => c.status === "paid").reduce((s, c) => s + (c.amount || 0), 0);
-  const clawedBackCount = commissions.filter((c) => c.status === "clawed_back").length;
-  const conversionCount = commissions.length; // every store that ever converted, including ones later clawed back
-
-  const openOwnerWhatsApp = (vendor) => {
-    const phone = normalizeWhatsAppPhone(vendor.phone);
-    if (!phone) {
-      setOutreachStatus(`No valid phone number is available for “${vendor.name}”.`);
-      return;
-    }
-
-    const claimId = vendor.claimCode || "";
-    const message = `Hi 👋
-
-We’re reaching out from STall — your local business discovery platform.
-
-Good news! 🎉 We’ve already created a business listing for “${vendor.name}” on STall so customers can discover your business online.
-
-Your STall listing can help you:
-• Get discovered by local customers searching for businesses like yours
-• Showcase your business information, services and offers
-• Keep your business details updated
-• Build your online presence on STall
-• Understand how customers are discovering and interacting with your listing
-
-Your STall Claim ID: ${claimId}
-
-Your listing is already created. If you haven’t claimed it yet, now it’s your turn to claim it and take control of your business profile. If you have already claimed it, please review your listing and make sure your business information is up to date.
-
-👉 To access your listing:
-1. Open STall: https://stallapp.stallwale.in/
-2. Sign in / create your business account
-3. Go to My Listings
-4. Select “Claim a listing” if the listing is not already claimed
-5. Enter your Claim ID: ${claimId}
-
-Once claimed, you can review and update your business information so customers see the correct details.
-
-Welcome to STall! 🚀
-STall — Find what’s around the corner.`;
-
-    const encodedMessage = encodeURIComponent(message);
-    const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
-    const whatsappUrl = isMobile
-      ? `https://wa.me/${phone}?text=${encodedMessage}`
-      : `https://web.whatsapp.com/send?phone=${phone}&text=${encodedMessage}`;
-
-    setOutreachStatus(`Opening WhatsApp for “${vendor.name}”…`);
-    window.location.assign(whatsappUrl);
-  };
 
   // ── location + search (view-only — no add-from-results) ──
   const locate = () => {
