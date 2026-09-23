@@ -14,7 +14,7 @@ const statusMeta = {
 const money = (value) => "₹" + Number(value || 0).toFixed(0);
 
 export default function DirectOrdersPanel({ listings }) {
-  const eligible = listings.filter((l) => l.planKey === "growth_setup");
+  const eligible = listings.filter((l) => l.planKey === "growth_setup" || (l.isPremium && l.subscriptionTier === "growth_setup"));
   const [selectedId, setSelectedId] = useState(eligible[0]?.id || "");
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
