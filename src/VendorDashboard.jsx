@@ -12,6 +12,7 @@ import ImageUpload from "./ImageUpload";
 import { autoRefreshStale, isRatingStale } from "./ratingSync";
 import { uid, toDateInputValue } from "./geo";
 import { findDuplicateVendor } from "./duplicateCheck";
+import { COUNTRY_OPTIONS, normalizePhoneForCountry } from "./countryPhone";
 import QuickOfferModal from "./QuickOfferModal";
 import { encodeGeohash } from "./geohash";
 import VendorPremiumWorkspace from "./VendorPremiumWorkspace";
@@ -32,7 +33,7 @@ const isSalonCategory = (value) => {
 
 const emptyForm = {
   name: "", category: CATEGORIES[0], description: "", products: "",
-  address: "", phone: "", lat: "", lng: "", website: null, mapsUrl: null, placeId: null,
+  address: "", phone: "", countryCode: "IN", lat: "", lng: "", website: null, mapsUrl: null, placeId: null,
   rating: null, ratingsCount: null, hours: "", photos: [], preferredLink: null,
   offer: "", offerExpiresAt: "", todaySpecial: "", everydaySpecial: "", todayOffer: "", weekendOffer: "", pageLayout: "classic",
 };
@@ -108,7 +109,7 @@ export default function VendorDashboard({ user, agent }) {
     setEditingId(l.id);
     setForm({
       name: l.name, category: isSalonCategory(l.category) ? "Salons" : l.category, description: l.description || "",
-      products: l.products || "", address: l.address || "", phone: l.phone || "",
+      products: l.products || "", address: l.address || "", phone: l.phone || "", countryCode: l.countryCode || "IN",
       lat: String(l.lat), lng: String(l.lng), website: l.website || null, mapsUrl: l.mapsUrl || null,
       placeId: l.placeId || null, rating: l.rating ?? null, ratingsCount: l.ratingsCount ?? null,
       hours: l.hours || "", photos: l.photos || [], preferredLink: l.preferredLink || null,
@@ -253,7 +254,8 @@ export default function VendorDashboard({ user, agent }) {
             </select>)}
             {field("Description", <textarea style={{ ...inputStyle, resize: "vertical", minHeight: 56 }} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="What makes this worth the walk?" />)}
             {field("Products (comma separated)", <input style={inputStyle} value={form.products} onChange={(e) => setForm({ ...form, products: e.target.value })} placeholder="mango pickle, lime pickle" />)}
-            {field("Phone (optional)", <input style={inputStyle} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />)}
+            {field("Country", <select style={inputStyle} value={form.countryCode || "IN"} onChange={(e) => setForm({ ...form, countryCode: e.target.value })}>{COUNTRY_OPTIONS.map((c) => <option key={c.code} value={c.code}>{c.name} (+{c.dialCode})</option>)}</select>)}
+            {field("Phone (optional)", <input style={inputStyle} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="Local number or full international number" />)}
             {isSalonCategory(form.category) ? <>
               {field("Today’s offer", <input style={inputStyle} value={form.todayOffer} onChange={(e) => setForm({ ...form, todayOffer: e.target.value })} placeholder="e.g. Hair spa + blow dry — ₹999 today" />)}
               {field("Weekend offer", <input style={inputStyle} value={form.weekendOffer} onChange={(e) => setForm({ ...form, weekendOffer: e.target.value })} placeholder="e.g. Saturday & Sunday — 20% off hair services" />)}
@@ -264,7 +266,7 @@ export default function VendorDashboard({ user, agent }) {
             {field("Current offer (optional — e.g. \"20% off today\" or \"Buy 1 get 1, this month\")", <input style={inputStyle} value={form.offer} onChange={(e) => setForm({ ...form, offer: e.target.value })} placeholder="e.g. Festive discount — 15% off all items" />)}
             {form.offer && field("Offer ends on (optional — leave blank to show until you remove it)", <input type="date" style={inputStyle} value={form.offerExpiresAt} onChange={(e) => setForm({ ...form, offerExpiresAt: e.target.value })} />)}
             {form.website && form.mapsUrl && field("When someone taps this listing, open…", <div style={{ display: "flex", gap: 8 }}>{[{ id: "mapsUrl", label: "Google Business profile" }, { id: "website", label: "Website" }].map((opt) => <button key={opt.id} type="button" onClick={() => setForm({ ...form, preferredLink: opt.id })} className="stall-btn" style={{ flex: 1, borderRadius: 7, padding: "8px 10px", fontSize: 12.5, fontWeight: 600, border: `1.5px solid ${COLORS.ink}`, background: (form.preferredLink || "mapsUrl") === opt.id ? COLORS.ink : "#fff", color: (form.preferredLink || "mapsUrl") === opt.id ? "#fff" : COLORS.ink }}>{opt.label}</button>)}</div>)}
-            <LocationSearch address={form.address} lat={form.lat} lng={form.lng} website={form.website} mapsUrl={form.mapsUrl} placeId={form.placeId} rating={form.rating} ratingsCount={form.ratingsCount} onChange={(patch) => setForm((f) => ({ ...f, ...patch, name: f.name.trim() ? f.name : (patch.name ?? f.name), hours: f.hours ? f.hours : (patch.hours ?? f.hours) }))} />
+            <LocationSearch countryCode={form.countryCode} address={form.address} lat={form.lat} lng={form.lng} website={form.website} mapsUrl={form.mapsUrl} placeId={form.placeId} rating={form.rating} ratingsCount={form.ratingsCount} onChange={(patch) => setForm((f) => ({ ...f, ...patch, name: f.name.trim() ? f.name : (patch.name ?? f.name), hours: f.hours ? f.hours : (patch.hours ?? f.hours) }))} />
             {field("Hours", <textarea style={{ ...inputStyle, resize: "vertical", minHeight: 56, fontFamily: "'IBM Plex Mono', monospace", fontSize: 12.5 }} value={form.hours} onChange={(e) => setForm({ ...form, hours: e.target.value })} placeholder={'Auto-filled from Google when available, or type your own, e.g.\nMon–Sat: 9:00 AM – 8:00 PM\nSun: Closed'} />)}
             <ImageUpload photos={form.photos} pathPrefix={`vendor-photos/${editingId || tempId}`} onChange={(photos) => setForm((f) => ({ ...f, photos }))} />
             {error && <div style={{ color: COLORS.brick, fontSize: 12, marginBottom: 10 }}>{error}</div>}
