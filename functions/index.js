@@ -113,8 +113,9 @@ async function getOrCreatePlanId(razorpay, planKey) {
 
 exports.createSubscription = functions.runWith({ secrets: [razorpayConfig] }).https.onCall(async (data, context) => {
   if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Login required");
-  const { vendorId, vendorName, vendorEmail, billingCycle, product } = data;
+  const { vendorId, vendorName, vendorEmail, billingCycle, product, listingId } = data;
   if (context.auth.uid !== vendorId) throw new functions.https.HttpsError("permission-denied", "Unauthorized");
+  if (!listingId) throw new functions.https.HttpsError("invalid-argument", "listingId is required");
   const premiumDoc = await db.collection("premium_vendors").doc(vendorId).get();
   if (premiumDoc.exists && premiumDoc.data().isPremium) {
     // Do not create a second live subscription. Plan upgrades require an
@@ -122,8 +123,9 @@ exports.createSubscription = functions.runWith({ secrets: [razorpayConfig] }).ht
     throw new functions.https.HttpsError("already-exists", "An active subscription already exists");
   }
   try {
-    const vendorListingSnap = await db.collection("vendors").where("ownerId", "==", vendorId).limit(1).get();
-    const listing = vendorListingSnap.empty ? null : vendorListingSnap.docs[0].data();
+    const listingSnap = await db.collection("vendors").doc(listingId).get();
+    if (!listingSnap.exists || listingSnap.data().ownerId !== vendorId) throw new functions.https.HttpsError("permission-denied", "Listing does not belong to this vendor");
+    const listing = listingSnap.data();
     const region = regionFromLatLng(listing?.lat, listing?.lng);
 
     // New checkout callers choose an explicit product. Legacy callers that
@@ -156,7 +158,7 @@ exports.createSubscription = functions.runWith({ secrets: [razorpayConfig] }).ht
       customer_notify: 1,
       quantity: 1,
       total_count: plan.period === "yearly" ? 10 : 120,
-      notes: { vendorId, vendorName: vendorName || "", vendorEmail: vendorEmail || "", source: "stall-app", planKey },
+      notes: { vendorId, vendorName: vendorName || "", vendorEmail: vendorEmail || "", listingId, source: "stall-app", planKey },
     });
     await db.collection("premium_vendors").doc(vendorId).set({
       isPremium: false, subscriptionId: subscription.id, planId, planKey, tier: plan.tier || "digital_growth",
@@ -175,8 +177,9 @@ exports.createSubscription = functions.runWith({ secrets: [razorpayConfig] }).ht
 
 exports.verifySubscription = functions.runWith({ secrets: [razorpayConfig] }).https.onCall(async (data, context) => {
   if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Login required");
-  const { razorpay_payment_id, razorpay_subscription_id, razorpay_signature, vendorId } = data;
+  const { razorpay_payment_id, razorpay_subscription_id, razorpay_signature, vendorId, listingId } = data;
   if (context.auth.uid !== vendorId) throw new functions.https.HttpsError("permission-denied", "Unauthorized");
+  if (!listingId) throw new functions.https.HttpsError("invalid-argument", "listingId is required");
   try {
     const cfg = getRazorpayConfig();
     const body = `${razorpay_payment_id}|${razorpay_subscription_id}`;
@@ -188,6 +191,7 @@ exports.verifySubscription = functions.runWith({ secrets: [razorpayConfig] }).ht
       throw new functions.https.HttpsError("failed-precondition", "Subscription record not found");
     }
     const premiumData = premiumSnap.data();
+    if (premiumData.listingId !== listingId) throw new functions.https.HttpsError("failed-precondition", "Subscription is linked to a different listing");
 
     // Verify the exact subscription and payment with Razorpay before granting
     // paid entitlement. The client callback/signature alone is not enough.
@@ -223,10 +227,10 @@ exports.verifySubscription = functions.runWith({ secrets: [razorpayConfig] }).ht
       activatedAt: admin.firestore.FieldValue.serverTimestamp(), nextBillingDate: nextBilling,
       payments: admin.firestore.FieldValue.arrayUnion({ paymentId: razorpay_payment_id, amount: payment.amount, paidAt: admin.firestore.Timestamp.now(), method: payment.method }),
     }, { merge: true });
-    const vendorSnap = await db.collection("vendors").where("ownerId", "==", vendorId).limit(1).get();
-    if (!vendorSnap.empty) {
+    const vendorSnap = await db.collection("vendors").doc(listingId).get();
+    if (vendorSnap.exists && vendorSnap.data().ownerId === vendorId) {
       const tier = premiumData.tier || "digital_growth";
-      await vendorSnap.docs[0].ref.update({
+      await vendorSnap.ref.update({
         isPremium: true,
         isVerified: true,
         planKey: tier,
@@ -287,7 +291,15 @@ exports.razorpayWebhook = functions.runWith({ secrets: [razorpayConfig] }).https
           product: existingData.product || "legacy_premium",
           payments: admin.firestore.FieldValue.arrayUnion({ paymentId: payment?.id || "", amount: payment?.amount || existingData.amount || 49900, paidAt: admin.firestore.Timestamp.now(), method: payment?.method || "auto" }),
         });
-        console.log(`✅ Subscription renewed for vendor ${vendorId}`);
+        if (existingData.listingId) {
+          const listingRef = db.collection("vendors").doc(existingData.listingId);
+          const listingSnap = await listingRef.get();
+          if (listingSnap.exists && listingSnap.data().ownerId === vendorId) {
+            const tier = existingData.tier || "digital_growth";
+            await listingRef.update({ isPremium: true, isVerified: true, planKey: tier, subscriptionTier: tier, planUpdatedAt: admin.firestore.FieldValue.serverTimestamp() });
+          }
+        }
+        console.log("Subscription renewed for vendor " + vendorId);
         break;
       }
       case "subscription.payment.failed": {
@@ -328,10 +340,12 @@ exports.razorpayWebhook = functions.runWith({ secrets: [razorpayConfig] }).https
           status: "payment_failed",
           haltedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
-        const vendorSnap = await db.collection("vendors").where("ownerId", "==", vendorId).limit(1).get();
-        if (!vendorSnap.empty) {
-          const basePlanKey = snap.docs[0].data().basePlanKey || "free";
-          await vendorSnap.docs[0].ref.update({
+        const existingData = snap.docs[0].data();
+        const listingId = existingData.listingId;
+        const vendorSnap = listingId ? await db.collection("vendors").doc(listingId).get() : null;
+        if (vendorSnap?.exists && vendorSnap.data().ownerId === vendorId) {
+          const basePlanKey = existingData.basePlanKey || "free";
+          await vendorSnap.ref.update({
             isPremium: false,
             isVerified: basePlanKey === "verified",
             subscriptionTier: basePlanKey,
@@ -350,10 +364,12 @@ exports.razorpayWebhook = functions.runWith({ secrets: [razorpayConfig] }).https
         if (snap.empty) break;
         const vendorId = snap.docs[0].id;
         await db.collection("premium_vendors").doc(vendorId).update({ isPremium: false, status: "cancelled", cancelledAt: admin.firestore.FieldValue.serverTimestamp() });
-        const vendorSnap = await db.collection("vendors").where("ownerId", "==", vendorId).limit(1).get();
-        if (!vendorSnap.empty) {
-          const vendorDoc = vendorSnap.docs[0];
-          const basePlanKey = snap.docs[0].data().basePlanKey || "free";
+        const existingData = snap.docs[0].data();
+        const listingId = existingData.listingId;
+        const vendorSnap = listingId ? await db.collection("vendors").doc(listingId).get() : null;
+        if (vendorSnap?.exists && vendorSnap.data().ownerId === vendorId) {
+          const vendorDoc = vendorSnap;
+          const basePlanKey = existingData.basePlanKey || "free";
           await vendorDoc.ref.update({
             isPremium: false,
             isVerified: basePlanKey === "verified",
