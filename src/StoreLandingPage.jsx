@@ -55,7 +55,19 @@ export default function StoreLandingPage({ listingId, onBack }) {
   if (!activePagePlan) return <div style={page}><div style={box}><h2>This business page is not active</h2><p style={muted}>A STall public business page is available for active STall Verified and Growth listings.</p><button onClick={onBack} style={button}>Back to STall</button></div></div>;
 
   const phone = String(listing.phone || "").replace(/\D/g, "");
-  const wa = phone ? (phone.length === 10 ? "91" + phone : phone.startsWith("0") ? "91" + phone.slice(1) : phone) : "";
+  const wa = (() => {
+    const digits = phone;
+    if (!digits) return "";
+    if (digits.startsWith("00971")) return digits.slice(2);
+    if (digits.startsWith("971")) return digits;
+    if (/^05\d{8}$/.test(digits)) return "971" + digits.slice(1);
+    if (/^04\d{7}$/.test(digits)) return "971" + digits.slice(1);
+    if (digits.length === 10) return "91" + digits;
+    if (digits.length === 11 && digits.startsWith("0")) return "91" + digits.slice(1);
+    if (digits.length === 12 && digits.startsWith("91")) return digits;
+    if (digits.length === 14 && digits.startsWith("0091")) return digits.slice(2);
+    return digits;
+  })();
   const website = listing.website || listing.mapsUrl || vendorLink(listing);
   const isGrowth = ["digital_growth", "growth_setup"].includes(listing.planKey);
   const isGrowthSetup = listing.planKey === "growth_setup";
