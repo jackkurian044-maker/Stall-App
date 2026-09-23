@@ -8,6 +8,7 @@ import { uid, toDateInputValue } from "./geo";
 import { encodeGeohash } from "./geohash";
 import { autoRefreshStale, isRatingStale, refreshVendorIfStale } from "./ratingSync";
 import LocationSearch from "./LocationSearch";
+import { COUNTRY_OPTIONS, normalizePhoneForCountry } from "./countryPhone";
 import ImageUpload from "./ImageUpload";
 import { findDuplicateVendor } from "./duplicateCheck";
 import { resolveReport } from "./reports";
@@ -15,7 +16,7 @@ import { SalonBusinessPage } from "./BusinessTemplatePages";
 
 const emptyForm = {
   name: "", category: CATEGORIES[0], description: "", products: "",
-  address: "", phone: "", lat: "", lng: "", website: null, mapsUrl: null, placeId: null,
+  address: "", phone: "", countryCode: "IN", lat: "", lng: "", website: null, mapsUrl: null, placeId: null,
   rating: null, ratingsCount: null, hours: "", photos: [], preferredLink: null,
   offer: "", offerExpiresAt: "",
 };
@@ -162,7 +163,7 @@ export default function AdminDashboard() {
     setError("");
     setForm({
       name: v.name, category: v.category, description: v.description || "",
-      products: v.products || "", address: v.address || "", phone: v.phone || "",
+      products: v.products || "", address: v.address || "", phone: v.phone || "", countryCode: v.countryCode || "IN",
       lat: String(v.lat), lng: String(v.lng),
       website: v.website || null, mapsUrl: v.mapsUrl || null, placeId: v.placeId || null,
       rating: v.rating ?? null, ratingsCount: v.ratingsCount ?? null,
@@ -198,7 +199,7 @@ export default function AdminDashboard() {
       }
       const payload = {
         name: form.name.trim(), category: form.category, description: form.description.trim(),
-        products: form.products.trim(), address: form.address.trim(), phone: form.phone.trim(),
+        products: form.products.trim(), address: form.address.trim(), phone: normalizePhoneForCountry(form.phone, form.countryCode), countryCode: form.countryCode || "IN",
         lat, lng, geohash: encodeGeohash(lat, lng, 9), website: form.website || null, mapsUrl: form.mapsUrl || null, placeId: form.placeId || null,
         rating: form.rating ?? null, ratingsCount: form.ratingsCount ?? null,
         hours: form.hours.trim(), photos: form.photos || [], preferredLink: form.preferredLink || null,
@@ -379,6 +380,7 @@ STall — Find what’s around the corner.`;
           ))}
           {field("Description", <textarea style={{ ...inputStyle, resize: "vertical", minHeight: 56 }} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />)}
           {field("Products (comma separated)", <input style={inputStyle} value={form.products} onChange={(e) => setForm({ ...form, products: e.target.value })} />)}
+          {field("Country", <select style={inputStyle} value={form.countryCode || "IN"} onChange={(e) => setForm({ ...form, countryCode: e.target.value })}>{COUNTRY_OPTIONS.map((c) => <option key={c.code} value={c.code}>{c.name} (+{c.dialCode})</option>)}</select>)}
           {field("Phone (optional)", <input style={inputStyle} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />)}
           {field("Current offer (optional — e.g. \"20% off today\" or \"Buy 1 get 1, this month\")", (
             <input style={inputStyle} value={form.offer} onChange={(e) => setForm({ ...form, offer: e.target.value })} placeholder="e.g. Festive discount — 15% off all items" />
@@ -410,6 +412,7 @@ STall — Find what’s around the corner.`;
             </div>
           ))}
           <LocationSearch
+            countryCode={form.countryCode}
             address={form.address}
             lat={form.lat}
             lng={form.lng}
