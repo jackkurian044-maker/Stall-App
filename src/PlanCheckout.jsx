@@ -105,6 +105,7 @@ export default function PlanCheckout({ user, listing }) {
         const createSubscription = httpsCallable(functions, "createSubscription");
         const { data } = await createSubscription({
           vendorId: user.uid,
+          listingId: listing.id,
           vendorName: listing.name || user.displayName || "Vendor",
           vendorEmail: user.email || "",
           product: planKey,
@@ -126,6 +127,7 @@ export default function PlanCheckout({ user, listing }) {
                 await verify({
                   razorpay_payment_id: response.razorpay_payment_id,
                   razorpay_subscription_id: response.razorpay_subscription_id,
+                  listingId: listing.id,
                   razorpay_signature: response.razorpay_signature,
                   vendorId: user.uid,
                 });
