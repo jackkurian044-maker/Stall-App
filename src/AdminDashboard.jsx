@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { collection, onSnapshot, addDoc, updateDoc, setDoc, deleteDoc, doc, serverTimestamp, query, where } from "firebase/firestore";
 import { Plus, Trash2, RefreshCw, Star, Flag, Check, X as XIcon, Sparkles, Crown, Users } from "lucide-react";
 import { db, auth } from "./firebase";
@@ -639,7 +640,7 @@ function AdminSalonPreviewModal({ listing, onClose }) {
     photos: Array.isArray(listing?.photos) ? listing.photos.filter((photo) => typeof photo === "string" && photo.trim()) : [],
   };
 
-  return (
+  return createPortal(
     <div role="dialog" aria-modal="true" aria-label="Salon page preview" style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,.72)", display: "flex", flexDirection: "column", padding: 12 }}>
       <div style={{ width: "100%", maxWidth: 1240, margin: "0 auto", background: "#fff", borderRadius: 14, overflow: "hidden", display: "flex", flexDirection: "column", minHeight: 0, flex: 1 }}>
         <div style={{ padding: "10px 12px", borderBottom: "1px solid #ddd", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, background: "#fff" }}>
@@ -648,6 +649,7 @@ function AdminSalonPreviewModal({ listing, onClose }) {
         </div>
         <div style={{ flex: 1, overflowY: "auto", minHeight: 0, background: "#f3f3f3" }}><div style={{ padding: 10 }}><SalonBusinessPage listing={previewListing} onBack={onClose} /></div></div>
       </div>
-    </div>
-  );
+    </div>,
+    document.body
+  )
 }
