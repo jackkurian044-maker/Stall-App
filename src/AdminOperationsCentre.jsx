@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { collection, onSnapshot } from "firebase/firestore";
+import { getFunctions, httpsCallable } from "firebase/functions";
 import { Activity, AlertTriangle, CheckCircle2, Crown, ExternalLink, RefreshCw, Search, Store, Users, XCircle } from "lucide-react";
-import { db } from "./firebase";
+import { db, app } from "./firebase";
 import { COLORS } from "./constants";
 
 const cardStyle = {
@@ -85,6 +86,7 @@ export default function AdminOperationsCentre() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [testBusy, setTestBusy] = useState(false);
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "vendors"), (snap) => {
@@ -163,6 +165,37 @@ export default function AdminOperationsCentre() {
   }, [rows, filter, search]);
 
   const selected = rows.find((r) => r.v.id === selectedId) || null;
+
+  const enableGrowthTest = async () => {
+    if (!selected?.v?.id || testBusy) return;
+    setTestBusy(true);
+    try {
+      const fn = httpsCallable(getFunctions(app), "testGrowthSetupEntitlement");
+      await fn({ listingId: selected.v.id });
+      setRefreshKey((x) => x + 1);
+      alert("Growth Setup test entitlement enabled for this store. No payment was made.");
+    } catch (err) {
+      alert(err?.message || "Could not enable the test entitlement.");
+    } finally {
+      setTestBusy(false);
+    }
+  };
+
+  const revertGrowthTest = async () => {
+    if (!selected?.v?.id || testBusy) return;
+    setTestBusy(true);
+    try {
+      const fn = httpsCallable(getFunctions(app), "revertTestGrowthSetupEntitlement");
+      await fn({ listingId: selected.v.id });
+      setRefreshKey((x) => x + 1);
+      alert("Test entitlement reverted to the store's previous plan.");
+    } catch (err) {
+      alert(err?.message || "Could not revert the test entitlement.");
+    } finally {
+      setTestBusy(false);
+    }
+  };
+
 
   return (
     <div style={{ maxWidth: 1440, margin: "0 auto", padding: 22, color: "#f4f4f4" }}>
@@ -261,6 +294,17 @@ export default function AdminOperationsCentre() {
               <div><span style={{ color: "#888" }}>Agent:</span> {selected.agent?.name || selected.v.addedByAgentId || "—"}</div>
               <div><span style={{ color: "#888" }}>Commission:</span> {selected.commission?.status || "—"}</div>
               <div><span style={{ color: "#888" }}>Plan updated:</span> {selected.paidPlan.updatedAt?.toDate?.()?.toLocaleString?.() || "—"}</div>
+            </div>
+
+            <div style={{ marginTop: 15, padding: 11, background: "#0d0d0d", borderRadius: 9, border: "1px solid #292929" }}>
+              <div style={{ fontSize: 10, color: COLORS.marigold, fontWeight: 800, textTransform: "uppercase", marginBottom: 7 }}>One-store test</div>
+              <div style={{ fontSize: 12, color: "#bbb", marginBottom: 9 }}>Enable Growth Setup on this listing without Razorpay. The original plan is backed up and can be restored.</div>
+              <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
+                <button onClick={enableGrowthTest} disabled={testBusy || selected.v.testGrowthSetupActive} className="stall-btn" style={{ padding: "8px 10px" }}>
+                  {testBusy ? "Working…" : selected.v.testGrowthSetupActive ? "Test Active" : "Enable Test"}
+                </button>
+                {selected.v.testGrowthSetupActive && <button onClick={revertGrowthTest} disabled={testBusy} className="stall-btn" style={{ padding: "8px 10px" }}>Revert Test</button>}
+              </div>
             </div>
 
             <div style={{ marginTop: 15, padding: 11, background: "#0d0d0d", borderRadius: 9, border: "1px solid #292929" }}>
