@@ -156,7 +156,7 @@ export default function VendorPremiumWorkspace({ user, listing, hideCheckout = f
       const functions = getFunctions();
       const createSubscription = httpsCallable(functions, "createSubscription");
       const { data } = await withTimeout(
-        createSubscription({ vendorId: user.uid, vendorName: listing.name || user.displayName || "Vendor", vendorEmail: user.email || "", billingCycle }),
+        createSubscription({ vendorId: user.uid, listingId: listing.id, vendorName: listing.name || user.displayName || "Vendor", vendorEmail: user.email || "", billingCycle }),
         20000,
         "Premium payment setup timed out. Please try again."
       );
@@ -175,7 +175,7 @@ export default function VendorPremiumWorkspace({ user, listing, hideCheckout = f
           try {
             const verifySubscription = httpsCallable(functions, "verifySubscription");
             await withTimeout(
-              verifySubscription({ razorpay_payment_id: response.razorpay_payment_id, razorpay_subscription_id: response.razorpay_subscription_id, razorpay_signature: response.razorpay_signature, vendorId: user.uid }),
+              verifySubscription({ razorpay_payment_id: response.razorpay_payment_id, razorpay_subscription_id: response.razorpay_subscription_id, listingId: listing.id, razorpay_signature: response.razorpay_signature, vendorId: user.uid }),
               20000,
               "Payment verification timed out. Please contact STall support if you were charged."
             );
