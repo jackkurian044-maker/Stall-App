@@ -620,6 +620,25 @@ STall — Find what’s around the corner.`;
 
 
 function AdminSalonPreviewModal({ listing, onClose }) {
+  const previewListing = {
+    ...listing,
+    name: String(listing?.name || "Salon"),
+    category: String(listing?.category || "Salon"),
+    description: String(listing?.description || ""),
+    products: String(listing?.products || ""),
+    address: String(listing?.address || ""),
+    phone: String(listing?.phone || ""),
+    hours: String(listing?.hours || ""),
+    website: typeof listing?.website === "string" ? listing.website : "",
+    mapsUrl: typeof listing?.mapsUrl === "string" ? listing.mapsUrl : "",
+    preferredLink: typeof listing?.preferredLink === "string" ? listing.preferredLink : null,
+    offer: String(listing?.offer || ""),
+    todayOffer: String(listing?.todayOffer || ""),
+    weekendOffer: String(listing?.weekendOffer || ""),
+    pageLayout: ["classic", "spotlight", "compact"].includes(listing?.pageLayout) ? listing.pageLayout : "classic",
+    photos: Array.isArray(listing?.photos) ? listing.photos.filter((photo) => typeof photo === "string" && photo.trim()) : [],
+  };
+
   return (
     <div role="dialog" aria-modal="true" aria-label="Salon page preview" style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,.72)", display: "flex", flexDirection: "column", padding: 12 }}>
       <div style={{ width: "100%", maxWidth: 1240, margin: "0 auto", background: "#fff", borderRadius: 14, overflow: "hidden", display: "flex", flexDirection: "column", minHeight: 0, flex: 1 }}>
@@ -627,7 +646,7 @@ function AdminSalonPreviewModal({ listing, onClose }) {
           <div><div style={{ fontWeight: 800, color: COLORS.ink, fontSize: 13 }}>Salon page preview</div><div style={{ fontSize: 11, color: "#666", marginTop: 2 }}>Preview only — nothing is published or changed.</div></div>
           <button type="button" onClick={onClose} className="stall-btn" style={{ background: COLORS.ink, color: "#fff", border: "none", borderRadius: 8, padding: "8px 13px", fontSize: 12, fontWeight: 800 }}>Close Preview</button>
         </div>
-        <div style={{ flex: 1, overflowY: "auto", minHeight: 0, background: "#f3f3f3" }}><div style={{ padding: 10 }}><SalonBusinessPage listing={listing} onBack={onClose} /></div></div>
+        <div style={{ flex: 1, overflowY: "auto", minHeight: 0, background: "#f3f3f3" }}><div style={{ padding: 10 }}><SalonBusinessPage listing={previewListing} onBack={onClose} /></div></div>
       </div>
     </div>
   );
