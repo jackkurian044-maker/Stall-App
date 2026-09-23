@@ -268,7 +268,9 @@ export default function VendorDashboard({ user, agent }) {
             {form.offer && field("Offer ends on (optional — leave blank to show until you remove it)", <input type="date" style={inputStyle} value={form.offerExpiresAt} onChange={(e) => setForm({ ...form, offerExpiresAt: e.target.value })} />)}
             {form.website && form.mapsUrl && field("When someone taps this listing, open…", <div style={{ display: "flex", gap: 8 }}>{[{ id: "mapsUrl", label: "Google Business profile" }, { id: "website", label: "Website" }].map((opt) => <button key={opt.id} type="button" onClick={() => setForm({ ...form, preferredLink: opt.id })} className="stall-btn" style={{ flex: 1, borderRadius: 7, padding: "8px 10px", fontSize: 12.5, fontWeight: 600, border: `1.5px solid ${COLORS.ink}`, background: (form.preferredLink || "mapsUrl") === opt.id ? COLORS.ink : "#fff", color: (form.preferredLink || "mapsUrl") === opt.id ? "#fff" : COLORS.ink }}>{opt.label}</button>)}</div>)}
             <LocationSearch countryCode={form.countryCode} address={form.address} lat={form.lat} lng={form.lng} website={form.website} mapsUrl={form.mapsUrl} placeId={form.placeId} rating={form.rating} ratingsCount={form.ratingsCount} onChange={(patch) => setForm((f) => ({ ...f, ...patch, name: f.name.trim() ? f.name : (patch.name ?? f.name), hours: f.hours ? f.hours : (patch.hours ?? f.hours) }))} />
-            {field("Hours", <textarea style={{ ...inputStyle, resize: "vertical", minHeight: 56, fontFamily: "'IBM Plex Mono', monospace", fontSize: 12.5 }} value={form.hours} onChange={(e) => setForm({ ...form, hours: e.target.value })} placeholder={'Auto-filled from Google when available, or type your own, e.g.\nMon–Sat: 9:00 AM – 8:00 PM\nSun: Closed'} />)}
+            {field("Hours", <textarea style={{ ...inputStyle, resize: "vertical", minHeight: 56, fontFamily: "'IBM Plex Mono', monospace", fontSize: 12.5 }} value={form.hours} onChange={(e) => setForm({ ...form, hours: e.target.value })} placeholder={'Auto-filled from Google when available, or type your own, e.g.
+Mon–Sat: 9:00 AM – 8:00 PM
+Sun: Closed'} />)}
             <ImageUpload photos={form.photos} pathPrefix={`vendor-photos/${editingId || tempId}`} onChange={(photos) => setForm((f) => ({ ...f, photos }))} />
             {error && <div style={{ color: COLORS.brick, fontSize: 12, marginBottom: 10 }}>{error}</div>}
             <div style={{ display: "flex", gap: 8 }}>
@@ -290,7 +292,8 @@ export default function VendorDashboard({ user, agent }) {
           <TabButton active={dashTab === "listings"} onClick={() => setDashTab("listings")}>My Listings ({listings.length})</TabButton>
           <TabButton active={dashTab === "insights"} onClick={() => setDashTab("insights")} icon={<BarChart2 size={13} />}>Insights</TabButton>
           <TabButton active={dashTab === "leads"} onClick={() => setDashTab("leads")} icon={<MessageCircle size={13} />}>Leads</TabButton>
-          <TabButton active={dashTab === "premium"} onClick={() => setDashTab("premium")} icon={<Zap size={13} />}>Premium</TabButton>\n          <TabButton active={dashTab === "direct"} onClick={() => setDashTab("direct")} icon={<ClipboardList size={13} />}>STall Direct</TabButton>
+          <TabButton active={dashTab === "premium"} onClick={() => setDashTab("premium")} icon={<Zap size={13} />}>Premium</TabButton>
+          <TabButton active={dashTab === "direct"} onClick={() => setDashTab("direct")} icon={<ClipboardList size={13} />}>STall Direct</TabButton>
         </div>
 
         {dashTab === "listings" && (
@@ -311,7 +314,11 @@ export default function VendorDashboard({ user, agent }) {
           <LeadEnginePanel listings={listings} />
         )}
 
-        {dashTab === "direct" && (\n          <DirectOrdersPanel listings={listings} />\n        )}\n\n        {dashTab === "premium" && (
+        {dashTab === "direct" && (
+          <DirectOrdersPanel listings={listings} />
+        )}
+
+        {dashTab === "premium" && (
           <div>
             <PlanCheckout user={user} listing={premiumListing} />
             <VendorPremiumWorkspace user={user} listing={premiumListing} hideCheckout />
