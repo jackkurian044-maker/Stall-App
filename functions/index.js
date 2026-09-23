@@ -129,6 +129,9 @@ exports.createSubscription = functions.runWith({ secrets: [razorpayConfig] }).ht
     // New checkout callers choose an explicit product. Legacy callers that
     // only send billingCycle keep the old Premium behaviour.
     let planKey;
+    if (region === "ae") {
+      throw new functions.https.HttpsError("failed-precondition", "UAE pricing is visible, but international Razorpay payments are not enabled yet. Please try again after UAE payment approval.");
+    }
     if (product === "growth_setup") {
       if (region !== "in") throw new functions.https.HttpsError("failed-precondition", "Growth Setup pricing is currently configured for India only.");
       planKey = "in_growth_setup_monthly_v2";
