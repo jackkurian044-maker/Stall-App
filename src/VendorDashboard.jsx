@@ -3,7 +3,7 @@ import {
   collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc,
   getDocs, serverTimestamp,
 } from "firebase/firestore";
-import { Plus, Trash2, KeyRound, RefreshCw, Star, Zap, BarChart2, Eye, Phone, MessageCircle, Navigation, X, CheckCircle2 } from "lucide-react";
+import { Plus, Trash2, KeyRound, RefreshCw, Star, Zap, BarChart2, Eye, Phone, MessageCircle, Navigation, X, CheckCircle2, ClipboardList } from "lucide-react";
 import { db } from "./firebase";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { CATEGORIES, COLORS } from "./constants";
@@ -19,6 +19,7 @@ import VendorPremiumWorkspace from "./VendorPremiumWorkspace";
 import PlanCheckout from "./PlanCheckout";
 import LeadEnginePanel from "./LeadEnginePanel";
 import BoostCampaignPanel from "./BoostCampaignPanel";
+import DirectOrdersPanel from "./DirectOrdersPanel";
 import { RestaurantBusinessPage, SalonBusinessPage } from "./BusinessTemplatePages";
 
 const isSalonCategory = (value) => {
@@ -289,7 +290,7 @@ export default function VendorDashboard({ user, agent }) {
           <TabButton active={dashTab === "listings"} onClick={() => setDashTab("listings")}>My Listings ({listings.length})</TabButton>
           <TabButton active={dashTab === "insights"} onClick={() => setDashTab("insights")} icon={<BarChart2 size={13} />}>Insights</TabButton>
           <TabButton active={dashTab === "leads"} onClick={() => setDashTab("leads")} icon={<MessageCircle size={13} />}>Leads</TabButton>
-          <TabButton active={dashTab === "premium"} onClick={() => setDashTab("premium")} icon={<Zap size={13} />}>Premium</TabButton>
+          <TabButton active={dashTab === "premium"} onClick={() => setDashTab("premium")} icon={<Zap size={13} />}>Premium</TabButton>\n          <TabButton active={dashTab === "direct"} onClick={() => setDashTab("direct")} icon={<ClipboardList size={13} />}>STall Direct</TabButton>
         </div>
 
         {dashTab === "listings" && (
@@ -310,7 +311,7 @@ export default function VendorDashboard({ user, agent }) {
           <LeadEnginePanel listings={listings} />
         )}
 
-        {dashTab === "premium" && (
+        {dashTab === "direct" && (\n          <DirectOrdersPanel listings={listings} />\n        )}\n\n        {dashTab === "premium" && (
           <div>
             <PlanCheckout user={user} listing={premiumListing} />
             <VendorPremiumWorkspace user={user} listing={premiumListing} hideCheckout />
