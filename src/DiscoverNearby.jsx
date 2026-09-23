@@ -193,7 +193,7 @@ export default function DiscoverNearby() {
       const svc = new window.google.maps.places.PlacesService(document.createElement("div"));
       const detailsFor = (placeId) =>
         new Promise((resolve) => {
-          svc.getDetails({ placeId, fields: ["formatted_address", "website", "url", "opening_hours", "formatted_phone_number"] }, (place, status) => {
+          svc.getDetails({ placeId, fields: ["formatted_address", "website", "url", "opening_hours", "formatted_phone_number", "international_phone_number"] }, (place, status) => {
             if (status === window.google.maps.places.PlacesServiceStatus.OK && place) resolve(place);
             else resolve({});
           });
@@ -211,7 +211,7 @@ export default function DiscoverNearby() {
           description: "",
           products: "",
           address: details.formatted_address || r.vicinity || "",
-          phone: details.formatted_phone_number || "",
+          phone: details.international_phone_number || details.formatted_phone_number || "",
           lat: r.lat,
           lng: r.lng,
           geohash: encodeGeohash(r.lat, r.lng, 9),
