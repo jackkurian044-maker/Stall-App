@@ -16,6 +16,7 @@ import Footer from "./Footer";
 import ReviewAutoResponder from "./ReviewAutoResponder";
 import BusinessOwnerCTA from "./BusinessOwnerCTA";
 import StoreLandingPage from "./StoreLandingPage";
+import { DirectOrderingPage, DirectMenuManager } from "./DirectOrdering";
 
 const AUTH_TRACE = "[STALL-AUTH v4]";
 const trace = (...args) => console.info(AUTH_TRACE, ...args);
@@ -27,6 +28,8 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [mode, setMode] = useState("find");
   const [landingStoreId, setLandingStoreId] = useState("");
+  const [directStoreId, setDirectStoreId] = useState("");
+  const [directManageId, setDirectManageId] = useState("");
 
   useEffect(() => {
     const host = window.location.hostname.toLowerCase();
@@ -40,7 +43,21 @@ export default function App() {
 
     const params = new URLSearchParams(window.location.search);
     const pathMatch = window.location.pathname.match(/^\/business\/([^/]+)\/?$/i);
+    const directMatch = window.location.pathname.match(/^\/direct\/([^/]+)\/?$/i);
+    const manageMatch = window.location.pathname.match(/^\/direct-manage\/([^/]+)\/?$/i);
     const storeId = (params.get("store") || (pathMatch ? pathMatch[1] : "") || "").trim();
+    const directId = (directMatch ? directMatch[1] : "").trim();
+    const manageId = (manageMatch ? manageMatch[1] : "").trim();
+    if (directId) {
+      setDirectStoreId(directId);
+      setMode("direct");
+      return;
+    }
+    if (manageId) {
+      setDirectManageId(manageId);
+      setMode("direct-manage");
+      return;
+    }
     if (storeId) {
       setLandingStoreId(storeId);
       setMode("landing");
@@ -147,7 +164,11 @@ export default function App() {
     <div style={{ minHeight: "100vh", background: "#0a0a0a", display: "flex", flexDirection: "column" }}>
       <Header mode={mode} setMode={setMode} user={user} isAdmin={isAdmin} isAgent={!!agent} onSignOut={handleSignOut} />
       <div style={{ flex: 1 }}>
-        {mode === "landing" ? (
+        {mode === "direct" ? (
+          <DirectOrderingPage listingId={directStoreId} onBack={() => { setMode("find"); window.history.replaceState({}, "", "/"); }} />
+        ) : mode === "direct-manage" ? (
+          user ? <DirectMenuManager listingId={directManageId} user={user} onBack={() => { setMode("mine"); window.history.replaceState({}, "", "/"); }} /> : <VendorAuthPage />
+        ) : mode === "landing" ? (
           <StoreLandingPage listingId={landingStoreId} onBack={() => { setMode("find"); window.history.replaceState({}, "", "/"); }} />
         ) : authLoading ? (
           <div style={{ padding: 40, textAlign: "center", color: "#9c9c9c", fontSize: 14 }}>Loading…</div>
