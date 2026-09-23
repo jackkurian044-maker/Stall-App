@@ -79,6 +79,23 @@ service cloud.firestore {
       allow delete: if request.auth != null &&
         (resource.data.ownerId == request.auth.uid || isAdmin());
 
+      // STall Direct menu: public customers can read active menu items;
+      // only the listing owner/admin can manage them.
+      match /direct_menu/{itemId} {
+        allow read: if true;
+        allow create: if request.auth != null && (
+          isAdmin() || get(/databases/$(database)/documents/vendors/$(vendorId)).data.ownerId == request.auth.uid
+        ) && request.resource.data.name is string && request.resource.data.name.size() > 0 &&
+          request.resource.data.name.size() < 160 && request.resource.data.price is number &&
+          request.resource.data.price >= 0;
+        allow update: if request.auth != null && (
+          isAdmin() || get(/databases/$(database)/documents/vendors/$(vendorId)).data.ownerId == request.auth.uid
+        );
+        allow delete: if request.auth != null && (
+          isAdmin() || get(/databases/$(database)/documents/vendors/$(vendorId)).data.ownerId == request.auth.uid
+        );
+      }
+
       match /reviews/{uid} {
         allow read: if true;
         allow create, update: if request.auth != null && request.auth.uid == uid;
@@ -133,6 +150,37 @@ service cloud.firestore {
     }
 
 
+    // STall Direct orders: customers can create orders without an account.
+    // Customers cannot read/update orders; the store owner/admin manages them.
+    match /direct_orders/{orderId} {
+      allow create: if request.resource.data.vendorId is string &&
+        exists(/databases/$(database)/documents/vendors/$(request.resource.data.vendorId)) &&
+        request.resource.data.customerName is string && request.resource.data.customerName.size() > 0 &&
+        request.resource.data.customerName.size() < 120 &&
+        request.resource.data.customerPhone is string && request.resource.data.customerPhone.size() >= 7 &&
+        request.resource.data.customerPhone.size() < 30 &&
+        request.resource.data.fulfillmentType in ['pickup', 'delivery'] &&
+        request.resource.data.status == 'new' &&
+        request.resource.data.paymentMethod == 'pay_at_store' &&
+        request.resource.data.paymentStatus == 'pending' &&
+        request.resource.data.items is list && request.resource.data.items.size() > 0 &&
+        request.resource.data.items.size() <= 50 &&
+        request.resource.data.total is number && request.resource.data.total >= 0 &&
+        request.resource.data.createdAt == request.time;
+      allow read: if request.auth != null && (
+        isAdmin() ||
+        get(/databases/$(database)/documents/vendors/$(resource.data.vendorId)).data.ownerId == request.auth.uid
+      );
+      allow update: if request.auth != null && (
+        isAdmin() ||
+        get(/databases/$(database)/documents/vendors/$(resource.data.vendorId)).data.ownerId == request.auth.uid
+      ) && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+        'status', 'paymentStatus', 'notes', 'updatedAt'
+      ]);
+      allow delete: if false;
+    }
+
+    // Legacy order collection remains locked down.
     match /stall_orders/{orderId} {
       allow read, write: if false;
     }
