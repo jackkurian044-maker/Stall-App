@@ -297,6 +297,7 @@ const backLink = { border:0, background:"transparent", color:"#6c6c6c", display:
 const hero = { display:"grid", gridTemplateColumns:"minmax(0,1.25fr) minmax(340px,.75fr)", minHeight:540, borderRadius:30, overflow:"hidden", background:"#fff", boxShadow:"0 28px 80px rgba(0,0,0,.13)" };
 const heroImageWrap = { position:"relative", minHeight:420, background:"#ddd", overflow:"hidden" };
 const heroImage = { width:"100%", height:"100%", minHeight:420, objectFit:"cover", display:"block" };
+const heroPlaceholder = { display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:10, width:"100%", height:"100%", minHeight:420, color:"#fff", fontWeight:900, fontSize:18, textAlign:"center", padding:24, boxSizing:"border-box" };
 const heroShade = { position:"absolute", inset:0, background:"linear-gradient(180deg,rgba(0,0,0,.05) 20%,rgba(0,0,0,.55) 100%)", pointerEvents:"none" };
 const heroTop = { position:"absolute", top:20, left:20, display:"flex", gap:8, flexWrap:"wrap" };
 const categoryChip = { background:"rgba(255,255,255,.93)", color:"#161616", padding:"8px 11px", borderRadius:999, fontSize:11, fontWeight:900, backdropFilter:"blur(8px)" };
