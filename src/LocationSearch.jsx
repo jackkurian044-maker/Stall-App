@@ -3,6 +3,7 @@ import { MapPin, Pencil } from "lucide-react";
 import { COLORS, DEFAULT_LOC } from "./constants";
 import MapPicker from "./MapPicker";
 import { loadGoogleMaps } from "./googleMaps";
+import { countryFromGooglePlace } from "./countryPhone";
 
 const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_PLACES_API_KEY;
 
@@ -36,7 +37,7 @@ function categoryFromGoogleTypes(types = []) {
  * URL, Place ID, rating, review count, phone, hours and an inferred STall
  * category when Google provides a reliable place type.
  */
-export default function LocationSearch({ address, lat, lng, website, mapsUrl, placeId, rating, ratingsCount, onChange }) {
+export default function LocationSearch({ address, lat, lng, website, mapsUrl, placeId, rating, ratingsCount, countryCode = "IN", onChange }) {
   const [manualMode, setManualMode] = useState(false);
   const [query, setQuery] = useState(address || "");
   const [ready, setReady] = useState(false);
@@ -66,7 +67,7 @@ export default function LocationSearch({ address, lat, lng, website, mapsUrl, pl
         const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
           fields: [
             "formatted_address", "geometry", "name", "website", "url", "place_id",
-            "rating", "user_ratings_total", "formatted_phone_number", "international_phone_number", "opening_hours", "types",
+            "rating", "user_ratings_total", "formatted_phone_number", "international_phone_number", "opening_hours", "types", "address_components",
           ],
           componentRestrictions: { country: ["in", "ae"] },
         });
@@ -79,6 +80,7 @@ export default function LocationSearch({ address, lat, lng, website, mapsUrl, pl
           setQuery(label);
 
           const category = categoryFromGoogleTypes(place.types);
+          const selectedCountryCode = countryFromGooglePlace(place);
           onChange({
             address: label,
             name: place.name || null,
@@ -90,6 +92,7 @@ export default function LocationSearch({ address, lat, lng, website, mapsUrl, pl
             placeId: place.place_id || null,
             rating: typeof place.rating === "number" ? place.rating : null,
             ratingsCount: typeof place.user_ratings_total === "number" ? place.user_ratings_total : null,
+            countryCode: selectedCountryCode,
             ...(place.international_phone_number || place.formatted_phone_number ? { phone: place.international_phone_number || place.formatted_phone_number } : {}),
             hours: place.opening_hours?.weekday_text?.length ? place.opening_hours.weekday_text.join("\n") : null,
           });
@@ -106,7 +109,7 @@ export default function LocationSearch({ address, lat, lng, website, mapsUrl, pl
 
   const handlePinMove = useCallback(
     ({ lat: newLat, lng: newLng }) => {
-      onChange({ address, lat: newLat, lng: newLng, website, mapsUrl, placeId, rating, ratingsCount });
+      onChange({ address, lat: newLat, lng: newLng, website, mapsUrl, placeId, rating, ratingsCount, countryCode });
     },
     [address, website, mapsUrl, placeId, rating, ratingsCount, onChange]
   );
@@ -116,7 +119,7 @@ export default function LocationSearch({ address, lat, lng, website, mapsUrl, pl
     // Typing after a location was already confirmed invalidates it —
     // clear coordinates and linked Google data so stale place data cannot persist.
     if (hasLocation) {
-      onChange({ address: val, lat: "", lng: "", website: null, mapsUrl: null, placeId: null, rating: null, ratingsCount: null });
+      onChange({ address: val, lat: "", lng: "", website: null, mapsUrl: null, placeId: null, rating: null, ratingsCount: null, countryCode });
     }
   };
 
@@ -138,10 +141,10 @@ export default function LocationSearch({ address, lat, lng, website, mapsUrl, pl
             search by name/address instead
           </button>
         </div>
-        <input style={{ ...inputStyle, marginBottom: 8 }} value={address || ""} onChange={(e) => onChange({ address: e.target.value, lat, lng, website, mapsUrl, placeId, rating, ratingsCount })} placeholder="Street, area, city" />
+        <input style={{ ...inputStyle, marginBottom: 8 }} value={address || ""} onChange={(e) => onChange({ address: e.target.value, lat, lng, website, mapsUrl, placeId, rating, ratingsCount, countryCode })} placeholder="Street, area, city" />
         <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-          <input className="font-mono" style={inputStyle} value={lat ?? ""} onChange={(e) => onChange({ address, lat: e.target.value === "" ? "" : parseFloat(e.target.value), lng, website, mapsUrl, placeId, rating, ratingsCount })} placeholder="Latitude" />
-          <input className="font-mono" style={inputStyle} value={lng ?? ""} onChange={(e) => onChange({ address, lat, lng: e.target.value === "" ? "" : parseFloat(e.target.value), website, mapsUrl, placeId, rating, ratingsCount })} placeholder="Longitude" />
+          <input className="font-mono" style={inputStyle} value={lat ?? ""} onChange={(e) => onChange({ address, lat: e.target.value === "" ? "" : parseFloat(e.target.value), lng, website, mapsUrl, placeId, rating, ratingsCount, countryCode })} placeholder="Latitude" />
+          <input className="font-mono" style={inputStyle} value={lng ?? ""} onChange={(e) => onChange({ address, lat, lng, website, mapsUrl, placeId, rating, ratingsCount, countryCode })} placeholder="Longitude" />
         </div>
         <MapPicker lat={hasLocation ? Number(lat) : DEFAULT_LOC.lat} lng={hasLocation ? Number(lng) : DEFAULT_LOC.lng} onMove={handlePinMove} />
         <div style={{ fontSize: 10, color: "#999", marginTop: 4 }}>{hasLocation ? "Drag the pin to fine-tune the exact spot." : "Or just drag the pin below onto the right spot — no typing needed."}</div>
