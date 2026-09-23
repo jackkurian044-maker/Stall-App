@@ -270,16 +270,20 @@ export default function AdminDashboard() {
   };
 
   const normalizeWhatsAppPhone = (phone) => {
-    const raw = String(phone || "").trim();
-    if (!raw) return "";
-    const digits = raw.replace(/\D/g, "");
-    if (!digits) return "";
-    if (digits.length === 10) return `91${digits}`;
-    if (digits.length === 11 && digits.startsWith("0")) return `91${digits.slice(1)}`;
-    if (digits.length === 12 && digits.startsWith("91")) return digits;
-    if (digits.length === 14 && digits.startsWith("0091")) return digits.slice(2);
-    return digits;
-  };
+  const raw = String(phone || "").trim();
+  if (!raw) return "";
+  const digits = raw.replace(/\D/g, "");
+  if (!digits) return "";
+  if (digits.startsWith("00971")) return digits.slice(2);
+  if (digits.startsWith("971")) return digits;
+  if (/^05\d{8}$/.test(digits)) return "971" + digits.slice(1);
+  if (/^04\d{7}$/.test(digits)) return "971" + digits.slice(1);
+  if (digits.length === 10) return "91" + digits;
+  if (digits.length === 11 && digits.startsWith("0")) return "91" + digits.slice(1);
+  if (digits.length === 12 && digits.startsWith("91")) return digits;
+  if (digits.length === 14 && digits.startsWith("0091")) return digits.slice(2);
+  return digits;
+};
 
   const buildOwnerMessage = ({ name, code }) => `Hi 👋
 
