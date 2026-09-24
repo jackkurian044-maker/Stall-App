@@ -1,7 +1,7 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   ArrowLeft, CheckCircle2, Clock, Globe2, MapPin, MessageCircle,
-  Navigation, Phone, Scissors, Star, Utensils, Share2, Crown, Sparkles,
+  Navigation, Phone, Scissors, Star, Utensils, Share2, Crown, Sparkles, ShoppingBag, X,
 } from "lucide-react";
 import { vendorLink } from "./geo";
 import { DirectOrderingPage } from "./DirectOrdering";
@@ -38,6 +38,21 @@ function StorePage({ listing, onBack, salon, layout }) {
   const specialTitle2 = salon ? "Weekend favourite" : "Everyday favourite";
   const hasSocialProof = listing.rating != null;
   const ctaLabel = salon ? "Book an appointment" : "Order / Book";
+  const [directOpen, setDirectOpen] = useState(false);
+
+  useEffect(() => {
+    if (!directOpen) return undefined;
+    const onKeyDown = (event) => { if (event.key === "Escape") setDirectOpen(false); };
+    document.addEventListener("keydown", onKeyDown);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [directOpen]);
+
+  const openDirectOrder = () => setDirectOpen(true);
 
   return (
     <TemplateShell listing={listing} theme={theme}>
@@ -76,7 +91,7 @@ function StorePage({ listing, onBack, salon, layout }) {
             )}
             <div style={heroActions}>
               {isGrowth && website && (salon || !isDirectGrowth) && <a href={website} target="_blank" rel="noreferrer" style={primaryCta}><Globe2 size={17}/>{ctaLabel}</a>}
-              {!salon && isDirectGrowth && <a href="#stall-direct-order" style={primaryCta}><Globe2 size={17}/>{ctaLabel}</a>}
+              {!salon && isDirectGrowth && <button type="button" onClick={openDirectOrder} style={{ ...primaryCta, border: 0, cursor: "pointer" }}><ShoppingBag size={17}/>{ctaLabel}</button>}
               {wa && <a href={whatsappHref} target="_blank" rel="noreferrer" style={whatsappCta}><MessageCircle size={17}/> WhatsApp</a>}
               {phone && <a href={"tel:" + phone} style={secondaryCta}><Phone size={16}/> Call</a>}
               <a href={maps} target="_blank" rel="noreferrer" style={secondaryCta}><Navigation size={16}/> Directions</a>
@@ -100,8 +115,15 @@ function StorePage({ listing, onBack, salon, layout }) {
         )}
 
         {!salon && isDirectGrowth && (
-          <section id="stall-direct-order" style={{ marginTop: 20 }}>
-            <DirectOrderingPage listingId={listing.id} embedded onBack={() => window.scrollTo({ top: 0, behavior: "smooth" })} />
+          <section style={directSummaryCard}>
+            <div>
+              <div style={sectionEyebrow}><ShoppingBag size={14}/> STALL DIRECT</div>
+              <h2 style={directSummaryTitle}>Order directly from the menu.</h2>
+              <p style={directSummaryText}>Simple ordering for pickup or delivery. Pay at the store.</p>
+            </div>
+            <button type="button" onClick={openDirectOrder} style={directSummaryButton}>
+              <ShoppingBag size={16}/> View menu & order
+            </button>
           </section>
         )}
 
@@ -169,6 +191,31 @@ function StorePage({ listing, onBack, salon, layout }) {
             )}
           </aside>
         </section>
+
+        {directOpen && !salon && isDirectGrowth && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Order directly"
+            onMouseDown={(event) => { if (event.target === event.currentTarget) setDirectOpen(false); }}
+            style={directModalBackdrop}
+          >
+            <div style={directModal}>
+              <div style={directModalHeader}>
+                <div>
+                  <div style={directModalKicker}>STALL DIRECT</div>
+                  <div style={directModalTitle}>Place your order</div>
+                </div>
+                <button type="button" onClick={() => setDirectOpen(false)} aria-label="Close order window" style={directModalClose}>
+                  <X size={18}/>
+                </button>
+              </div>
+              <div style={directModalBody}>
+                <DirectOrderingPage listingId={listing.id} embedded onBack={() => setDirectOpen(false)} />
+              </div>
+            </div>
+          </div>
+        )}
 
         <section style={{ ...bottomCta, ...(layout === "spotlight" ? spotlightBottomCta : layout === "compact" ? compactBottomCta : {}) }} className="bottom-cta">
           <div>
@@ -389,6 +436,18 @@ const hoursTime = { color:"#4f4f4f", fontWeight:750, whiteSpace:"nowrap", textAl
 
 const mapCta = { display:"inline-flex", alignItems:"center", justifyContent:"center", gap:7, color:"#fff", background:"var(--ink)", borderRadius:11, padding:"11px 14px", textDecoration:"none", fontWeight:850, fontSize:12.5, width:"fit-content" };
 const bottomCta = { marginTop:26, padding:"28px 30px", borderRadius:26, background:"linear-gradient(135deg,var(--ink),var(--teal))", color:"#fff", display:"flex", justifyContent:"space-between", gap:20, alignItems:"center", boxShadow:"0 20px 50px rgba(0,0,0,.16)" };
+const directSummaryCard = { marginTop:20, background:"linear-gradient(135deg,#fffdf8,#f3eee4)", border:"1px solid rgba(23,23,23,.08)", borderRadius:24, padding:"24px 26px", display:"flex", alignItems:"center", justifyContent:"space-between", gap:20, boxShadow:"0 14px 38px rgba(0,0,0,.06)" };
+const directSummaryTitle = { margin:"0 0 7px", fontSize:"clamp(24px,3vw,34px)", lineHeight:1.05, letterSpacing:"-.04em", fontWeight:950 };
+const directSummaryText = { margin:0, color:"#666", fontSize:13.5, lineHeight:1.55 };
+const directSummaryButton = { display:"inline-flex", alignItems:"center", justifyContent:"center", gap:8, flex:"0 0 auto", border:0, borderRadius:13, padding:"13px 17px", background:"var(--ink)", color:"#fff", fontWeight:900, fontSize:13, cursor:"pointer", boxShadow:"0 10px 28px rgba(0,0,0,.14)" };
+const directModalBackdrop = { position:"fixed", inset:0, zIndex:1000, background:"rgba(13,20,18,.68)", backdropFilter:"blur(8px)", display:"flex", alignItems:"center", justifyContent:"center", padding:"20px", boxSizing:"border-box" };
+const directModal = { width:"min(1080px,100%)", maxHeight:"calc(100vh - 40px)", overflow:"auto", background:"#fff", borderRadius:28, boxShadow:"0 35px 100px rgba(0,0,0,.35)", position:"relative" };
+const directModalHeader = { position:"sticky", top:0, zIndex:2, display:"flex", alignItems:"center", justifyContent:"space-between", gap:16, padding:"16px 20px", background:"rgba(255,255,255,.94)", backdropFilter:"blur(14px)", borderBottom:"1px solid rgba(0,0,0,.07)" };
+const directModalKicker = { fontSize:9.5, letterSpacing:".14em", fontWeight:950, color:"#176f68" };
+const directModalTitle = { marginTop:3, fontSize:18, fontWeight:950, letterSpacing:"-.02em" };
+const directModalClose = { width:38, height:38, borderRadius:12, border:"1px solid rgba(0,0,0,.1)", background:"#fff", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", color:"#171717" };
+const directModalBody = { padding:"0 20px 20px" };
+
 const bottomKicker = { fontSize:10, letterSpacing:".12em", fontWeight:900, opacity:.7 };
 const bottomTitle = { fontSize:"clamp(23px,3vw,34px)", lineHeight:1.05, margin:"7px 0 0", letterSpacing:"-.035em" };
 const bottomActions = { display:"flex", flexWrap:"wrap", gap:8 };
@@ -420,7 +479,7 @@ if (typeof document !== "undefined") {
         .visit-card { grid-template-columns: 1fr !important; gap:18px !important; }
         .visit-card > div:last-child { align-items: flex-start !important; border-left:0 !important; border-top:1px solid rgba(0,0,0,.08); padding:18px 0 0 !important; }
         .visit-card > div:first-child { width:100%; }
-        .bottom-cta { flex-direction: column !important; align-items: flex-start !important; }\n        .bottom-cta .bottom-actions { width: 100%; }
+        .bottom-cta { flex-direction: column !important; align-items: flex-start !important; }\n        .direct-summary-card { flex-direction: column !important; align-items: flex-start !important; }\n        .bottom-cta .bottom-actions { width: 100%; }
         .stall-premium-store-responsive + * {}
       }
     `;
