@@ -146,31 +146,6 @@ function StorePage({ listing, onBack, salon, layout }) {
 
             {photos.length > 1 && <Gallery photos={photos.slice(1)} name={listing.name} />}
 
-            <section style={visitCard}>
-              <div style={visitIntro}>
-                <div style={sectionEyebrow}><MapPin size={14}/> PLAN YOUR VISIT</div>
-                <h2 style={{ ...sectionTitle, marginBottom: 10 }}>Come say hello.</h2>
-                <div style={addressBlock}>
-                  <div style={addressIcon}><MapPin size={17}/></div>
-                  <div>
-                    <div style={visitLabel}>ADDRESS</div>
-                    <AddressDisplay value={listing.address || "Location details are available on Google Maps."} />
-                  </div>
-                </div>
-              </div>
-              <div style={visitDetails}>
-                {listing.hours && (
-                  <div style={visitInfoItem}>
-                    <div style={visitInfoIcon}><Clock size={16}/></div>
-                    <div>
-                      <div style={visitLabel}>HOURS</div>
-                      <OpeningHours value={listing.hours} />
-                    </div>
-                  </div>
-                )}
-                <a href={maps} target="_blank" rel="noreferrer" style={mapCta}><Navigation size={15}/> Get directions</a>
-              </div>
-            </section>
           </div>
 
           <aside style={{ ...sideColumn, ...(layout === "spotlight" ? spotlightSideColumn : layout === "compact" ? compactSideColumn : {}) }}>
@@ -224,7 +199,7 @@ function StorePage({ listing, onBack, salon, layout }) {
           </div>
           <div style={bottomActions}>
             {isGrowth && website && (salon || !isDirectGrowth) && <a href={website} target="_blank" rel="noreferrer" style={primaryCta}><Globe2 size={17}/>{ctaLabel}</a>}
-            {!salon && isDirectGrowth && <a href="#stall-direct-order" style={primaryCta}><Globe2 size={17}/>{ctaLabel}</a>}
+            {!salon && isDirectGrowth && <button type="button" onClick={openDirectOrder} style={{ ...primaryCta, border: 0, cursor: "pointer" }}><ShoppingBag size={17}/>{ctaLabel}</button>}
             {wa && <a href={whatsappHref} target="_blank" rel="noreferrer" style={whatsappCta}><MessageCircle size={17}/> WhatsApp</a>}
           </div>
         </section>
