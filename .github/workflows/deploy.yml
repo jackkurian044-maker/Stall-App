@@ -89,6 +89,16 @@ jobs:
         run: npx --yes firebase-tools@latest deploy --only functions:syncGbpWebsite --project stall-app-1aab7 --non-interactive
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
+      - name: Deploy GBP improvement preparation
+        if: steps.changes.outputs.functions_changed == 'true'
+        run: npx --yes firebase-tools@latest deploy --only functions:prepareGbpImprovement --project stall-app-1aab7 --non-interactive
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
+      - name: Deploy GBP approved improvement sync
+        if: steps.changes.outputs.functions_changed == 'true'
+        run: npx --yes firebase-tools@latest deploy --only functions:approveGbpImprovement --project stall-app-1aab7 --non-interactive
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
       - name: Deploy Lead Engine - Google Ads webhook
         if: steps.changes.outputs.functions_changed == 'true'
         run: npx --yes firebase-tools@latest deploy --only functions:googleAdsLeadWebhook --project stall-app-1aab7 --non-interactive
