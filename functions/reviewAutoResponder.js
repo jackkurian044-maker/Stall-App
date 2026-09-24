@@ -82,6 +82,19 @@ async function generateAIResponse(review, listing, settings) {
   return ensureStallBranding(generated);
 }
 
+async function generateGeminiText(prompt, generationConfig = { maxOutputTokens: 900, temperature: 0.3 }) {
+  const projectId = process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT || admin.app().options.projectId;
+  if (!projectId) throw new Error("Google Cloud project ID is not available");
+  const accessToken = await getVertexAccessToken();
+  const endpoint = `https://aiplatform.googleapis.com/v1/projects/${projectId}/locations/global/publishers/google/models/gemini-2.5-flash:generateContent`;
+  const response = await axios.post(
+    endpoint,
+    { contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig },
+    { headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, timeout: 20000 }
+  );
+  return response.data.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("").trim() || "";
+}
+
 function reviewUrl(connectionData, reviewId) {
   return `https://mybusiness.googleapis.com/v4/${connectionData.accountName}/${connectionData.locationId}/reviews/${reviewId}`;
 }
@@ -261,3 +274,4 @@ exports.pollReviews = functions.runWith({ secrets: [googleOAuthConfig] }).pubsub
 
 // Reuse the exact secure processing path from the manual "Sync Reviews Now" callable.
 exports.processVendor = processVendor;
+exports.generateGeminiText = generateGeminiText;
