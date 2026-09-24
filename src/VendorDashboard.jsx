@@ -70,6 +70,9 @@ export default function VendorDashboard({ user, agent }) {
   const [quickOfferListing, setQuickOfferListing] = useState(null);
   const [vendorDigests, setVendorDigests] = useState({});
   const [previewListing, setPreviewListing] = useState(null);
+  const [showEditor, setShowEditor] = useState(() => listings.length === 0);
+  const [quickSaving, setQuickSaving] = useState(false);
+  const [quickDraft, setQuickDraft] = useState({ name: "", category: "", phone: "", hours: "", description: "" });
   const refreshedRef = useRef(new Set());
 
   useEffect(() => {
@@ -95,6 +98,21 @@ export default function VendorDashboard({ user, agent }) {
 
   useEffect(() => { autoRefreshStale(listings, refreshedRef.current); }, [listings]);
 
+  useEffect(() => {
+    const l = listings[0];
+    if (!l) {
+      setQuickDraft({ name: "", category: "", phone: "", hours: "", description: "" });
+      return;
+    }
+    setQuickDraft({
+      name: l.name || "",
+      category: l.category || CATEGORIES[0],
+      phone: l.phone || "",
+      hours: l.hours || "",
+      description: l.description || "",
+    });
+  }, [listings[0]?.id]);
+
   const inputStyle = {
     width: "100%", padding: "9px 10px", borderRadius: 7,
     border: `1.5px solid ${COLORS.ink}`, fontSize: 13, background: "#fff", boxSizing: "border-box",
@@ -108,6 +126,7 @@ export default function VendorDashboard({ user, agent }) {
   );
 
   const startEdit = (l) => {
+    setShowEditor(true);
     setEditingId(l.id);
     setForm({
       name: l.name, category: isSalonCategory(l.category) ? "Salons" : l.category, description: l.description || "",
@@ -198,6 +217,7 @@ export default function VendorDashboard({ user, agent }) {
       }
       setForm(emptyForm);
       setEditingId(null);
+      setShowEditor(false);
       return true;
     } catch { setError("Couldn't save — please try again."); return false; }
     finally { setSaving(false); }
@@ -212,6 +232,27 @@ export default function VendorDashboard({ user, agent }) {
     if (!previewListing) return;
     const ok = await saveDraft();
     if (ok) setPreviewListing(null);
+  };
+
+  const saveQuickProfile = async () => {
+    const l = listings[0];
+    if (!l) return;
+    if (!quickDraft.name.trim()) return setError("Business name is required.");
+    setQuickSaving(true);
+    setError("");
+    try {
+      await updateDoc(doc(db, "vendors", l.id), {
+        name: quickDraft.name.trim(),
+        category: isSalonCategory(quickDraft.category) ? "Salons" : quickDraft.category,
+        phone: quickDraft.phone.trim(),
+        hours: quickDraft.hours.trim(),
+        description: quickDraft.description.trim(),
+      });
+    } catch {
+      setError("Couldn't update the business profile — please try again.");
+    } finally {
+      setQuickSaving(false);
+    }
   };
 
   const remove = async (id) => {
@@ -243,6 +284,22 @@ export default function VendorDashboard({ user, agent }) {
   return (
     <div className="stall-grid">
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        {listings.length > 0 && !showEditor ? (
+          <div style={cardStyle}>
+            <div className="font-display" style={{ fontSize: 19, fontWeight: 700, marginBottom: 4 }}>Business profile</div>
+            <div style={{ fontSize: 12, color: "#666", marginBottom: 14 }}>Keep the essentials current. These same fields are available in <strong>Edit listing</strong> with the full storefront controls.</div>
+            {field("Business name", <input style={inputStyle} value={quickDraft.name} onChange={(e) => setQuickDraft({ ...quickDraft, name: e.target.value })} />)}
+            {field("Category", <select style={inputStyle} value={quickDraft.category} onChange={(e) => setQuickDraft({ ...quickDraft, category: e.target.value })}>{CATEGORIES.map((c) => <option key={c}>{c}</option>)}</select>)}
+            {field("Phone", <input style={inputStyle} value={quickDraft.phone} onChange={(e) => setQuickDraft({ ...quickDraft, phone: e.target.value })} placeholder="Phone number" />)}
+            {field("Hours", <textarea style={{ ...inputStyle, resize: "vertical", minHeight: 56 }} value={quickDraft.hours} onChange={(e) => setQuickDraft({ ...quickDraft, hours: e.target.value })} placeholder="Mon–Sat: 9:00 AM – 8:00 PM" />)}
+            {field("Short description", <textarea style={{ ...inputStyle, resize: "vertical", minHeight: 56 }} value={quickDraft.description} onChange={(e) => setQuickDraft({ ...quickDraft, description: e.target.value })} placeholder="What makes this business worth visiting?" />)}
+            {error && <div style={{ color: COLORS.brick, fontSize: 12, marginBottom: 10 }}>{error}</div>}
+            <div style={{ display: "flex", gap: 8 }}>
+              <button type="button" onClick={saveQuickProfile} disabled={quickSaving} className="stall-btn" style={{ flex: 1, background: COLORS.ink, color: "#fff", border: "none", borderRadius: 7, padding: 10, fontSize: 13, fontWeight: 700 }}>{quickSaving ? "Saving…" : "Save profile"}</button>
+              <button type="button" onClick={() => startEdit(listings[0])} className="stall-btn" style={{ background: "#fff", color: COLORS.ink, border: `1.5px solid ${COLORS.ink}`, borderRadius: 7, padding: "10px 14px", fontSize: 13, fontWeight: 700 }}>Edit listing</button>
+            </div>
+          </div>
+        ) : (
         <div style={cardStyle}>
           <div className="font-display" style={{ fontSize: 19, fontWeight: 700, marginBottom: 4 }}>{editingId ? "Edit listing" : "Create a listing"}</div>
           <div style={{ fontSize: 12, color: "#666", marginBottom: 14 }}>Build your page here. <strong>Nothing goes live until you preview and confirm.</strong></div>
@@ -276,10 +333,14 @@ Sun: Closed`} />)}
             {error && <div style={{ color: COLORS.brick, fontSize: 12, marginBottom: 10 }}>{error}</div>}
             <div style={{ display: "flex", gap: 8 }}>
               <button type="submit" disabled={saving} className="stall-btn" style={{ flex: 1, background: COLORS.ink, color: "#fff", border: "none", borderRadius: 7, padding: 10, fontSize: 13, fontWeight: 700 }}><Eye size={15} /> Preview before publish</button>
-              {editingId && <button type="button" onClick={() => { setEditingId(null); setForm(emptyForm); setError(""); }} className="stall-btn" style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 7, padding: "10px 14px", fontSize: 13 }}>Cancel</button>}
+              {(editingId || listings.length > 0) && <button type="button" onClick={() => { setEditingId(null); setForm(emptyForm); setError(""); setShowEditor(false); }} className="stall-btn" style={{ background: "transparent", border: `1.5px solid ${COLORS.ink}`, borderRadius: 7, padding: "10px 14px", fontSize: 13 }}>Cancel</button>}
             </div>
           </form>
         </div>
+        )}
+        {listings.length > 0 && !showEditor && (
+          <button type="button" onClick={() => { setForm(emptyForm); setEditingId(null); setError(""); setShowEditor(true); }} className="stall-btn" style={{ width: "100%", background: "#fff", color: COLORS.ink, border: `1.5px solid ${COLORS.ink}`, borderRadius: 7, padding: 10, fontSize: 12.5, fontWeight: 700 }}>+ Create another listing</button>
+        )}
         <div style={cardStyle}>
           <div className="font-display" style={{ fontSize: 16, fontWeight: 700, marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}><KeyRound size={15} /> Claim a listing</div>
           <div style={{ fontSize: 12, color: "#666", marginBottom: 10 }}>If an admin already added your stall, enter the code they gave you to take it over.</div>
