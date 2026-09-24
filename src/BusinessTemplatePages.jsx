@@ -4,6 +4,7 @@ import {
   Navigation, Phone, Scissors, Star, Utensils, Share2, Crown, Sparkles,
 } from "lucide-react";
 import { vendorLink } from "./geo";
+import { DirectOrderingPage } from "./DirectOrdering";
 
 export function RestaurantBusinessPage({ listing, onBack }) {
   const layout = listing?.pageLayout || "classic";
@@ -28,6 +29,7 @@ function StorePage({ listing, onBack, salon, layout }) {
   const maps = listing.mapsUrl || vendorLink(listing);
   const website = listing.website || listing.mapsUrl || maps;
   const isGrowth = ["digital_growth", "growth_setup"].includes(listing.planKey);
+  const isDirectGrowth = listing.planKey === "growth_setup" || (listing.isPremium === true && listing.subscriptionTier === "growth_setup");
   const theme = getPageTheme(layout);
   const services = csv(listing.products);
   const firstSpecial = salon ? listing.todayOffer : listing.todaySpecial;
@@ -73,7 +75,8 @@ function StorePage({ listing, onBack, salon, layout }) {
               </div>
             )}
             <div style={heroActions}>
-              {isGrowth && website && <a href={website} target="_blank" rel="noreferrer" style={primaryCta}><Globe2 size={17}/>{ctaLabel}</a>}
+              {isGrowth && website && (salon || !isDirectGrowth) && <a href={website} target="_blank" rel="noreferrer" style={primaryCta}><Globe2 size={17}/>{ctaLabel}</a>}
+              {!salon && isDirectGrowth && <a href="#stall-direct-order" style={primaryCta}><Globe2 size={17}/>{ctaLabel}</a>}
               {wa && <a href={whatsappHref} target="_blank" rel="noreferrer" style={whatsappCta}><MessageCircle size={17}/> WhatsApp</a>}
               {phone && <a href={"tel:" + phone} style={secondaryCta}><Phone size={16}/> Call</a>}
               <a href={maps} target="_blank" rel="noreferrer" style={secondaryCta}><Navigation size={16}/> Directions</a>
@@ -159,13 +162,20 @@ function StorePage({ listing, onBack, salon, layout }) {
           </aside>
         </section>
 
+        {!salon && isDirectGrowth && (
+          <section id="stall-direct-order" style={{ marginTop: 20 }}>
+            <DirectOrderingPage listingId={listing.id} onBack={() => window.scrollTo({ top: 0, behavior: "smooth" })} />
+          </section>
+        )}
+
         <section style={{ ...bottomCta, ...(layout === "spotlight" ? spotlightBottomCta : layout === "compact" ? compactBottomCta : {}) }} className="bottom-cta">
           <div>
             <div style={bottomKicker}>READY WHEN YOU ARE</div>
             <h2 style={bottomTitle}>{salon ? "Your next appointment starts here." : "Make your next visit a good one."}</h2>
           </div>
           <div style={bottomActions}>
-            {isGrowth && website && <a href={website} target="_blank" rel="noreferrer" style={primaryCta}><Globe2 size={17}/>{ctaLabel}</a>}
+            {isGrowth && website && (salon || !isDirectGrowth) && <a href={website} target="_blank" rel="noreferrer" style={primaryCta}><Globe2 size={17}/>{ctaLabel}</a>}
+            {!salon && isDirectGrowth && <a href="#stall-direct-order" style={primaryCta}><Globe2 size={17}/>{ctaLabel}</a>}
             {wa && <a href={whatsappHref} target="_blank" rel="noreferrer" style={whatsappCta}><MessageCircle size={17}/> WhatsApp</a>}
           </div>
         </section>
