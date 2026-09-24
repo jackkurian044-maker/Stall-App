@@ -458,15 +458,48 @@ exports.triggerPollForVendor = functions.runWith({ secrets: [googleOAuthConfig] 
 // naturally in the approved description/post; Google does not expose a
 // generic "SEO keywords" field on a Business Profile.
 async function generateImprovementCopy(listing) {
-  const apiKey = functions.config().anthropic?.api_key;
-  if (!apiKey) throw new Error("Anthropic API key is not configured");
-  const prompt = `Create a practical Google Business Profile improvement package for this local business.
-BUSINESS: ${listing.name || "Local business"}
-CATEGORY: ${listing.category || "Local business"}
-ADDRESS: ${listing.address || ""}
+  // Always provide a truthful baseline from the owner's verified STall data.
+  // Claude is optional enhancement; its outage/config must never break Prepare.
+  const name = String(listing.name || "Local business").trim();
+  const category = String(listing.category || "local business").trim();
+  const address = String(listing.address || "").trim();
+  const services = String(listing.products || "").trim();
+  const offer = String(listing.offer || listing.todayOffer || listing.todaySpecial || "").trim();
+
+  const fallbackKeywords = [
+    name,
+    category,
+    services ? `${category} ${services}` : category,
+    address ? `${category} near ${address}` : `${category} near me`,
+    offer ? `${name} offers` : `${category} in ${address || "your area"}`,
+  ].filter(Boolean).slice(0, 5);
+
+  const fallbackDescription = [
+    name,
+    category,
+    services ? `offers ${services}` : "serves local customers",
+    address ? `in ${address}` : "",
+    offer ? `Current offer: ${offer}.` : "",
+  ].filter(Boolean).join(" ").slice(0, 500);
+
+  const fallbackPost = offer
+    ? `${name}: ${offer}. Visit the business to discover more.`.slice(0, 280)
+    : `${name} — ${category}. Visit our STall store to discover more.`.slice(0, 280);
+
+  let apiKey = null;
+  try { apiKey = functions.config().anthropic?.api_key || null; } catch (err) {
+    console.warn("prepareGbpImprovement: optional Anthropic config unavailable; using listing-based copy");
+  }
+  if (!apiKey) return { keywords: fallbackKeywords, description: fallbackDescription, post: fallbackPost };
+
+  try {
+    const prompt = `Create a practical Google Business Profile improvement package for this local business.
+BUSINESS: ${name}
+CATEGORY: ${category}
+ADDRESS: ${address}
 DESCRIPTION: ${listing.description || ""}
-PRODUCTS/SERVICES: ${listing.products || ""}
-OFFER: ${listing.offer || listing.todayOffer || listing.todaySpecial || ""}
+PRODUCTS/SERVICES: ${services}
+OFFER: ${offer}
 
 Return ONLY valid JSON:
 {
@@ -475,21 +508,20 @@ Return ONLY valid JSON:
   "post": "A short Google Business update/offer post under 300 characters"
 }
 Do not invent awards, prices, locations, services, opening hours, guarantees, or claims not present in the supplied business data.`;
-  const res = await axios.post("https://api.anthropic.com/v1/messages", {
-    model: "claude-sonnet-4-6",
-    max_tokens: 900,
-    messages: [{ role: "user", content: prompt }],
-  }, {
-    headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
-  });
-  const raw = (res.data.content?.[0]?.text || "").replace(/```json|```/g, "").trim();
-  const parsed = JSON.parse(raw);
-  if (!Array.isArray(parsed.keywords) || !parsed.description || !parsed.post) throw new Error("AI returned an incomplete improvement package");
-  return {
-    keywords: parsed.keywords.slice(0, 8).map(String),
-    description: String(parsed.description).slice(0, 750),
-    post: String(parsed.post).slice(0, 1500),
-  };
+    const res = await axios.post("https://api.anthropic.com/v1/messages", {
+      model: "claude-sonnet-4-6", max_tokens: 900, messages: [{ role: "user", content: prompt }],
+    }, {
+      headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
+      timeout: 20000,
+    });
+    const raw = (res.data.content?.[0]?.text || "").replace(/```json|```/g, "").trim();
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed.keywords) || !parsed.description || !parsed.post) throw new Error("AI returned an incomplete improvement package");
+    return { keywords: parsed.keywords.slice(0, 8).map(String), description: String(parsed.description).slice(0, 750), post: String(parsed.post).slice(0, 1500) };
+  } catch (err) {
+    console.warn("prepareGbpImprovement: AI enhancement failed; using listing-based copy", err.response?.status, err.response?.data || err.message);
+    return { keywords: fallbackKeywords, description: fallbackDescription, post: fallbackPost };
+  }
 }
 
 function escapeXml(value) {
