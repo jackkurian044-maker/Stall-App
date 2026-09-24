@@ -49,7 +49,7 @@ export function DirectOrderingPage({ listingId, onBack, embedded = false }) {
   if(!listing) return <div style={embedded ? embeddedShell : page}><div style={embeddedCard}><h2>Store not found</h2><button style={button} onClick={onBack}>Back</button></div></div>;
   if (!(listing.planKey === "growth_setup" || (listing.isPremium && listing.subscriptionTier === "growth_setup"))) return <div style={embedded ? embeddedShell : page}><div style={embeddedCard}><h2>STall Direct is not active</h2><p style={muted}>This store needs an eligible STall Growth plan before customers can order or book directly.</p><button style={button} onClick={onBack}>Back to store</button></div></div>;
 
-  if(placed) return <section id={embedded ? "stall-direct-order" : undefined} style={embedded ? embeddedShell : page}>
+  if(placed) return <section id={embedded ? "stall-direct-order" : undefined} className="direct-order-shell" style={embedded ? embeddedShell : page}>
     <div style={embeddedSuccess}>
       <div style={successIcon}><CheckCircle2 size={28}/></div>
       <div style={eyebrow}>ORDER CONFIRMED</div>
@@ -79,14 +79,14 @@ export function DirectOrderingPage({ listingId, onBack, embedded = false }) {
       </header>
 
       {!items.length ? <div style={emptyState}><div style={emptyIcon}><ShoppingBag size={22}/></div><h3>Ordering is being set up</h3><p style={muted}>The store has not published its STall Direct menu yet.</p></div> :
-      <div style={directGrid}>
+      <div className="direct-order-grid" style={directGrid}>
         <section style={menuCard}>
           <div style={cardHeader}>
             <div><div style={cardEyebrow}>MENU</div><h3 style={cardTitle}>Available to order</h3></div>
             <span style={itemCount}>{items.length} {items.length===1?"item":"items"}</span>
           </div>
           <div>
-            {items.map(i=><article key={i.id} style={menuItem}>
+            {items.map(i=><article key={i.id} className="direct-menu-item" style={menuItem}>
               <div style={{minWidth:0}}>
                 <div style={menuItemName}>{i.name}</div>
                 {i.description && <div style={menuItemDescription}>{i.description}</div>}
