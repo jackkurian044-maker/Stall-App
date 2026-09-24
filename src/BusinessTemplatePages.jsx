@@ -317,7 +317,7 @@ function getWhatsAppUrl(phone) {
 }
 function csv(value) { return String(value || "").split(",").map(x => x.trim()).filter(Boolean).join(" · "); }
 function getPhotos(listing) { return Array.isArray(listing?.photos) ? listing.photos.filter(Boolean) : []; }
-function shortAddress(value) { return String(value || "").split(",").slice(0, 2).join(", ").trim(); }
+function shortAddress(value) { return String(value || "").trim(); }
 
 function getPageTheme(key) {
   const themes = {
