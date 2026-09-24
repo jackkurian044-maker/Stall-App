@@ -95,6 +95,14 @@ jobs:
         run: npx --yes firebase-tools@latest deploy --only functions:verifyVerifiedPayment --project stall-app-1aab7 --non-interactive
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
+      - name: Deploy STall Direct - enable test entitlement
+        run: npx --yes firebase-tools@latest deploy --only functions:testGrowthSetupEntitlement --project stall-app-1aab7 --non-interactive
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
+      - name: Deploy STall Direct - revert test entitlement
+        run: npx --yes firebase-tools@latest deploy --only functions:revertTestGrowthSetupEntitlement --project stall-app-1aab7 --non-interactive
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
       - name: Deploy Premium - create subscription
         run: npx --yes firebase-tools@latest deploy --only functions:createSubscription --project stall-app-1aab7 --non-interactive
         env:
