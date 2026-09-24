@@ -101,19 +101,27 @@ export default function DirectOrdersPanel({ listings }) {
             {orders.map((order) => {
               const meta = statusMeta[order.status] || statusMeta.new;
               return (
-                <div key={order.id} style={{ border: "1.5px solid #ddd", borderRadius: 11, padding: 13 }}>
+                <div key={order.id} style={{ border: "1.5px solid #c9c9c9", borderRadius: 11, padding: 15, background: "#fff", color: "#111" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-                    <div>
-                      <div style={{ fontWeight: 800 }}>{order.customerName || "Customer"} · {money(order.total)}</div>
-                      <div style={{ fontSize: 11.5, color: "#666", marginTop: 3 }}>{order.customerPhone || "No phone"} · {order.fulfillmentType || "pickup"}</div>
+                    <div style={{ color: "#111" }}>
+                      <div style={{ fontWeight: 800, fontSize: 15, color: "#111" }}>{order.customerName || "Customer"} · {money(order.total)}</div>
+                      <div style={{ fontSize: 12.5, color: "#333", marginTop: 4 }}>
+                        <strong>Phone:</strong> {order.customerPhone || "No phone"} &nbsp;·&nbsp; <strong>Fulfilment:</strong> {order.fulfillmentType || "pickup"}
+                      </div>
                     </div>
-                    <div style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 800 }}>{meta.icon}{meta.label}</div>
+                    <div style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 800, color: "#111" }}>{meta.icon}{meta.label}</div>
                   </div>
-                  <div style={{ marginTop: 9, fontSize: 12.5, lineHeight: 1.5 }}>
-                    {(order.items || []).map((item, i) => <div key={i}>{item.name} × {item.qty} — {money((Number(item.price) || 0) * (Number(item.qty) || 0))}</div>)}
+                  <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 8, background: "#f7f7f7", border: "1px solid #e2e2e2", color: "#111" }}>
+                    <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".04em", color: "#555", marginBottom: 6 }}>Order items</div>
+                    {(order.items || []).map((item, i) => (
+                      <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 13.5, lineHeight: 1.5, color: "#111", padding: "3px 0" }}>
+                        <span style={{ fontWeight: 700 }}>{item.name || "Item"} × {item.qty}</span>
+                        <span style={{ fontWeight: 700, whiteSpace: "nowrap" }}>{money((Number(item.price) || 0) * (Number(item.qty) || 0))}</span>
+                      </div>
+                    ))}
                   </div>
-                  {order.fulfillmentType === "delivery" && order.deliveryAddress && <div style={{ marginTop: 8, fontSize: 12, color: "#555" }}><strong>Delivery:</strong> {order.deliveryAddress}</div>}
-                  {order.notes && <div style={{ marginTop: 8, fontSize: 12, color: "#555" }}><strong>Notes:</strong> {order.notes}</div>}
+                  {order.fulfillmentType === "delivery" && order.deliveryAddress && <div style={{ marginTop: 9, fontSize: 12.5, color: "#222" }}><strong>Delivery address:</strong> {order.deliveryAddress}</div>}
+                  {order.notes && <div style={{ marginTop: 9, fontSize: 12.5, color: "#222" }}><strong>Customer notes:</strong> {order.notes}</div>}
                   {order.status === "new" && (
                     <div style={{ display: "flex", gap: 7, marginTop: 11 }}>
                       <button onClick={() => setStatus(order.id, "accepted")} style={{ ...button, background: COLORS.teal }}>Accept</button>
