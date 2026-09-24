@@ -115,7 +115,7 @@ function StorePage({ listing, onBack, salon, layout }) {
         )}
 
         {!salon && isDirectGrowth && (
-          <section style={directSummaryCard}>
+          <section className="direct-summary-card" style={directSummaryCard}>
             <div>
               <div style={sectionEyebrow}><ShoppingBag size={14}/> STALL DIRECT</div>
               <h2 style={directSummaryTitle}>Order directly from the menu.</h2>
