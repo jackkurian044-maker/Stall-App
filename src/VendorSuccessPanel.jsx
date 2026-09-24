@@ -101,7 +101,11 @@ export default function VendorSuccessPanel({ listings, onEdit, onOffer, onTab })
   const startImprovements = () => {
     if (!next.length) return;
     setRunning(true);
-    next[0].run();
+    if (hasGoogle) {
+      prepareImprovement();
+    } else {
+      next[0].run();
+    }
     window.setTimeout(() => setRunning(false), 500);
   };
 
