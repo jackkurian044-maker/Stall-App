@@ -524,23 +524,97 @@ function escapeXml(value) {
 // Creates a simple, business-specific promotional creative from verified listing
 // data. This is deliberately not a fake storefront photo; it is clearly a
 // promotional graphic and can be reviewed before publishing.
-function buildImprovementSvg(listing, copy) {
+function getCreativeContext(listing, copy) {
+  const category = String(listing.category || "").toLowerCase();
+  const services = String(listing.products || listing.description || "")
+    .split(/[,|\n]+/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, 5);
+  const normalizedServices = services.length ? services : [String(listing.category || "Local business").trim()];
+  if (/salon|beauty|spa|barber|hair/.test(category)) return { type: "salon", label: "Beauty & salon services", services: normalizedServices };
+  if (/restaurant|cafe|food|bakery|sweet|hotel|eat/.test(category)) return { type: "food", label: "Food & dining", services: normalizedServices };
+  if (/fitness|gym|yoga|wellness/.test(category)) return { type: "fitness", label: "Fitness & wellness", services: normalizedServices };
+  if (/clinic|doctor|dental|medical|health/.test(category)) return { type: "health", label: "Health & care", services: normalizedServices };
+  if (/auto|car|bike|repair|service center|garage/.test(category)) return { type: "auto", label: "Automotive services", services: normalizedServices };
+  if (/retail|shop|store|fashion|boutique|jewel|gift/.test(category)) return { type: "retail", label: "Retail & shopping", services: normalizedServices };
+  return { type: "business", label: String(listing.category || "Local business").trim(), services: normalizedServices };
+}
+
+function escapeXml(value) {
+  return String(value || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
+}
+
+function creativeVisual(type, x, y) {
+  const fill = "#f1e4bd";
+  if (type === "salon") {
+    return `<circle cx="${x+110}" cy="${y+95}" r="80" fill="${fill}"/><path d="M${x+65} ${y+45} L${x+155} ${y+145} M${x+155} ${y+45} L${x+65} ${y+145}" stroke="#182620" stroke-width="16" stroke-linecap="round"/><path d="M${x+55} ${y+190} Q${x+110} ${y+130} ${x+165} ${y+190}" fill="none" stroke="#168b78" stroke-width="12" stroke-linecap="round"/>`;
+  }
+  if (type === "food") {
+    return `<circle cx="${x+110}" cy="${y+100}" r="92" fill="${fill}"/><circle cx="${x+110}" cy="${y+100}" r="58" fill="#fffdf7" stroke="#182620" stroke-width="10"/><circle cx="${x+80}" cy="${y+83}" r="10" fill="#168b78"/><circle cx="${x+127}" cy="${y+125}" r="13" fill="#d6a34a"/><circle cx="${x+148}" cy="${y+77}" r="8" fill="#168b78"/><path d="M${x+35} ${y+205} H${x+185}" stroke="#182620" stroke-width="10" stroke-linecap="round"/>`;
+  }
+  if (type === "fitness") {
+    return `<rect x="${x+50}" y="${y+65}" width="120" height="95" rx="18" fill="${fill}"/><path d="M${x+65} ${y+112} H${x+155}" stroke="#182620" stroke-width="16" stroke-linecap="round"/><path d="M${x+80} ${y+65} V${y+160} M${x+140} ${y+65} V${y+160}" stroke="#168b78" stroke-width="14" stroke-linecap="round"/><path d="M${x+72} ${y+195} Q${x+110} ${y+150} ${x+148} ${y+195}" fill="none" stroke="#182620" stroke-width="10" stroke-linecap="round"/>`;
+  }
+  if (type === "health") {
+    return `<circle cx="${x+110}" cy="${y+105}" r="90" fill="${fill}"/><rect x="${x+96}" y="${y+45}" width="28" height="120" rx="10" fill="#168b78"/><rect x="${x+56}" y="${y+85}" width="108" height="28" rx="10" fill="#168b78"/><circle cx="${x+110}" cy="${y+190}" r="12" fill="#182620"/>`;
+  }
+  if (type === "auto") {
+    return `<rect x="${x+45}" y="${y+85}" width="130" height="72" rx="22" fill="${fill}" stroke="#182620" stroke-width="10"/><path d="M${x+65} ${y+85} L${x+83} ${y+52} H${x+137} L${x+155} ${y+85}" fill="none" stroke="#182620" stroke-width="10"/><circle cx="${x+75}" cy="${y+165}" r="16" fill="#168b78"/><circle cx="${x+145}" cy="${y+165}" r="16" fill="#168b78"/>`;
+  }
+  if (type === "retail") {
+    return `<path d="M${x+50} ${y+82} H${x+170} L${x+155} ${y+200} H${x+65} Z" fill="${fill}" stroke="#182620" stroke-width="10"/><path d="M${x+78} ${y+82} Q${x+82} ${y+40} ${x+110} ${y+40} Q${x+138} ${y+40} ${x+142} ${y+82}" fill="none" stroke="#168b78" stroke-width="12"/>`;
+  }
+  return `<rect x="${x+55}" y="${y+55}" width="110" height="110" rx="22" fill="${fill}"/><circle cx="${x+110}" cy="${y+110}" r="34" fill="none" stroke="#168b78" stroke-width="12"/><path d="M${x+110} ${y+76} V${y+144} M${x+76} ${y+110} H${x+144}" stroke="#182620" stroke-width="10" stroke-linecap="round"/>`;
+}
+
+function buildServiceCreativeSvg(listing, copy, variant = 1) {
+  const ctx = getCreativeContext(listing, copy);
   const title = escapeXml(String(listing.name || "Your Business").slice(0, 42));
-  const category = escapeXml(String(listing.category || "Local Business").slice(0, 48));
-  const offer = escapeXml(String(listing.offer || listing.todayOffer || listing.todaySpecial || "Discover what we offer").slice(0, 70));
-  const keyword = escapeXml(String(copy.keywords?.[0] || "").slice(0, 48));
+  const serviceLine = escapeXml(ctx.services.slice(0, variant === 1 ? 3 : 4).join(" • ").slice(0, 105));
+  const label = escapeXml(ctx.label);
+  const offer = escapeXml(String(listing.offer || listing.todayOffer || listing.todaySpecial || "").trim().slice(0, 80));
+  const headline = variant === 1 ? "Made for what you offer" : "Show customers what they can get";
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900">
   <rect width="1200" height="900" rx="48" fill="#182620"/>
   <rect x="55" y="55" width="1090" height="790" rx="38" fill="#fffdf7"/>
   <text x="90" y="135" font-family="Arial,sans-serif" font-size="28" font-weight="700" fill="#168b78">STall</text>
-  <text x="90" y="230" font-family="Arial,sans-serif" font-size="62" font-weight="800" fill="#182620">${title}</text>
-  <text x="90" y="285" font-family="Arial,sans-serif" font-size="28" fill="#555">${category}</text>
-  <rect x="90" y="350" width="1020" height="190" rx="28" fill="#f1e4bd"/>
-  <text x="130" y="430" font-family="Arial,sans-serif" font-size="38" font-weight="700" fill="#182620">${offer}</text>
-  <text x="130" y="495" font-family="Arial,sans-serif" font-size="22" fill="#555">${keyword}</text>
-  <text x="90" y="690" font-family="Arial,sans-serif" font-size="24" fill="#555">Visit our STall store to discover more.</text>
-  <text x="90" y="750" font-family="Arial,sans-serif" font-size="20" fill="#888">Promotional creative prepared by STall • Owner approval required</text>
+  <text x="90" y="205" font-family="Arial,sans-serif" font-size="24" font-weight="800" fill="#777">${label}</text>
+  <text x="90" y="285" font-family="Arial,sans-serif" font-size="58" font-weight="800" fill="#182620">${title}</text>
+  <text x="90" y="338" font-family="Arial,sans-serif" font-size="31" font-weight="700" fill="#168b78">${headline}</text>
+  <rect x="90" y="395" width="310" height="260" rx="34" fill="#FBFAF6"/>
+  ${creativeVisual(ctx.type, 90, 415)}
+  <text x="450" y="445" font-family="Arial,sans-serif" font-size="24" font-weight="800" fill="#182620">Services customers can find</text>
+  <text x="450" y="490" font-family="Arial,sans-serif" font-size="23" fill="#555">${serviceLine}</text>
+  <text x="450" y="555" font-family="Arial,sans-serif" font-size="20" fill="#777">${offer ? "Current offer" : "Business details"} </text>
+  <text x="450" y="595" font-family="Arial,sans-serif" font-size="22" font-weight="700" fill="#182620">${offer || escapeXml(String(listing.description || "Discover the services offered by this business.").slice(0, 125))}</text>
+  <text x="90" y="742" font-family="Arial,sans-serif" font-size="22" fill="#555">A category-relevant creative prepared from the store's verified details.</text>
 </svg>`;
+}
+
+function buildStallPromoSvg(listing) {
+  const title = escapeXml(String(listing.name || "Your Business").slice(0, 42));
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900">
+  <rect width="1200" height="900" rx="48" fill="#182620"/>
+  <rect x="55" y="55" width="1090" height="790" rx="38" fill="#fffdf7"/>
+  <text x="95" y="145" font-family="Arial,sans-serif" font-size="72" font-weight="900" fill="#168b78">STall</text>
+  <text x="95" y="218" font-family="Arial,sans-serif" font-size="28" font-weight="800" fill="#182620">Your local business, made easier to discover.</text>
+  <rect x="95" y="285" width="1010" height="300" rx="34" fill="#f1e4bd"/>
+  <text x="140" y="360" font-family="Arial,sans-serif" font-size="38" font-weight="800" fill="#182620">Discover ${title}</text>
+  <text x="140" y="420" font-family="Arial,sans-serif" font-size="28" fill="#555">Find the page. See the offer. Contact the business.</text>
+  <text x="140" y="485" font-family="Arial,sans-serif" font-size="28" fill="#555">Direct orders and bookings can run through STall.</text>
+  <text x="140" y="548" font-family="Arial,sans-serif" font-size="22" font-weight="700" fill="#168b78">STall • local discovery • direct business</text>
+  <text x="95" y="690" font-family="Arial,sans-serif" font-size="24" fill="#777">Promotional interstitial — shown between business/service creatives.</text>
+  <text x="95" y="748" font-family="Arial,sans-serif" font-size="20" fill="#999">Owner approval required before Google publishing.</text>
+</svg>`;
+}
+
+function buildImprovementCreatives(listing, copy) {
+  return [
+    { kind: "business", label: "Service creative", svg: buildServiceCreativeSvg(listing, copy, 1) },
+    { kind: "stall", label: "STall promotion", svg: buildStallPromoSvg(listing) },
+    { kind: "business", label: "Service creative", svg: buildServiceCreativeSvg(listing, copy, 2) },
+  ];
 }
 
 exports.prepareGbpImprovement = functions.runWith({ secrets: [googleOAuthConfig] }).https.onCall(async (data, context) => {
@@ -564,22 +638,27 @@ exports.prepareGbpImprovement = functions.runWith({ secrets: [googleOAuthConfig]
     const copy = await generateImprovementCopy(listing);
     const svg = buildImprovementSvg(listing, copy);
     const bucket = admin.storage().bucket();
-    const path = `stall-improvements/${vendorId}/${listingId}-${Date.now()}.png`;
-    const file = bucket.file(path);
-    const pngBuffer = await require("sharp")(Buffer.from(svg, "utf8")).png().toBuffer();
-
-    // Use a Firebase Storage download token instead of a signed URL so the
-    // function runtime does not depend on IAM signBlob permissions.
-    const downloadToken = crypto.randomUUID();
-    await file.save(pngBuffer, {
-      metadata: {
-        contentType: "image/png",
-        cacheControl: "public,max-age=31536000",
-        metadata: { firebaseStorageDownloadTokens: downloadToken },
-      },
-    });
-    const imageUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(path)}?alt=media&token=${downloadToken}`;
-
+    const creatives = buildImprovementCreatives(listing, copy);
+    const images = [];
+    for (let i = 0; i < creatives.length; i++) {
+      const path = `stall-improvements/${vendorId}/${listingId}-${Date.now()}-${i + 1}.png`;
+      const file = bucket.file(path);
+      const pngBuffer = await require("sharp")(Buffer.from(creatives[i].svg, "utf8")).png().toBuffer();
+      const downloadToken = crypto.randomUUID();
+      await file.save(pngBuffer, {
+        metadata: {
+          contentType: "image/png",
+          cacheControl: "public,max-age=31536000",
+          metadata: { firebaseStorageDownloadTokens: downloadToken },
+        },
+      });
+      images.push({
+        kind: creatives[i].kind,
+        label: creatives[i].label,
+        path,
+        imageUrl: `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(path)}?alt=media&token=${downloadToken}`,
+      });
+    }
     const improvement = {
       listingId,
       vendorId,
@@ -587,12 +666,13 @@ exports.prepareGbpImprovement = functions.runWith({ secrets: [googleOAuthConfig]
       keywords: copy.keywords,
       description: copy.description,
       post: copy.post,
-      imageUrl,
-      imagePath: path,
+      imageUrl: images[0]?.imageUrl || null,
+      imagePath: images[0]?.path || null,
+      images,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     };
     await db.collection("gbp_improvements").doc(vendorId).set(improvement);
-    return { ...improvement, createdAt: new Date().toISOString() };
+    return { ...improvement, imageUrls: images.map((item) => item.imageUrl), createdAt: new Date().toISOString() };
   } catch (err) {
     console.error("prepareGbpImprovement failed:", err.response?.data || err.message);
     if (err instanceof functions.https.HttpsError) throw err;
@@ -647,7 +727,10 @@ exports.approveGbpImprovement = functions.runWith({ secrets: [googleOAuthConfig]
     const updateData = { updatedAt: admin.firestore.FieldValue.serverTimestamp() };
     let descriptionUpdated = false;
     let googleDescriptionVerified = false;
-    let mediaUploaded = Boolean(improvement.mediaName);
+    const postImages = Array.isArray(improvement.images) ? improvement.images : (improvement.imageUrl ? [{ kind: "business", label: "Service creative", imageUrl: improvement.imageUrl, path: improvement.imagePath }] : []);
+    const profileImages = postImages.filter((image) => image.kind === "business");
+    const mediaNames = Array.isArray(improvement.mediaNames) ? improvement.mediaNames.slice() : [];
+    let mediaUploaded = mediaNames.length >= profileImages.length && profileImages.length > 0;
     let postPublished = Boolean(improvement.postName);
     const failures = [];
 
@@ -671,27 +754,35 @@ exports.approveGbpImprovement = functions.runWith({ secrets: [googleOAuthConfig]
       descriptionUpdated = true;
     }
 
-    // 2) Publish the owner-approved promotional creative.
+    // 2) Publish only the business/service creatives to the profile gallery.
     if (!mediaUploaded) {
-      try {
-        const mediaRes = await axios.post(
-          `https://mybusiness.googleapis.com/v4/${v4Parent}/media`,
-          {
-            mediaFormat: "PHOTO",
-            locationAssociation: { category: "ADDITIONAL" },
-            sourceUrl: improvement.imageUrl,
-          },
-          { headers: { Authorization: "Bearer " + accessToken, "Content-Type": "application/json" } }
-        );
-        mediaUploaded = Boolean(mediaRes.data?.name);
-        updateData.mediaName = mediaRes.data?.name || null;
-        if (!mediaUploaded) failures.push("Google photo upload returned no media name");
-      } catch (err) {
-        failures.push(googleError("Google photo upload", err));
+      for (const image of profileImages) {
+        if (mediaNames.some((name) => name?.sourceUrl === image.imageUrl)) continue;
+        try {
+          const mediaRes = await axios.post(
+            `https://mybusiness.googleapis.com/v4/${v4Parent}/media`,
+            {
+              mediaFormat: "PHOTO",
+              locationAssociation: { category: "ADDITIONAL" },
+              sourceUrl: image.imageUrl,
+            },
+            { headers: { Authorization: "Bearer " + accessToken, "Content-Type": "application/json" } }
+          );
+          if (mediaRes.data?.name) {
+            mediaNames.push({ name: mediaRes.data.name, sourceUrl: image.imageUrl });
+          } else {
+            failures.push("Google photo upload returned no media name");
+          }
+        } catch (err) {
+          failures.push(googleError("Google photo upload", err));
+        }
       }
+      mediaUploaded = mediaNames.length >= profileImages.length && profileImages.length > 0;
+      updateData.mediaNames = mediaNames;
+      updateData.mediaName = mediaNames[0]?.name || null;
     }
 
-    // 3) Publish the owner-approved update.
+    // 3) Publish the approved update with the service images and the STall promo interstitial.
     if (!postPublished) {
       try {
         const postRes = await axios.post(
@@ -699,7 +790,7 @@ exports.approveGbpImprovement = functions.runWith({ secrets: [googleOAuthConfig]
           {
             languageCode: "en-IN",
             summary: improvement.post,
-            media: [{ mediaFormat: "PHOTO", sourceUrl: improvement.imageUrl }],
+            media: postImages.map((image) => ({ mediaFormat: "PHOTO", sourceUrl: image.imageUrl })),
             topicType: "STANDARD",
           },
           { headers: { Authorization: "Bearer " + accessToken, "Content-Type": "application/json" } }
