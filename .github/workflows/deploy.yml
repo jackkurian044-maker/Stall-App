@@ -66,7 +66,7 @@ jobs:
           FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
       - name: Install Firebase Cloud Functions dependencies
         if: steps.changes.outputs.functions_changed == 'true'
-        run: npm ci --prefix functions
+        run: npm install --prefix functions --no-audit --no-fund
       - name: Prepare secure Premium payment functions
         if: steps.changes.outputs.functions_changed == 'true'
         run: node functions/prepare-premium.js
