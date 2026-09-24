@@ -46,11 +46,28 @@ jobs:
           channelId: live
           entryPoint: .
           firebaseToolsVersion: latest
+      - name: Check whether Cloud Functions changed
+        id: changes
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "functions_changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" | grep -q '^functions/'; then
+            echo "functions_changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "functions_changed=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Install Firebase Cloud Functions dependencies
+        if: steps.changes.outputs.functions_changed == 'true'
         run: npm ci --prefix functions
       - name: Prepare secure Premium payment functions
+        if: steps.changes.outputs.functions_changed == 'true'
         run: node functions/prepare-premium.js
       - name: Prepare Firebase CLI credentials
+        if: steps.changes.outputs.functions_changed == 'true'
         run: node -e 'require("fs").writeFileSync(process.env.GOOGLE_APPLICATION_CREDENTIALS, process.env.FIREBASE_SERVICE_ACCOUNT_JSON)'
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
@@ -60,78 +77,97 @@ jobs:
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
       - name: Deploy GBP OAuth - begin authorization
+        if: steps.changes.outputs.functions_changed == 'true'
         run: npx --yes firebase-tools@latest deploy --only functions:beginGbpOauth --project stall-app-1aab7 --non-interactive
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
       - name: Deploy GBP OAuth - callback
+        if: steps.changes.outputs.functions_changed == 'true'
         run: npx --yes firebase-tools@latest deploy --only functions:oauthCallback --project stall-app-1aab7 --non-interactive
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
       - name: Deploy GBP website sync
+        if: steps.changes.outputs.functions_changed == 'true'
         run: npx --yes firebase-tools@latest deploy --only functions:syncGbpWebsite --project stall-app-1aab7 --non-interactive
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
       - name: Deploy Lead Engine - Google Ads webhook
+        if: steps.changes.outputs.functions_changed == 'true'
         run: npx --yes firebase-tools@latest deploy --only functions:googleAdsLeadWebhook --project stall-app-1aab7 --non-interactive
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
       - name: Deploy Lead Engine - generic webhook
+        if: steps.changes.outputs.functions_changed == 'true'
         run: npx --yes firebase-tools@latest deploy --only functions:leadWebhook --project stall-app-1aab7 --non-interactive
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
       - name: Deploy Lead Engine - manual lead
+        if: steps.changes.outputs.functions_changed == 'true'
         run: npx --yes firebase-tools@latest deploy --only functions:createManualLead --project stall-app-1aab7 --non-interactive
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
       - name: Deploy Lead Engine - status update
+        if: steps.changes.outputs.functions_changed == 'true'
         run: npx --yes firebase-tools@latest deploy --only functions:updateLeadStatus --project stall-app-1aab7 --non-interactive
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
       - name: Deploy Verified payment - create order
+        if: steps.changes.outputs.functions_changed == 'true'
         run: npx --yes firebase-tools@latest deploy --only functions:createVerifiedOrder --project stall-app-1aab7 --non-interactive
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
       - name: Deploy Verified payment - verify payment
+        if: steps.changes.outputs.functions_changed == 'true'
         run: npx --yes firebase-tools@latest deploy --only functions:verifyVerifiedPayment --project stall-app-1aab7 --non-interactive
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
       - name: Deploy STall Direct - enable test entitlement
+        if: steps.changes.outputs.functions_changed == 'true'
         run: npx --yes firebase-tools@latest deploy --only functions:testGrowthSetupEntitlement --project stall-app-1aab7 --non-interactive
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
       - name: Deploy STall Direct - revert test entitlement
+        if: steps.changes.outputs.functions_changed == 'true'
         run: npx --yes firebase-tools@latest deploy --only functions:revertTestGrowthSetupEntitlement --project stall-app-1aab7 --non-interactive
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
       - name: Deploy Premium - create subscription
+        if: steps.changes.outputs.functions_changed == 'true'
         run: npx --yes firebase-tools@latest deploy --only functions:createSubscription --project stall-app-1aab7 --non-interactive
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
       - name: Deploy Premium - verify subscription
+        if: steps.changes.outputs.functions_changed == 'true'
         run: npx --yes firebase-tools@latest deploy --only functions:verifySubscription --project stall-app-1aab7 --non-interactive
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
       - name: Deploy Premium - cancel subscription
+        if: steps.changes.outputs.functions_changed == 'true'
         run: npx --yes firebase-tools@latest deploy --only functions:cancelSubscription --project stall-app-1aab7 --non-interactive
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
       - name: Deploy Premium - Razorpay webhook
+        if: steps.changes.outputs.functions_changed == 'true'
         run: npx --yes firebase-tools@latest deploy --only functions:razorpayWebhook --project stall-app-1aab7 --non-interactive
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
       - name: Deploy Boost - create order
+        if: steps.changes.outputs.functions_changed == 'true'
         run: npx --yes firebase-tools@latest deploy --only functions:createBoostOrder --project stall-app-1aab7 --non-interactive
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
       - name: Deploy Boost - verify payment
+        if: steps.changes.outputs.functions_changed == 'true'
         run: npx --yes firebase-tools@latest deploy --only functions:verifyBoostPayment --project stall-app-1aab7 --non-interactive
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
       - name: Deploy Boost - pause campaign
+        if: steps.changes.outputs.functions_changed == 'true'
         run: npx --yes firebase-tools@latest deploy --only functions:pauseBoostCampaign --project stall-app-1aab7 --non-interactive
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
       - name: Deploy Boost - resume campaign
+        if: steps.changes.outputs.functions_changed == 'true'
         run: npx --yes firebase-tools@latest deploy --only functions:resumeBoostCampaign --project stall-app-1aab7 --non-interactive
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
