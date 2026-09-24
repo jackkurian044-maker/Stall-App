@@ -29,7 +29,7 @@ function StorePage({ listing, onBack, salon, layout }) {
   const maps = listing.mapsUrl || vendorLink(listing);
   const website = listing.website || listing.mapsUrl || maps;
   const isGrowth = ["digital_growth", "growth_setup"].includes(listing.planKey);
-  const isDirectGrowth = listing.planKey === "growth_setup" || (listing.isPremium === true && listing.subscriptionTier === "growth_setup");
+  const isDirectGrowth = listing.planKey === "growth_setup" || (listing.isPremium === true && listing.subscriptionTier === "growth_setup") || listing.testGrowthSetupActive === true;
   const theme = getPageTheme(layout);
   const services = csv(listing.products);
   const firstSpecial = salon ? listing.todayOffer : listing.todaySpecial;
