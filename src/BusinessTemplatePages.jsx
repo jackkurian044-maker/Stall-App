@@ -467,7 +467,7 @@ if (typeof document !== "undefined") {
         .direct-order-shell .direct-order-grid > section .direct-menu-item > div:first-child { min-width: 0 !important; flex: 1 1 auto !important; }
         .direct-order-shell .direct-order-grid > section .direct-menu-item > div:last-child { flex: 0 0 auto !important; }
         .direct-order-shell .direct-order-grid > section .direct-menu-item .menu-item-description { max-width: none !important; }
-        .direct-order-shell > .direct-header { display: block !important; margin-bottom: 16px !important; }
+        .direct-order-shell .direct-header { display: block !important; margin-bottom: 16px !important; }
         .direct-order-shell .direct-badge { display: inline-flex !important; margin-top: 12px !important; }
         .direct-order-shell .direct-title { font-size: 31px !important; line-height: 1.02 !important; }
         .direct-order-shell .direct-subtitle { font-size: 13px !important; line-height: 1.5 !important; }
