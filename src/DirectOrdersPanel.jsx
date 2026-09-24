@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { collection, query, where, onSnapshot, updateDoc, doc } from "firebase/firestore";
 import { ClipboardList, ExternalLink, CheckCircle2, XCircle, Clock3 } from "lucide-react";
 import { db } from "./firebase";
@@ -31,6 +31,8 @@ export default function DirectOrdersPanel({ listings }) {
 
   useEffect(() => {
     if (!selectedId) return;
+    seenOrderIds.current = null;
+    setNewOrderNotice(null);
     setLoading(true);
     const q = query(collection(db, "direct_orders"), where("vendorId", "==", selectedId));
     return onSnapshot(q, (snap) => {
@@ -41,6 +43,26 @@ export default function DirectOrdersPanel({ listings }) {
           const bt = b.createdAt?.toMillis?.() || 0;
           return bt - at;
         });
+
+      const incoming = next.filter((order) => order.status === "new");
+      if (seenOrderIds.current === null) {
+        seenOrderIds.current = new Set(next.map((order) => order.id));
+      } else {
+        const fresh = incoming.find((order) => !seenOrderIds.current.has(order.id));
+        if (fresh) {
+          setNewOrderNotice(fresh);
+          try {
+            if ("Notification" in window && Notification.permission === "granted") {
+              new Notification("🔔 New STall Direct Order", {
+                body: `${fresh.customerName || "Customer"} · ${money(fresh.total)} · ${fresh.fulfillmentType || "pickup"}`,
+                tag: `stall-order-${fresh.id}`,
+              });
+            }
+          } catch {}
+        }
+        next.forEach((order) => seenOrderIds.current.add(order.id));
+      }
+
       setOrders(next);
       setLoading(false);
     }, () => setLoading(false));
@@ -85,6 +107,17 @@ export default function DirectOrdersPanel({ listings }) {
       </div>
 
       <div style={card}>
+        {newOrderNotice && (
+          <div style={notice}>
+            <div>
+              <div style={noticeEyebrow}>NEW ORDER</div>
+              <div style={noticeTitle}>{newOrderNotice.customerName || "Customer"} · {money(newOrderNotice.total)}</div>
+              <div style={noticeText}>{newOrderNotice.fulfillmentType || "pickup"} · Open the order below to accept or reject it.</div>
+            </div>
+            <button type="button" onClick={() => setNewOrderNotice(null)} style={noticeClose}>Dismiss</button>
+          </div>
+        )}
+
         <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
           <div>
             <h2 style={{ margin: 0 }}>Incoming orders</h2>
@@ -145,3 +178,8 @@ const muted = { color: "#666", lineHeight: 1.5 };
 const tab = { border: "1.5px solid " + COLORS.ink, borderRadius: 8, padding: "7px 11px", fontWeight: 700, cursor: "pointer" };
 const button = { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, border: 0, borderRadius: 8, padding: "9px 12px", background: COLORS.ink, color: "#fff", fontWeight: 800, cursor: "pointer" };
 const secondary = { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, border: "1.5px solid " + COLORS.ink, borderRadius: 8, padding: "8px 11px", background: "#fff", color: COLORS.ink, fontWeight: 700, cursor: "pointer" };
+const notice = { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, marginTop: 14, padding: "13px 14px", borderRadius: 12, background: "#e7f5ef", border: "1.5px solid " + COLORS.teal, color: COLORS.ink };
+const noticeEyebrow = { fontSize: 9, letterSpacing: ".12em", fontWeight: 950, color: COLORS.teal };
+const noticeTitle = { fontSize: 15, fontWeight: 900, marginTop: 3 };
+const noticeText = { fontSize: 11.5, color: "#555", marginTop: 3 };
+const noticeClose = { border: "1px solid rgba(0,0,0,.15)", background: "#fff", color: COLORS.ink, borderRadius: 8, padding: "7px 10px", fontWeight: 800, cursor: "pointer", flexShrink: 0 };
