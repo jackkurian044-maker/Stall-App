@@ -539,9 +539,10 @@ exports.prepareGbpImprovement = functions.runWith({ secrets: [googleOAuthConfig]
     const copy = await generateImprovementCopy(listing);
     const svg = buildImprovementSvg(listing, copy);
     const bucket = admin.storage().bucket();
-    const path = `stall-improvements/${vendorId}/${listingId}-${Date.now()}.svg`;
+    const path = `stall-improvements/${vendorId}/${listingId}-${Date.now()}.png`;
     const file = bucket.file(path);
-    await file.save(Buffer.from(svg, "utf8"), { metadata: { contentType: "image/svg+xml", cacheControl: "public,max-age=31536000" } });
+    const pngBuffer = await require("sharp")(Buffer.from(svg, "utf8")).png().toBuffer();
+    await file.save(pngBuffer, { metadata: { contentType: "image/png", cacheControl: "public,max-age=31536000" } });
     const [imageUrl] = await file.getSignedUrl({ action: "read", expires: "03-01-2035" });
 
     const improvement = {
@@ -611,7 +612,7 @@ exports.approveGbpImprovement = functions.runWith({ secrets: [googleOAuthConfig]
         media: [{ mediaFormat: "PHOTO", sourceUrl: improvement.imageUrl }],
         topicType: "STANDARD",
       },
-      { headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }
+      { headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" } }
     );
 
     // 4) Verify the Google location reflects the approved description.
