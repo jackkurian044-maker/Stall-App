@@ -567,8 +567,18 @@ exports.prepareGbpImprovement = functions.runWith({ secrets: [googleOAuthConfig]
     const path = `stall-improvements/${vendorId}/${listingId}-${Date.now()}.png`;
     const file = bucket.file(path);
     const pngBuffer = await require("sharp")(Buffer.from(svg, "utf8")).png().toBuffer();
-    await file.save(pngBuffer, { metadata: { contentType: "image/png", cacheControl: "public,max-age=31536000" } });
-    const [imageUrl] = await file.getSignedUrl({ action: "read", expires: "03-01-2035" });
+
+    // Use a Firebase Storage download token instead of a signed URL so the
+    // function runtime does not depend on IAM signBlob permissions.
+    const downloadToken = crypto.randomUUID();
+    await file.save(pngBuffer, {
+      metadata: {
+        contentType: "image/png",
+        cacheControl: "public,max-age=31536000",
+        metadata: { firebaseStorageDownloadTokens: downloadToken },
+      },
+    });
+    const imageUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(path)}?alt=media&token=${downloadToken}`;
 
     const improvement = {
       listingId,
