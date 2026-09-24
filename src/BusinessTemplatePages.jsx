@@ -101,7 +101,7 @@ function StorePage({ listing, onBack, salon, layout }) {
 
         {!salon && isDirectGrowth && (
           <section id="stall-direct-order" style={{ marginTop: 20 }}>
-            <DirectOrderingPage listingId={listing.id} onBack={() => window.scrollTo({ top: 0, behavior: "smooth" })} />
+            <DirectOrderingPage listingId={listing.id} embedded onBack={() => window.scrollTo({ top: 0, behavior: "smooth" })} />
           </section>
         )}
 
