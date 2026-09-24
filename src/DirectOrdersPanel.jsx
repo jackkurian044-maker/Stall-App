@@ -18,6 +18,8 @@ export default function DirectOrdersPanel({ listings }) {
   const [selectedId, setSelectedId] = useState(eligible[0]?.id || "");
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [newOrderNotice, setNewOrderNotice] = useState(null);
+  const seenOrderIds = useRef(null);
   const selected = eligible.find((l) => l.id === selectedId);
 
   useEffect(() => {
