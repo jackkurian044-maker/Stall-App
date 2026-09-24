@@ -54,9 +54,13 @@ export function DirectOrderingPage({ listingId, onBack, embedded = false }) {
       <div style={successIcon}><CheckCircle2 size={28}/></div>
       <div style={eyebrow}>ORDER CONFIRMED</div>
       <h2 style={{margin:"7px 0 8px",fontSize:"clamp(26px,4vw,38px)",letterSpacing:"-.04em"}}>Order received</h2>
-      <p style={{...muted,maxWidth:560,margin:"0 auto 12px"}}>Your order has been sent to {listing.name}.</p>
-      <div style={orderMeta}>Order <strong>#{placed.id.slice(-8).toUpperCase()}</strong><span>•</span> Pay at store</div>
-      <button style={{...button,marginTop:18}} onClick={onBack}>Back to {listing.name}</button>
+      <p style={{...muted,maxWidth:560,margin:"0 auto 12px"}}>Your order has been received by {listing.name}. The store can now prepare it for you.</p>
+      <div style={orderMeta}>
+        <span>Order <strong>#{placed.id.slice(-8).toUpperCase()}</strong></span>
+        <span>•</span>
+        <span>Pay at store</span>
+      </div>
+      <button style={{...button,marginTop:18}} onClick={onBack}>Done · Back to {listing.name}</button>
     </div>
   </section>;
 
@@ -145,6 +149,7 @@ const embeddedShell={marginTop:20,background:"linear-gradient(135deg,#f3eee4 0%,
 const embeddedInner={maxWidth:1120,margin:"0 auto"};
 const embeddedCard={maxWidth:620,margin:"0 auto",padding:"30px",background:"#fff",borderRadius:22,boxShadow:"0 14px 45px rgba(0,0,0,.07)",textAlign:"center"};
 const embeddedSuccess={maxWidth:650,margin:"0 auto",padding:"48px 24px",background:"#fff",borderRadius:24,textAlign:"center",boxShadow:"0 16px 45px rgba(0,0,0,.07)"};
+const orderMeta={display:"flex",justifyContent:"center",alignItems:"center",flexWrap:"wrap",gap:9,marginTop:14,padding:"11px 14px",borderRadius:12,background:"#f7f3eb",color:"#4f4f4f",fontSize:12,fontWeight:800};
 const successIcon={width:56,height:56,borderRadius:"50%",margin:"0 auto 14px",display:"flex",alignItems:"center",justifyContent:"center",background:"#e7f5ef",color:COLORS.teal};
 const eyebrow={display:"inline-flex",alignItems:"center",gap:6,fontSize:10,letterSpacing:".14em",fontWeight:950,color:COLORS.teal};
 const directHeader={display:"flex",alignItems:"flex-end",justifyContent:"space-between",gap:20,marginBottom:22};
