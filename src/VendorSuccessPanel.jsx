@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { BarChart2, Camera, CheckCircle2, MessageCircle, Pencil, Rocket, Star, Zap } from "lucide-react";
 import { COLORS } from "./constants";
+import { getFunctions, httpsCallable } from "firebase/functions";
 import stallLogoMark from "./logo-cropped.png";
 
 function clamp(n, min = 0, max = 100) {
@@ -10,6 +11,11 @@ function clamp(n, min = 0, max = 100) {
 export default function VendorSuccessPanel({ listings, onEdit, onOffer, onTab }) {
   const listing = listings[0];
   const [running, setRunning] = useState(false);
+  const [improvement, setImprovement] = useState(null);
+  const [improvementLoading, setImprovementLoading] = useState(false);
+  const [improvementError, setImprovementError] = useState("");
+  const [approvalLoading, setApprovalLoading] = useState(false);
+  const [approvalMessage, setApprovalMessage] = useState("");
 
   if (!listing) return (
     <section style={{ background: COLORS.ink, color: "#fff", borderRadius: 14, padding: 18, marginBottom: 14 }}>
@@ -61,6 +67,37 @@ export default function VendorSuccessPanel({ listings, onEdit, onOffer, onTab })
   const next = gaps.slice(0, 3);
   const potential = clamp(score + Math.min(15, gaps.length * 4));
 
+  const prepareImprovement = async () => {
+    setImprovementError("");
+    setApprovalMessage("");
+    setImprovementLoading(true);
+    try {
+      const fn = httpsCallable(getFunctions(), "prepareGbpImprovement");
+      const res = await fn({ listingId: listing.id });
+      setImprovement(res.data);
+    } catch (err) {
+      setImprovementError(err?.message || "STall could not prepare the improvement right now.");
+    } finally {
+      setImprovementLoading(false);
+    }
+  };
+
+  const approveImprovement = async () => {
+    setApprovalMessage("");
+    setImprovementError("");
+    setApprovalLoading(true);
+    try {
+      const fn = httpsCallable(getFunctions(), "approveGbpImprovement");
+      const res = await fn({ listingId: listing.id });
+      setApprovalMessage(res.data?.message || "Google sync completed.");
+      setImprovement((prev) => prev ? { ...prev, status: res.data?.status || "synced" } : prev);
+    } catch (err) {
+      setImprovementError(err?.message || "Google could not complete the approved update.");
+    } finally {
+      setApprovalLoading(false);
+    }
+  };
+
   const startImprovements = () => {
     if (!next.length) return;
     setRunning(true);
@@ -110,6 +147,40 @@ export default function VendorSuccessPanel({ listings, onEdit, onOffer, onTab })
             <button type="button" onClick={item.run} className="stall-btn" style={{ marginTop: 7, width: "100%", border: "1.5px solid " + COLORS.ink, background: item.good ? "#fff" : COLORS.ink, color: item.good ? COLORS.ink : "#fff", borderRadius: 7, padding: "7px 8px", fontSize: 10.5, fontWeight: 800, display: "inline-flex", justifyContent: "center", alignItems: "center", gap: 5 }}>{item.icon}{item.button}</button>
           </div>
         ))}
+      </div>
+
+      <div style={{ marginTop: 12, border: "1px solid #ddd", borderRadius: 11, padding: 12, background: "#FBFAF6" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <div>
+            <div style={{ fontSize: 12.5, fontWeight: 900, color: COLORS.ink }}>STall can prepare the missing Google work for you</div>
+            <div style={{ fontSize: 10.5, color: "#666", marginTop: 3 }}>Images, search phrases and business copy are prepared first. Nothing is pushed until you approve it.</div>
+          </div>
+          {!improvement && <button type="button" onClick={prepareImprovement} disabled={improvementLoading || !hasGoogle} className="stall-btn" style={{ background: COLORS.ink, color: "#fff", border: "none", borderRadius: 7, padding: "8px 11px", fontSize: 10.5, fontWeight: 800 }}>{improvementLoading ? "Preparing…" : hasGoogle ? "Prepare for me" : "Connect Google first"}</button>}
+        </div>
+        {improvement && (
+          <div style={{ marginTop: 11, display: "grid", gridTemplateColumns: "minmax(150px,220px) 1fr", gap: 12, alignItems: "start" }}>
+            <div style={{ border: "1px solid #ddd", borderRadius: 9, overflow: "hidden", background: "#fff" }}>
+              <img src={improvement.imageUrl} alt="STall prepared promotional creative" style={{ width: "100%", display: "block", aspectRatio: "4/3", objectFit: "cover" }} />
+              <div style={{ padding: 7, fontSize: 9.5, color: "#777" }}>Promotional creative — review before Google publishing.</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 10.5, fontWeight: 800, color: COLORS.ink }}>Suggested search phrases</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 6 }}>
+                {(improvement.keywords || []).map((k) => <span key={k} style={{ fontSize: 9.5, padding: "4px 7px", borderRadius: 12, background: COLORS.teal + "12", color: COLORS.ink }}>{k}</span>)}
+              </div>
+              <div style={{ fontSize: 10.5, fontWeight: 800, color: COLORS.ink, marginTop: 10 }}>Google business description</div>
+              <div style={{ fontSize: 10.5, color: "#555", lineHeight: 1.45, marginTop: 4 }}>{improvement.description}</div>
+              <div style={{ fontSize: 10.5, fontWeight: 800, color: COLORS.ink, marginTop: 10 }}>Google update</div>
+              <div style={{ fontSize: 10.5, color: "#555", lineHeight: 1.45, marginTop: 4 }}>{improvement.post}</div>
+              {improvement.status === "draft" ? (
+                <button type="button" onClick={approveImprovement} disabled={approvalLoading} className="stall-btn" style={{ marginTop: 10, width: "100%", background: COLORS.ink, color: "#fff", border: "none", borderRadius: 7, padding: 9, fontSize: 11, fontWeight: 900 }}>{approvalLoading ? "Syncing to Google…" : "Approve & Push to Google"}</button>
+              ) : (
+                <div style={{ marginTop: 10, padding: 8, borderRadius: 7, background: COLORS.teal + "12", color: COLORS.ink, fontSize: 10.5, fontWeight: 800 }}>✓ {improvement.status === "synced" ? "Google sync completed and verified." : "Google accepted the update; verification is still catching up."}</div>
+              )}
+            </div>
+          </div>
+        )}
+        {(improvementError || approvalMessage) && <div style={{ marginTop: 8, fontSize: 10.5, color: improvementError ? COLORS.brick : COLORS.teal }}>{improvementError || approvalMessage}</div>}
       </div>
 
       {next.length > 0 ? (
