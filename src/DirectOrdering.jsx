@@ -64,18 +64,18 @@ export function DirectOrderingPage({ listingId, onBack, embedded = false }) {
     </div>
   </section>;
 
-  const content = <section id={embedded ? "stall-direct-order" : undefined} style={embedded ? embeddedShell : page}>
+  const content = <section id={embedded ? "stall-direct-order" : undefined} className="direct-order-shell" style={embedded ? embeddedShell : page}>
     {!embedded && <div style={{maxWidth:1000,margin:"0 auto",padding:"18px 14px 50px"}}>
       <button onClick={onBack} style={back}><ArrowLeft size={15}/> Back to store</button>
     </div>}
     <div style={embedded ? embeddedInner : {maxWidth:1000,margin:"0 auto",padding:"0 14px 50px"}}>
-      <header style={directHeader}>
+      <header className="direct-header" style={directHeader}>
         <div>
           <div style={eyebrow}><ShoppingBag size={14}/> STALL DIRECT</div>
-          <h2 style={directTitle}>Order directly from the menu</h2>
-          <p style={directSubtitle}>Choose what you want, review your order, and send it straight to the store.</p>
+          <h2 className="direct-title" style={directTitle}>Order directly from the menu</h2>
+          <p className="direct-subtitle" style={directSubtitle}>Choose what you want, review your order, and send it straight to the store.</p>
         </div>
-        <div style={directBadge}>PAY AT STORE</div>
+        <div className="direct-badge" style={directBadge}>PAY AT STORE</div>
       </header>
 
       {!items.length ? <div style={emptyState}><div style={emptyIcon}><ShoppingBag size={22}/></div><h3>Ordering is being set up</h3><p style={muted}>The store has not published its STall Direct menu yet.</p></div> :
@@ -89,10 +89,10 @@ export function DirectOrderingPage({ listingId, onBack, embedded = false }) {
             {items.map(i=><article key={i.id} className="direct-menu-item" style={menuItem}>
               <div style={{minWidth:0}}>
                 <div style={menuItemName}>{i.name}</div>
-                {i.description && <div style={menuItemDescription}>{i.description}</div>}
+                {i.description && <div className="menu-item-description" style={menuItemDescription}>{i.description}</div>}
                 <div style={menuItemPrice}>{money(i.price)}</div>
               </div>
-              <div style={stepper}>
+              <div className="stepper" style={stepper}>
                 <button aria-label={"Decrease "+i.name} onClick={()=>setQty(i.id,-1)} style={stepButton}><Minus size={14}/></button>
                 <span style={qty}>{cart[i.id]||0}</span>
                 <button aria-label={"Increase "+i.name} onClick={()=>setQty(i.id,1)} style={stepButton}><Plus size={14}/></button>
@@ -115,15 +115,15 @@ export function DirectOrderingPage({ listingId, onBack, embedded = false }) {
             <div style={totalRowPremium}><span>Total</span><strong>{money(total)}</strong></div>
             <form onSubmit={placeOrder} style={checkoutForm}>
               <div style={formLabel}>YOUR DETAILS</div>
-              <input required placeholder="Full name" value={customer.name} onChange={e=>setCustomer({...customer,name:e.target.value})} style={premiumInput}/>
-              <input required placeholder="Phone number" inputMode="tel" value={customer.phone} onChange={e=>setCustomer({...customer,phone:e.target.value})} style={premiumInput}/>
-              <div style={segmented}>
+              <input className="premium-input" required placeholder="Full name" value={customer.name} onChange={e=>setCustomer({...customer,name:e.target.value})} style={premiumInput}/>
+              <input className="premium-input" required placeholder="Phone number" inputMode="tel" value={customer.phone} onChange={e=>setCustomer({...customer,phone:e.target.value})} style={premiumInput}/>
+              <div className="segmented" style={segmented}>
                 <button type="button" onClick={()=>setCustomer({...customer,type:"pickup"})} style={customer.type==="pickup"?segmentActive:segment}>Pickup</button>
                 <button type="button" onClick={()=>setCustomer({...customer,type:"delivery"})} style={customer.type==="delivery"?segmentActive:segment}>Delivery</button>
               </div>
-              {customer.type==="delivery" && <textarea required placeholder="Delivery address" value={customer.address} onChange={e=>setCustomer({...customer,address:e.target.value})} style={{...premiumInput,minHeight:72,resize:"vertical"}}/>}
-              <textarea placeholder="Notes (optional)" value={customer.notes} onChange={e=>setCustomer({...customer,notes:e.target.value})} style={{...premiumInput,minHeight:58,resize:"vertical"}}/>
-              <button disabled={placing} style={{...premiumPlaceButton,opacity:placing?.7:1}}>{placing?"Sending order…":"Place order · "+money(total)}</button>
+              {customer.type==="delivery" && <textarea className="premium-input" required placeholder="Delivery address" value={customer.address} onChange={e=>setCustomer({...customer,address:e.target.value})} style={{...premiumInput,minHeight:72,resize:"vertical"}}/>}
+              <textarea className="premium-input" placeholder="Notes (optional)" value={customer.notes} onChange={e=>setCustomer({...customer,notes:e.target.value})} style={{...premiumInput,minHeight:58,resize:"vertical"}}/>
+              <button className="premium-place-button" disabled={placing} style={{...premiumPlaceButton,opacity:placing?.7:1}}>{placing?"Sending order…":"Place order · "+money(total)}</button>
             </form>
           </>}
         </aside>
