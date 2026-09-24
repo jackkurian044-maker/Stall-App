@@ -130,7 +130,7 @@ export default function StoreLandingPage({ listingId, onBack }) {
     return digits;
   })();
   const website = listing.website || listing.mapsUrl || vendorLink(listing);
-  const isGrowthSetup = listing.planKey === "growth_setup" || (listing.isPremium && listing.subscriptionTier === "growth_setup");
+  const isGrowthSetup = listing.planKey === "growth_setup" || (listing.isPremium && listing.subscriptionTier === "growth_setup") || listing.testGrowthSetupActive === true || listing.testGrowthSetupActive === true;
   const products = String(listing.products || "").split(",").map(x => x.trim()).filter(Boolean).slice(0, 10);
   const ratingText = listing.ratingsCount != null ? " · " + listing.ratingsCount + " Google ratings" : "";
 
