@@ -450,3 +450,200 @@ exports.triggerPollForVendor = functions.runWith({ secrets: [googleOAuthConfig] 
     throw new functions.https.HttpsError("unavailable", "Google review sync failed. Please try again.");
   }
 });
+
+
+// === STALL OWNER-APPROVED IMPROVEMENT ENGINE ===
+// STall prepares the missing work for the owner, then pushes only approved,
+// Google-supported changes. Keywords are stored for auditability and used
+// naturally in the approved description/post; Google does not expose a
+// generic "SEO keywords" field on a Business Profile.
+async function generateImprovementCopy(listing) {
+  const apiKey = functions.config().anthropic?.api_key;
+  if (!apiKey) throw new Error("Anthropic API key is not configured");
+  const prompt = `Create a practical Google Business Profile improvement package for this local business.
+BUSINESS: ${listing.name || "Local business"}
+CATEGORY: ${listing.category || "Local business"}
+ADDRESS: ${listing.address || ""}
+DESCRIPTION: ${listing.description || ""}
+PRODUCTS/SERVICES: ${listing.products || ""}
+OFFER: ${listing.offer || listing.todayOffer || listing.todaySpecial || ""}
+
+Return ONLY valid JSON:
+{
+  "keywords": ["5-8 natural customer search phrases"],
+  "description": "A truthful 300-500 character business description using some phrases naturally, without keyword stuffing",
+  "post": "A short Google Business update/offer post under 300 characters"
+}
+Do not invent awards, prices, locations, services, opening hours, guarantees, or claims not present in the supplied business data.`;
+  const res = await axios.post("https://api.anthropic.com/v1/messages", {
+    model: "claude-sonnet-4-6",
+    max_tokens: 900,
+    messages: [{ role: "user", content: prompt }],
+  }, {
+    headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
+  });
+  const raw = (res.data.content?.[0]?.text || "").replace(/```json|```/g, "").trim();
+  const parsed = JSON.parse(raw);
+  if (!Array.isArray(parsed.keywords) || !parsed.description || !parsed.post) throw new Error("AI returned an incomplete improvement package");
+  return {
+    keywords: parsed.keywords.slice(0, 8).map(String),
+    description: String(parsed.description).slice(0, 750),
+    post: String(parsed.post).slice(0, 1500),
+  };
+}
+
+function escapeXml(value) {
+  return String(value || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
+}
+
+// Creates a simple, business-specific promotional creative from verified listing
+// data. This is deliberately not a fake storefront photo; it is clearly a
+// promotional graphic and can be reviewed before publishing.
+function buildImprovementSvg(listing, copy) {
+  const title = escapeXml(String(listing.name || "Your Business").slice(0, 42));
+  const category = escapeXml(String(listing.category || "Local Business").slice(0, 48));
+  const offer = escapeXml(String(listing.offer || listing.todayOffer || listing.todaySpecial || "Discover what we offer").slice(0, 70));
+  const keyword = escapeXml(String(copy.keywords?.[0] || "").slice(0, 48));
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900">
+  <rect width="1200" height="900" rx="48" fill="#182620"/>
+  <rect x="55" y="55" width="1090" height="790" rx="38" fill="#fffdf7"/>
+  <text x="90" y="135" font-family="Arial,sans-serif" font-size="28" font-weight="700" fill="#168b78">STall</text>
+  <text x="90" y="230" font-family="Arial,sans-serif" font-size="62" font-weight="800" fill="#182620">${title}</text>
+  <text x="90" y="285" font-family="Arial,sans-serif" font-size="28" fill="#555">${category}</text>
+  <rect x="90" y="350" width="1020" height="190" rx="28" fill="#f1e4bd"/>
+  <text x="130" y="430" font-family="Arial,sans-serif" font-size="38" font-weight="700" fill="#182620">${offer}</text>
+  <text x="130" y="495" font-family="Arial,sans-serif" font-size="22" fill="#555">${keyword}</text>
+  <text x="90" y="690" font-family="Arial,sans-serif" font-size="24" fill="#555">Visit our STall store to discover more.</text>
+  <text x="90" y="750" font-family="Arial,sans-serif" font-size="20" fill="#888">Promotional creative prepared by STall • Owner approval required</text>
+</svg>`;
+}
+
+exports.prepareGbpImprovement = functions.runWith({ secrets: [googleOAuthConfig] }).https.onCall(async (data, context) => {
+  if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Login required");
+  const vendorId = context.auth.uid;
+  const listingId = String(data?.listingId || "").trim();
+  if (!listingId) throw new functions.https.HttpsError("invalid-argument", "Listing ID is required");
+
+  try {
+    const [listingSnap, connSnap] = await Promise.all([
+      db.collection("vendors").doc(listingId).get(),
+      db.collection("gbp_connections").doc(vendorId).get(),
+    ]);
+    if (!listingSnap.exists) throw new functions.https.HttpsError("not-found", "Listing not found");
+    const listing = listingSnap.data();
+    if (listing.ownerId !== vendorId) throw new functions.https.HttpsError("permission-denied", "You do not own this listing");
+    if (!connSnap.exists || !connSnap.data().connected || !connSnap.data().locationId) {
+      throw new functions.https.HttpsError("failed-precondition", "Connect Google Business Profile first");
+    }
+
+    const copy = await generateImprovementCopy(listing);
+    const svg = buildImprovementSvg(listing, copy);
+    const bucket = admin.storage().bucket();
+    const path = `stall-improvements/${vendorId}/${listingId}-${Date.now()}.svg`;
+    const file = bucket.file(path);
+    await file.save(Buffer.from(svg, "utf8"), { metadata: { contentType: "image/svg+xml", cacheControl: "public,max-age=31536000" } });
+    const [imageUrl] = await file.getSignedUrl({ action: "read", expires: "03-01-2035" });
+
+    const improvement = {
+      listingId,
+      vendorId,
+      status: "draft",
+      keywords: copy.keywords,
+      description: copy.description,
+      post: copy.post,
+      imageUrl,
+      imagePath: path,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+    await db.collection("gbp_improvements").doc(vendorId).set(improvement);
+    return { ...improvement, createdAt: new Date().toISOString() };
+  } catch (err) {
+    console.error("prepareGbpImprovement failed:", err.response?.data || err.message);
+    if (err instanceof functions.https.HttpsError) throw err;
+    throw new functions.https.HttpsError("unavailable", "STall could not prepare the improvement package right now.");
+  }
+});
+
+exports.approveGbpImprovement = functions.runWith({ secrets: [googleOAuthConfig] }).https.onCall(async (data, context) => {
+  if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Login required");
+  const vendorId = context.auth.uid;
+  try {
+    const improvementSnap = await db.collection("gbp_improvements").doc(vendorId).get();
+    if (!improvementSnap.exists) throw new functions.https.HttpsError("not-found", "No improvement package is ready for approval");
+    const improvement = improvementSnap.data();
+    if (improvement.status !== "draft") throw new functions.https.HttpsError("failed-precondition", "This improvement package has already been processed");
+    const [listingSnap, connSnap] = await Promise.all([
+      db.collection("vendors").doc(improvement.listingId).get(),
+      db.collection("gbp_connections").doc(vendorId).get(),
+    ]);
+    if (!listingSnap.exists || listingSnap.data().ownerId !== vendorId) throw new functions.https.HttpsError("permission-denied", "You do not own this listing");
+    if (!connSnap.exists || !connSnap.data().connected) throw new functions.https.HttpsError("failed-precondition", "Google Business Profile is not connected");
+
+    const connectionData = connSnap.data();
+    const accessToken = await getValidToken(vendorId, connectionData);
+    const resourceName = String(connectionData.locationId).startsWith("locations/")
+      ? String(connectionData.locationId)
+      : "locations/" + String(connectionData.locationId);
+
+    // 1) Update the merchant-provided Google description.
+    await axios.patch(
+      `https://mybusinessbusinessinformation.googleapis.com/v1/${resourceName}`,
+      { profile: { description: improvement.description } },
+      {
+        params: { updateMask: "profile.description" },
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      }
+    );
+
+    // 2) Publish the owner-approved promotional creative to the Google profile.
+    const mediaRes = await axios.post(
+      `https://mybusiness.googleapis.com/v4/${connectionData.accountName}/${connectionData.locationId}/media`,
+      { mediaFormat: "PHOTO", locationAssociation: { category: "ADDITIONAL" }, sourceUrl: improvement.imageUrl },
+      { headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" } }
+    );
+
+    // 3) Publish the owner-approved update using the generated copy.
+    const postRes = await axios.post(
+      `https://mybusiness.googleapis.com/v4/${connectionData.accountName}/${connectionData.locationId}/localPosts`,
+      {
+        languageCode: "en-IN",
+        summary: improvement.post,
+        media: [{ mediaFormat: "PHOTO", sourceUrl: improvement.imageUrl }],
+        topicType: "STANDARD",
+      },
+      { headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }
+    );
+
+    // 4) Verify the Google location reflects the approved description.
+    const verifyRes = await axios.get(
+      `https://mybusinessbusinessinformation.googleapis.com/v1/${resourceName}`,
+      { headers: { Authorization: `Bearer ${accessToken}` }, params: { readMask: "profile,websiteUri" } }
+    );
+    const googleDescription = String(verifyRes.data?.profile?.description || "");
+    const verified = googleDescription === improvement.description;
+
+    await db.collection("gbp_improvements").doc(vendorId).set({
+      status: verified ? "synced" : "partially_synced",
+      approvedAt: admin.firestore.FieldValue.serverTimestamp(),
+      syncedAt: admin.firestore.FieldValue.serverTimestamp(),
+      mediaName: mediaRes.data?.name || null,
+      postName: postRes.data?.name || null,
+      googleDescriptionVerified: verified,
+      googleDescription,
+      syncMessage: verified ? "Google Business Profile updated and verified." : "Google accepted the update request, but verification did not yet show the exact description.",
+    }, { merge: true });
+
+    return {
+      success: true,
+      status: verified ? "synced" : "partially_synced",
+      mediaUploaded: Boolean(mediaRes.data?.name),
+      postPublished: Boolean(postRes.data?.name),
+      googleDescriptionVerified: verified,
+      message: verified ? "Google Business Profile updated and verified." : "Google accepted the update; verification is still catching up.",
+    };
+  } catch (err) {
+    console.error("approveGbpImprovement failed:", err.response?.status, err.response?.data || err.message);
+    if (err instanceof functions.https.HttpsError) throw err;
+    throw new functions.https.HttpsError("unavailable", "Google could not complete the approved update right now. Nothing was marked as complete.");
+  }
+});
