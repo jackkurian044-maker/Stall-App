@@ -99,6 +99,12 @@ function StorePage({ listing, onBack, salon, layout }) {
           </section>
         )}
 
+        {!salon && isDirectGrowth && (
+          <section id="stall-direct-order" style={{ marginTop: 20 }}>
+            <DirectOrderingPage listingId={listing.id} onBack={() => window.scrollTo({ top: 0, behavior: "smooth" })} />
+          </section>
+        )}
+
         <section style={{ ...contentGrid, ...(layout === "spotlight" ? spotlightContentGrid : layout === "compact" ? compactContentGrid : {}) }} className="content-grid">
           <div style={mainColumn}>
             <section style={{ ...storyCard, ...(layout === "spotlight" ? spotlightStoryCard : layout === "compact" ? compactStoryCard : {}) }}>
@@ -146,11 +152,13 @@ function StorePage({ listing, onBack, salon, layout }) {
           </div>
 
           <aside style={{ ...sideColumn, ...(layout === "spotlight" ? spotlightSideColumn : layout === "compact" ? compactSideColumn : {}) }}>
-            <section style={sideCard}>
-              <div style={sectionEyebrow}><span style={eyebrowLine}/>{salon ? "SERVICES" : "MENU & SPECIALS"}</div>
-              <h3 style={sideTitle}>{services || (salon ? "Services coming soon" : "Menu details coming soon")}</h3>
-              {wa && <a href={whatsappHref} target="_blank" rel="noreferrer" style={sideCta}><MessageCircle size={16}/> Ask us on WhatsApp</a>}
-            </section>
+            {(!isDirectGrowth || salon) && (
+              <section style={sideCard}>
+                <div style={sectionEyebrow}><span style={eyebrowLine}/>{salon ? "SERVICES" : "MENU & SPECIALS"}</div>
+                <h3 style={sideTitle}>{services || (salon ? "Services coming soon" : "Menu details coming soon")}</h3>
+                {wa && <a href={whatsappHref} target="_blank" rel="noreferrer" style={sideCta}><MessageCircle size={16}/> Ask us on WhatsApp</a>}
+              </section>
+            )}
             {hasSocialProof && (
               <section style={reviewCard}>
                 <div style={quoteMark}>“</div>
@@ -161,12 +169,6 @@ function StorePage({ listing, onBack, salon, layout }) {
             )}
           </aside>
         </section>
-
-        {!salon && isDirectGrowth && (
-          <section id="stall-direct-order" style={{ marginTop: 20 }}>
-            <DirectOrderingPage listingId={listing.id} onBack={() => window.scrollTo({ top: 0, behavior: "smooth" })} />
-          </section>
-        )}
 
         <section style={{ ...bottomCta, ...(layout === "spotlight" ? spotlightBottomCta : layout === "compact" ? compactBottomCta : {}) }} className="bottom-cta">
           <div>
