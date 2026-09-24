@@ -455,7 +455,26 @@ if (typeof document !== "undefined") {
         .visit-card > div:last-child { align-items: flex-start !important; border-left:0 !important; border-top:1px solid rgba(0,0,0,.08); padding:18px 0 0 !important; }
         .visit-card > div:first-child { width:100%; }
         .bottom-cta { flex-direction: column !important; align-items: flex-start !important; }\n        .direct-summary-card { flex-direction: column !important; align-items: flex-start !important; }\n        .bottom-cta .bottom-actions { width: 100%; }
-        .stall-premium-store-responsive + * {}
+        .direct-order-shell { margin-top: 0 !important; padding: 18px 12px 24px !important; border-radius: 0 !important; box-shadow: none !important; }
+        .direct-order-shell .direct-order-grid { grid-template-columns: 1fr !important; gap: 12px !important; }
+        .direct-order-shell .direct-order-grid > .direct-menu-item {}
+        .direct-order-shell .direct-order-grid > section,
+        .direct-order-shell .direct-order-grid > aside { width: 100% !important; box-sizing: border-box !important; min-width: 0 !important; }
+        .direct-order-shell .direct-order-grid > aside { position: static !important; top: auto !important; }
+        .direct-order-shell .direct-order-grid > section { padding: 16px !important; border-radius: 20px !important; }
+        .direct-order-shell .direct-order-grid > aside { padding: 18px !important; border-radius: 20px !important; }
+        .direct-order-shell .direct-order-grid > section .direct-menu-item { align-items: flex-start !important; gap: 12px !important; padding: 15px 0 !important; }
+        .direct-order-shell .direct-order-grid > section .direct-menu-item > div:first-child { min-width: 0 !important; flex: 1 1 auto !important; }
+        .direct-order-shell .direct-order-grid > section .direct-menu-item > div:last-child { flex: 0 0 auto !important; }
+        .direct-order-shell .direct-order-grid > section .direct-menu-item .menu-item-description { max-width: none !important; }
+        .direct-order-shell > .direct-header { display: block !important; margin-bottom: 16px !important; }
+        .direct-order-shell .direct-badge { display: inline-flex !important; margin-top: 12px !important; }
+        .direct-order-shell .direct-title { font-size: 31px !important; line-height: 1.02 !important; }
+        .direct-order-shell .direct-subtitle { font-size: 13px !important; line-height: 1.5 !important; }
+        .direct-order-shell .premium-input { min-height: 44px !important; }
+        .direct-order-shell .premium-place-button { min-height: 48px !important; width: 100% !important; }
+        .direct-order-shell .segmented { grid-template-columns: 1fr 1fr !important; }
+        .direct-order-shell .stepper { flex-shrink: 0 !important; }
       }
     `;
     document.head.appendChild(style);
