@@ -637,7 +637,6 @@ exports.prepareGbpImprovement = functions.runWith({ secrets: [googleOAuthConfig]
     }
 
     const copy = await generateImprovementCopy(listing);
-    const svg = buildImprovementSvg(listing, copy);
     const bucket = admin.storage().bucket();
     const creatives = buildImprovementCreatives(listing, copy);
     const images = [];
