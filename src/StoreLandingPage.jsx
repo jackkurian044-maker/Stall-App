@@ -24,7 +24,6 @@ export default function StoreLandingPage({ listingId, onBack }) {
       setListing(data);
       if (data && (data.planKey === "growth_setup" || (data.isPremium && data.subscriptionTier === "growth_setup"))) {
         try {
-          const q = orderBy("sortOrder", "asc");
           const ms = await getDocs(collection(db, "vendors", listingId, "direct_menu"));
           const rows = ms.docs
             .map(d => ({ id: d.id, ...d.data() }))
