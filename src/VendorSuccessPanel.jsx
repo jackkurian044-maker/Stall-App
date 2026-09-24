@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { BarChart2, Camera, CheckCircle2, MessageCircle, Pencil, Rocket, Star, Zap } from "lucide-react";
 import { COLORS } from "./constants";
 import stallLogoMark from "./logo-cropped.png";
@@ -11,7 +11,16 @@ export default function VendorSuccessPanel({ listings, onEdit, onOffer, onTab })
   const listing = listings[0];
   const [running, setRunning] = useState(false);
 
-
+  if (!listing) return (
+    <section style={{ background: COLORS.ink, color: "#fff", borderRadius: 14, padding: 18, marginBottom: 14 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <img src={stallLogoMark} alt="STall" style={{ width: 28, height: 28, objectFit: "contain" }} />
+        <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".08em", color: COLORS.marigold }}>STall Digital Assistant</div>
+      </div>
+      <div style={{ fontSize: 21, fontWeight: 800, marginTop: 8 }}>Let&apos;s get your business visible.</div>
+      <div style={{ fontSize: 12.5, opacity: .82, marginTop: 6 }}>Create or claim your business. STall will then show your digital score and the exact actions that can improve it.</div>
+    </section>
+  );
 
   const profile = {
     name: !!String(listing.name || "").trim(),
@@ -32,14 +41,12 @@ export default function VendorSuccessPanel({ listings, onEdit, onOffer, onTab })
   const ratingsCount = Number(listing.ratingsCount || 0);
   const hasGoogle = !!listing.placeId;
 
-  const score = useMemo(() => {
-    const profileScore = completed / 7 * 25;
-    const trustScore = (hasRating ? 8 : 0) + (ratingsCount >= 10 ? 5 : ratingsCount > 0 ? 3 : 0) + (hasGoogle ? 2 : 0);
-    const contentScore = (profile.photos ? 7 : 0) + (profile.description ? 4 : 0) + (profile.products ? 4 : 0);
-    const offerScore = hasOffer ? 8 : 0;
-    const engagementScore = actions > 0 ? 10 : views >= 5 ? 6 : 2;
-    return clamp(profileScore + trustScore + contentScore + offerScore + engagementScore);
-  }, [completed, hasRating, ratingsCount, hasGoogle, profile.photos, profile.description, profile.products, hasOffer, actions, views]);
+  const profileScore = completed / 7 * 25;
+  const trustScore = (hasRating ? 8 : 0) + (ratingsCount >= 10 ? 5 : ratingsCount > 0 ? 3 : 0) + (hasGoogle ? 2 : 0);
+  const contentScore = (profile.photos ? 7 : 0) + (profile.description ? 4 : 0) + (profile.products ? 4 : 0);
+  const offerScore = hasOffer ? 8 : 0;
+  const engagementScore = actions > 0 ? 10 : views >= 5 ? 6 : 2;
+  const score = clamp(profileScore + trustScore + contentScore + offerScore + engagementScore);
 
   const items = [
     { key: "page", label: "Business page", score: clamp(completed / 7 * 25), max: 25, good: completed === 7, title: completed === 7 ? "Your core business details are ready." : "Complete your business page", text: completed === 7 ? "Everything STall needs to present your business is in place." : (7 - completed) + " important detail" + (7 - completed === 1 ? "" : "s") + " still missing.", button: "Fix it for me", icon: <Pencil size={14} />, run: () => onEdit(listing) },
@@ -53,19 +60,6 @@ export default function VendorSuccessPanel({ listings, onEdit, onOffer, onTab })
   const gaps = items.filter((item) => !item.good);
   const next = gaps.slice(0, 3);
   const potential = clamp(score + Math.min(15, gaps.length * 4));
-
-  // Keep hooks unconditional. Firestore is empty on the first render; the
-  // previous early return caused a React hook-order crash when data arrived.
-  if (!listing) return (
-    <section style={{ background: COLORS.ink, color: "#fff", borderRadius: 14, padding: 18, marginBottom: 14 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <img src={stallLogoMark} alt="STall" style={{ width: 28, height: 28, objectFit: "contain" }} />
-        <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".08em", color: COLORS.marigold }}>STall Digital Assistant</div>
-      </div>
-      <div style={{ fontSize: 21, fontWeight: 800, marginTop: 8 }}>Let&apos;s get your business visible.</div>
-      <div style={{ fontSize: 12.5, opacity: .82, marginTop: 6 }}>Create or claim your business. STall will then show your digital score and the exact actions that can improve it.</div>
-    </section>
-  );
 
   const startImprovements = () => {
     if (!next.length) return;
