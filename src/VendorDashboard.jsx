@@ -99,6 +99,10 @@ export default function VendorDashboard({ user, agent }) {
   useEffect(() => { autoRefreshStale(listings, refreshedRef.current); }, [listings]);
 
   useEffect(() => {
+    if (!loading && listings.length > 0 && !editingId) setShowEditor(false);
+  }, [loading, listings.length, editingId]);
+
+  useEffect(() => {
     const l = listings[0];
     if (!l) {
       setQuickDraft({ name: "", category: "", phone: "", hours: "", description: "" });
