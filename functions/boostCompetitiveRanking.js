@@ -607,79 +607,151 @@ exports.approveGbpImprovement = functions.runWith({ secrets: [googleOAuthConfig]
     const improvementSnap = await db.collection("gbp_improvements").doc(vendorId).get();
     if (!improvementSnap.exists) throw new functions.https.HttpsError("not-found", "No improvement package is ready for approval");
     const improvement = improvementSnap.data();
-    if (improvement.status !== "draft") throw new functions.https.HttpsError("failed-precondition", "This improvement package has already been processed");
+    if (!["draft", "partially_synced"].includes(improvement.status)) {
+      throw new functions.https.HttpsError("failed-precondition", "This improvement package has already been processed");
+    }
+
     const [listingSnap, connSnap] = await Promise.all([
       db.collection("vendors").doc(improvement.listingId).get(),
       db.collection("gbp_connections").doc(vendorId).get(),
     ]);
-    if (!listingSnap.exists || listingSnap.data().ownerId !== vendorId) throw new functions.https.HttpsError("permission-denied", "You do not own this listing");
-    if (!connSnap.exists || !connSnap.data().connected) throw new functions.https.HttpsError("failed-precondition", "Google Business Profile is not connected");
+    if (!listingSnap.exists || listingSnap.data().ownerId !== vendorId) {
+      throw new functions.https.HttpsError("permission-denied", "You do not own this listing");
+    }
+    if (!connSnap.exists || !connSnap.data().connected) {
+      throw new functions.https.HttpsError("failed-precondition", "Google Business Profile is not connected");
+    }
 
     const connectionData = connSnap.data();
     const accessToken = await getValidToken(vendorId, connectionData);
-    const resourceName = String(connectionData.locationId).startsWith("locations/")
-      ? String(connectionData.locationId)
-      : "locations/" + String(connectionData.locationId);
+    const accountName = String(connectionData.accountName || "").trim();
+    const locationId = String(connectionData.locationId || "").trim();
+    if (!accountName || !locationId) {
+      throw new functions.https.HttpsError("failed-precondition", "Connected Google Business Profile location details are incomplete");
+    }
+
+    const resourceName = locationId.startsWith("locations/") ? locationId : "locations/" + locationId;
+    const v4Parent = accountName + "/" + (locationId.startsWith("locations/") ? locationId : "locations/" + locationId);
+
+    const googleError = (label, err) => {
+      const status = err?.response?.status;
+      const apiMessage =
+        err?.response?.data?.error?.message ||
+        err?.response?.data?.message ||
+        err?.message ||
+        "Unknown Google error";
+      console.error(`approveGbpImprovement: ${label} failed`, status, err?.response?.data || err?.message);
+      return status ? `${label} failed (Google HTTP ${status}): ${apiMessage}` : `${label} failed: ${apiMessage}`;
+    };
+
+    const updateData = { updatedAt: admin.firestore.FieldValue.serverTimestamp() };
+    let descriptionUpdated = false;
+    let googleDescriptionVerified = false;
+    let mediaUploaded = Boolean(improvement.mediaName);
+    let postPublished = Boolean(improvement.postName);
+    const failures = [];
 
     // 1) Update the merchant-provided Google description.
-    await axios.patch(
-      `https://mybusinessbusinessinformation.googleapis.com/v1/${resourceName}`,
-      { profile: { description: improvement.description } },
-      {
-        params: { updateMask: "profile.description" },
-        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    if (!improvement.descriptionSynced) {
+      try {
+        await axios.patch(
+          `https://mybusinessbusinessinformation.googleapis.com/v1/${resourceName}`,
+          { profile: { description: improvement.description } },
+          {
+            params: { updateMask: "profile.description" },
+            headers: { Authorization: "Bearer " + accessToken, "Content-Type": "application/json" },
+          }
+        );
+        descriptionUpdated = true;
+        updateData.descriptionSynced = true;
+      } catch (err) {
+        throw new functions.https.HttpsError("unavailable", googleError("Google business description update", err));
       }
-    );
+    } else {
+      descriptionUpdated = true;
+    }
 
-    // 2) Publish the owner-approved promotional creative to the Google profile.
-    const mediaRes = await axios.post(
-      `https://mybusiness.googleapis.com/v4/${connectionData.accountName}/${connectionData.locationId}/media`,
-      { mediaFormat: "PHOTO", locationAssociation: { category: "ADDITIONAL" }, sourceUrl: improvement.imageUrl },
-      { headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" } }
-    );
+    // 2) Publish the owner-approved promotional creative.
+    if (!mediaUploaded) {
+      try {
+        const mediaRes = await axios.post(
+          `https://mybusiness.googleapis.com/v4/${v4Parent}/media`,
+          {
+            mediaFormat: "PHOTO",
+            locationAssociation: { category: "ADDITIONAL" },
+            sourceUrl: improvement.imageUrl,
+          },
+          { headers: { Authorization: "Bearer " + accessToken, "Content-Type": "application/json" } }
+        );
+        mediaUploaded = Boolean(mediaRes.data?.name);
+        updateData.mediaName = mediaRes.data?.name || null;
+        if (!mediaUploaded) failures.push("Google photo upload returned no media name");
+      } catch (err) {
+        failures.push(googleError("Google photo upload", err));
+      }
+    }
 
-    // 3) Publish the owner-approved update using the generated copy.
-    const postRes = await axios.post(
-      `https://mybusiness.googleapis.com/v4/${connectionData.accountName}/${connectionData.locationId}/localPosts`,
-      {
-        languageCode: "en-IN",
-        summary: improvement.post,
-        media: [{ mediaFormat: "PHOTO", sourceUrl: improvement.imageUrl }],
-        topicType: "STANDARD",
-      },
-      { headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" } }
-    );
+    // 3) Publish the owner-approved update.
+    if (!postPublished) {
+      try {
+        const postRes = await axios.post(
+          `https://mybusiness.googleapis.com/v4/${v4Parent}/localPosts`,
+          {
+            languageCode: "en-IN",
+            summary: improvement.post,
+            media: [{ mediaFormat: "PHOTO", sourceUrl: improvement.imageUrl }],
+            topicType: "STANDARD",
+          },
+          { headers: { Authorization: "Bearer " + accessToken, "Content-Type": "application/json" } }
+        );
+        postPublished = Boolean(postRes.data?.name);
+        updateData.postName = postRes.data?.name || null;
+        if (!postPublished) failures.push("Google post creation returned no post name");
+      } catch (err) {
+        failures.push(googleError("Google update post", err));
+      }
+    }
 
     // 4) Verify the Google location reflects the approved description.
-    const verifyRes = await axios.get(
-      `https://mybusinessbusinessinformation.googleapis.com/v1/${resourceName}`,
-      { headers: { Authorization: `Bearer ${accessToken}` }, params: { readMask: "profile,websiteUri" } }
-    );
-    const googleDescription = String(verifyRes.data?.profile?.description || "");
-    const verified = googleDescription === improvement.description;
+    try {
+      const verifyRes = await axios.get(
+        `https://mybusinessbusinessinformation.googleapis.com/v1/${resourceName}`,
+        { headers: { Authorization: "Bearer " + accessToken }, params: { readMask: "profile,websiteUri" } }
+      );
+      const googleDescription = String(verifyRes.data?.profile?.description || "");
+      googleDescriptionVerified = googleDescription === improvement.description;
+      updateData.googleDescription = googleDescription;
+      updateData.googleDescriptionVerified = googleDescriptionVerified;
+      if (!googleDescriptionVerified) failures.push("Google description verification is still catching up");
+    } catch (err) {
+      failures.push(googleError("Google description verification", err));
+    }
+
+    const fullySynced = descriptionUpdated && googleDescriptionVerified && mediaUploaded && postPublished && failures.length === 0;
+    const status = fullySynced ? "synced" : "partially_synced";
+    const message = fullySynced
+      ? "Google Business Profile updated and verified."
+      : `Google sync partially completed. ${failures.join(" ")} Nothing was falsely marked as complete.`;
 
     await db.collection("gbp_improvements").doc(vendorId).set({
-      status: verified ? "synced" : "partially_synced",
-      approvedAt: admin.firestore.FieldValue.serverTimestamp(),
+      status,
+      ...(updateData),
       syncedAt: admin.firestore.FieldValue.serverTimestamp(),
-      mediaName: mediaRes.data?.name || null,
-      postName: postRes.data?.name || null,
-      googleDescriptionVerified: verified,
-      googleDescription,
-      syncMessage: verified ? "Google Business Profile updated and verified." : "Google accepted the update request, but verification did not yet show the exact description.",
+      ...(fullySynced ? { approvedAt: admin.firestore.FieldValue.serverTimestamp() } : {}),
+      syncMessage: message,
     }, { merge: true });
 
     return {
-      success: true,
-      status: verified ? "synced" : "partially_synced",
-      mediaUploaded: Boolean(mediaRes.data?.name),
-      postPublished: Boolean(postRes.data?.name),
-      googleDescriptionVerified: verified,
-      message: verified ? "Google Business Profile updated and verified." : "Google accepted the update; verification is still catching up.",
+      success: fullySynced,
+      status,
+      mediaUploaded,
+      postPublished,
+      googleDescriptionVerified,
+      message,
     };
   } catch (err) {
     console.error("approveGbpImprovement failed:", err.response?.status, err.response?.data || err.message);
     if (err instanceof functions.https.HttpsError) throw err;
-    throw new functions.https.HttpsError("unavailable", "Google could not complete the approved update right now. Nothing was marked as complete.");
+    throw new functions.https.HttpsError("unavailable", "Google could not complete the approved update right now. Please retry.");
   }
 });
