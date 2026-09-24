@@ -162,12 +162,17 @@ export default function VendorSuccessPanel({ listings, onEdit, onOffer, onTab })
           {!improvement && <button type="button" onClick={prepareImprovement} disabled={improvementLoading || !hasGoogle} className="stall-btn" style={{ background: COLORS.ink, color: "#fff", border: "none", borderRadius: 7, padding: "8px 11px", fontSize: 10.5, fontWeight: 800 }}>{improvementLoading ? "Preparing…" : hasGoogle ? "Prepare for me" : "Connect Google first"}</button>}
         </div>
         {improvement && (
-          <div style={{ marginTop: 11, display: "grid", gridTemplateColumns: "minmax(150px,220px) 1fr", gap: 12, alignItems: "start" }}>
-            <div style={{ border: "1px solid #ddd", borderRadius: 9, overflow: "hidden", background: "#fff" }}>
-              <img src={improvement.imageUrl} alt="STall prepared promotional creative" style={{ width: "100%", display: "block", aspectRatio: "4/3", objectFit: "cover" }} />
-              <div style={{ padding: 7, fontSize: 9.5, color: "#777" }}>Promotional creative — review before Google publishing.</div>
+          <div style={{ marginTop: 11 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", gap: 8, overflowX: "auto" }}>
+              {(improvement.images || [{ kind: "business", label: "Service creative", imageUrl: improvement.imageUrl }]).map((image, index) => (
+                <div key={image.imageUrl || index} style={{ minWidth: 0, border: "1px solid #ddd", borderRadius: 9, overflow: "hidden", background: "#fff" }}>
+                  <img src={image.imageUrl} alt={image.label || "STall prepared creative"} style={{ width: "100%", display: "block", aspectRatio: "4/3", objectFit: "cover" }} />
+                  <div style={{ padding: 7, fontSize: 9.5, fontWeight: 800, color: image.kind === "stall" ? COLORS.teal : "#777" }}>{image.label || "Prepared creative"}{image.kind === "stall" ? " • promotion interstitial" : " • category/service"}</div>
+                </div>
+              ))}
             </div>
-            <div>
+            <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "1fr", gap: 12 }}>
+              <div>
               <div style={{ fontSize: 10.5, fontWeight: 800, color: COLORS.ink }}>Suggested search phrases</div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 6 }}>
                 {(improvement.keywords || []).map((k) => <span key={k} style={{ fontSize: 9.5, padding: "4px 7px", borderRadius: 12, background: COLORS.teal + "12", color: COLORS.ink }}>{k}</span>)}
