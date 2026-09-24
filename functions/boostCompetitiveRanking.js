@@ -1,3 +1,4 @@
+// Deployment marker: keep the GBP improvement engine in the Cloud Functions deployment path.
 // functions/boostCompetitiveRanking.js
 // Weekly competitive ranking scan — sits alongside the existing profile-
 // completeness Boost score (runBoostScan / vendors/{id}/boost/latest).
