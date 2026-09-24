@@ -20,6 +20,7 @@ import PlanCheckout from "./PlanCheckout";
 import LeadEnginePanel from "./LeadEnginePanel";
 import BoostCampaignPanel from "./BoostCampaignPanel";
 import DirectOrdersPanel from "./DirectOrdersPanel";
+import VendorSuccessPanel from "./VendorSuccessPanel";
 import { RestaurantBusinessPage, SalonBusinessPage } from "./BusinessTemplatePages";
 
 const isSalonCategory = (value) => {
@@ -288,6 +289,12 @@ Sun: Closed`} />)}
       </div>
 
       <div>
+        <VendorSuccessPanel
+          listings={listings}
+          onEdit={startEdit}
+          onOffer={(listing) => setQuickOfferListing(listing)}
+          onTab={setDashTab}
+        />
         <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" }}>
           <TabButton active={dashTab === "listings"} onClick={() => setDashTab("listings")}>My Listings ({listings.length})</TabButton>
           <TabButton active={dashTab === "insights"} onClick={() => setDashTab("insights")} icon={<BarChart2 size={13} />}>Insights</TabButton>
