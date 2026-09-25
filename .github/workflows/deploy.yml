@@ -1,4 +1,5 @@
 name: Deploy STall to Firebase
+# GBP publishing deployment check
 
 on:
   push:
