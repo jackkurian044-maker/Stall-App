@@ -14,6 +14,7 @@ const db = admin.firestore();
 const googleOAuthConfig = defineSecret("GOOGLE_OAUTH_CONFIG");
 const { processVendor, generateGeminiText, generateGeminiImage } = require("./reviewAutoResponder");
 const { makeAiCreatives } = require("./geminiCreativeGenerator");
+// Google publishing rule: only eligible real-business photos are sent to GBP; AI creatives remain in STall preview.
 
 const DEFAULT_RADIUS_METERS = 3000;
 const CLUSTER_RADIUS_METERS = DEFAULT_RADIUS_METERS / 2;
