@@ -669,12 +669,20 @@ exports.prepareGbpImprovement = functions.runWith({ secrets: [googleOAuthConfig]
 
       const path = `stall-improvements/${vendorId}/${listingId}-${Date.now()}-${i + 1}.png`;
       const file = bucket.file(path);
-      if (!creative.svg) throw new Error(`Creative ${i + 1} has neither an image URL nor source artwork`);
-      const pngBuffer = await require("sharp")(Buffer.from(creative.svg, "utf8")).png().toBuffer();
+      let pngBuffer;
+      let contentType = creative.mimeType || "image/png";
+      if (creative.buffer) {
+        pngBuffer = creative.buffer;
+      } else if (creative.svg) {
+        pngBuffer = await require("sharp")(Buffer.from(creative.svg, "utf8")).png().toBuffer();
+        contentType = "image/png";
+      } else {
+        throw new Error(`Creative ${i + 1} has neither an image URL, image data, nor source artwork`);
+      }
       const downloadToken = crypto.randomUUID();
       await file.save(pngBuffer, {
         metadata: {
-          contentType: "image/png",
+          contentType,
           cacheControl: "public,max-age=31536000",
           metadata: { firebaseStorageDownloadTokens: downloadToken },
         },
