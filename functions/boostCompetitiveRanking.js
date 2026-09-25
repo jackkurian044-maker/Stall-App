@@ -770,7 +770,9 @@ exports.approveGbpImprovement = functions.runWith({ secrets: [googleOAuthConfig]
     const profileImages = postImages.filter((image) => image.kind === "business" && image.aiGenerated !== true);
     const googlePostImages = profileImages;
     const mediaNames = Array.isArray(improvement.mediaNames) ? improvement.mediaNames.slice() : [];
-    let mediaUploaded = mediaNames.length >= profileImages.length && profileImages.length > 0;
+    // Photos are optional. If the owner has no eligible real business photos,
+    // Google can still receive the approved description/update post.
+    let mediaUploaded = profileImages.length === 0 || mediaNames.length >= profileImages.length;
     let postPublished = Boolean(improvement.postName);
     const failures = [];
 
@@ -788,7 +790,28 @@ exports.approveGbpImprovement = functions.runWith({ secrets: [googleOAuthConfig]
         descriptionUpdated = true;
         updateData.descriptionSynced = true;
       } catch (err) {
-        throw new functions.https.HttpsError("unavailable", googleError("Google business description update", err));
+        // A token can be revoked/expired before the stored expiry timestamp.
+        // Refresh once on an auth failure, then retry the exact same patch.
+        if ([401, 403].includes(err?.response?.status)) {
+          try {
+            const freshConnection = (await db.collection("gbp_connections").doc(vendorId).get()).data() || connectionData;
+            const refreshedToken = await refreshAccessToken(vendorId, freshConnection);
+            await axios.patch(
+              `https://mybusinessbusinessinformation.googleapis.com/v1/${resourceName}`,
+              { profile: { description: improvement.description } },
+              {
+                params: { updateMask: "profile.description" },
+                headers: { Authorization: "Bearer " + refreshedToken, "Content-Type": "application/json" },
+              }
+            );
+            descriptionUpdated = true;
+            updateData.descriptionSynced = true;
+          } catch (retryErr) {
+            failures.push(googleError("Google business description update", retryErr));
+          }
+        } else {
+          failures.push(googleError("Google business description update", err));
+        }
       }
     } else {
       descriptionUpdated = true;
@@ -872,6 +895,7 @@ exports.approveGbpImprovement = functions.runWith({ secrets: [googleOAuthConfig]
       syncedAt: admin.firestore.FieldValue.serverTimestamp(),
       ...(fullySynced ? { approvedAt: admin.firestore.FieldValue.serverTimestamp() } : {}),
       syncMessage: message,
+      lastGoogleFailures: failures,
     }, { merge: true });
 
     return {
