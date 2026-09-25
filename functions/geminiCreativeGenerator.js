@@ -24,17 +24,26 @@ async function makeAiCreatives(listing, context) {
     `Photorealistic premium marketing image for ${context.label}. Business: ${name}. Services: ${services}. Show a realistic customer-facing scene that represents the supplied services. Use the provided reference image when available. Do not add text, logos, fake signs, prices, awards, or unsupported claims.`,
     `Second photorealistic marketing image for ${context.label}. Business: ${name}. Services: ${services}. Show a different realistic service or customer experience scene. Use the provided reference image when available. Do not add text, logos, fake signs, prices, awards, or unsupported claims.`
   ];
-  const generated = [];
-  for (const prompt of prompts) {
+
+  // Generate the two business creatives concurrently so the callable does
+  // not spend the full generation latency twice in sequence.
+  const generated = await Promise.all(prompts.map(async (prompt) => {
     try {
       const img = await generateGeminiImage(prompt, refs);
-      generated.push({ kind: 'business', label: 'AI service creative', buffer: img.buffer, mimeType: img.mimeType });
+      return { kind: 'business', label: 'AI service creative', buffer: img.buffer, mimeType: img.mimeType };
     } catch (err) {
       console.warn('Gemini creative failed', err.response?.status, err.message);
-      generated.push(null);
+      return null;
     }
-  }
-  const fallback = refs.map((r, i) => ({ kind: 'business', label: i === 0 ? 'Real store photo' : 'Real service/store photo', buffer: r.data, mimeType: r.mimeType }));
+  }));
+
+  const fallback = refs.map((r, i) => ({
+    kind: 'business',
+    label: i === 0 ? 'Real store photo' : 'Real service/store photo',
+    buffer: r.data,
+    mimeType: r.mimeType,
+  }));
+
   return [generated[0] || fallback[0] || null, generated[1] || fallback[1] || null];
 }
 
