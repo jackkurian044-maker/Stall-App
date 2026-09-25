@@ -909,6 +909,19 @@ exports.approveGbpImprovement = functions.runWith({ secrets: [googleOAuthConfig]
   } catch (err) {
     console.error("approveGbpImprovement failed:", err.response?.status, err.response?.data || err.message);
     if (err instanceof functions.https.HttpsError) throw err;
-    throw new functions.https.HttpsError("unavailable", "Google could not complete the approved update right now. Please retry.");
+    const status = err?.response?.status;
+    const apiMessage =
+      err?.response?.data?.error?.message ||
+      err?.response?.data?.message ||
+      err?.message ||
+      "Unknown Google error";
+    console.error("approveGbpImprovement failed:", status, err?.response?.data || err.message);
+    if (err instanceof functions.https.HttpsError) throw err;
+    throw new functions.https.HttpsError(
+      "unavailable",
+      status
+        ? `Google publishing failed (HTTP ${status}): ${apiMessage}`
+        : `Google publishing failed: ${apiMessage}`
+    );
   }
 });
