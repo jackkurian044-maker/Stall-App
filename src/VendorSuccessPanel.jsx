@@ -158,6 +158,7 @@ export default function VendorSuccessPanel({ listings, onEdit, onOffer, onTab })
           <div>
             <div style={{ fontSize: 12.5, fontWeight: 900, color: COLORS.ink }}>STall can prepare the missing Google work for you</div>
             <div style={{ fontSize: 10.5, color: "#666", marginTop: 3 }}>Images, search phrases and business copy are prepared first. Nothing is pushed until you approve it.</div>
+            <div style={{ fontSize: 10, color: "#777", marginTop: 4 }}>AI service previews stay in STall. Google receives only real store photos.</div>
           </div>
           {!improvement && <button type="button" onClick={prepareImprovement} disabled={improvementLoading || !hasGoogle} className="stall-btn" style={{ background: COLORS.ink, color: "#fff", border: "none", borderRadius: 7, padding: "8px 11px", fontSize: 10.5, fontWeight: 800 }}>{improvementLoading ? "Preparing…" : hasGoogle ? "Prepare for me" : "Connect Google first"}</button>}
         </div>
