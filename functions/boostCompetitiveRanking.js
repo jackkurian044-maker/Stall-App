@@ -621,7 +621,7 @@ function buildStallPromoSvg(listing) {
 </svg>`;
 }
 
-async function buildImprovementCreatives(listing, copy) {
+async async function buildImprovementCreatives(listing, copy) {
   const ctx = getCreativeContext(listing, copy);
   const ai = await makeAiCreatives(listing, ctx);
   const first = ai[0] || { kind: "business", label: "Category/service creative", svg: buildServiceCreativeSvg(listing, copy, 1) };
@@ -649,7 +649,7 @@ exports.prepareGbpImprovement = functions.runWith({ secrets: [googleOAuthConfig]
 
     const copy = await generateImprovementCopy(listing);
     const bucket = admin.storage().bucket();
-    const creatives = buildImprovementCreatives(listing, copy);
+    const creatives = await buildImprovementCreatives(listing, copy);
     const images = [];
     for (let i = 0; i < creatives.length; i++) {
       const creative = creatives[i];
