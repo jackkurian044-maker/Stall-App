@@ -94,6 +94,50 @@ async function generateGeminiText(prompt, generationConfig = { maxOutputTokens: 
   );
   return response.data.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("").trim() || "";
 }
+async function generateGeminiImage(prompt, referenceImages = []) {
+  const projectId = process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT || admin.app().options.projectId;
+  if (!projectId) throw new Error("Google Cloud project ID is not available");
+  const accessToken = await getVertexAccessToken();
+  const endpoint = `https://aiplatform.googleapis.com/v1/projects/${projectId}/locations/global/publishers/google/models/gemini-2.5-flash-image:generateContent`;
+
+  const parts = [];
+  for (const image of Array.isArray(referenceImages) ? referenceImages.slice(0, 3) : []) {
+    if (!image?.data || !image?.mimeType) continue;
+    parts.push({
+      inlineData: {
+        mimeType: image.mimeType,
+        data: Buffer.isBuffer(image.data) ? image.data.toString("base64") : String(image.data),
+      },
+    });
+  }
+  parts.push({ text: prompt });
+
+  const response = await axios.post(
+    endpoint,
+    {
+      contents: [{ role: "user", parts }],
+      generationConfig: {
+        responseModalities: ["TEXT", "IMAGE"],
+      },
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      timeout: 60000,
+    }
+  );
+
+  const imagePart = response.data.candidates?.[0]?.content?.parts?.find(
+    (part) => part.inlineData?.data || part.inline_data?.data
+  );
+  const imageData = imagePart?.inlineData?.data || imagePart?.inline_data?.data;
+  if (!imageData) throw new Error("Gemini image generation returned no image");
+  const mimeType = imagePart?.inlineData?.mimeType || imagePart?.inline_data?.mimeType || "image/png";
+  return { buffer: Buffer.from(imageData, "base64"), mimeType };
+}
+
 
 function reviewUrl(connectionData, reviewId) {
   return `https://mybusiness.googleapis.com/v4/${connectionData.accountName}/${connectionData.locationId}/reviews/${reviewId}`;
@@ -275,3 +319,4 @@ exports.pollReviews = functions.runWith({ secrets: [googleOAuthConfig] }).pubsub
 // Reuse the exact secure processing path from the manual "Sync Reviews Now" callable.
 exports.processVendor = processVendor;
 exports.generateGeminiText = generateGeminiText;
+exports.generateGeminiImage = generateGeminiImage;
