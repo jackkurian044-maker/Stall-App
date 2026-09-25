@@ -659,9 +659,24 @@ exports.prepareGbpImprovement = functions.runWith({ secrets: [googleOAuthConfig]
     const creatives = buildImprovementCreatives(listing, copy);
     const images = [];
     for (let i = 0; i < creatives.length; i++) {
+      const creative = creatives[i];
+
+      // Real store photos are already hosted; keep the original URL instead
+      // of trying to pass it through Sharp as if it were an SVG.
+      if (creative.imageUrl) {
+        images.push({
+          kind: creative.kind,
+          label: creative.label,
+          path: creative.path || null,
+          imageUrl: creative.imageUrl,
+        });
+        continue;
+      }
+
       const path = `stall-improvements/${vendorId}/${listingId}-${Date.now()}-${i + 1}.png`;
       const file = bucket.file(path);
-      const pngBuffer = await require("sharp")(Buffer.from(creatives[i].svg, "utf8")).png().toBuffer();
+      if (!creative.svg) throw new Error(`Creative ${i + 1} has neither an image URL nor source artwork`);
+      const pngBuffer = await require("sharp")(Buffer.from(creative.svg, "utf8")).png().toBuffer();
       const downloadToken = crypto.randomUUID();
       await file.save(pngBuffer, {
         metadata: {
@@ -671,8 +686,8 @@ exports.prepareGbpImprovement = functions.runWith({ secrets: [googleOAuthConfig]
         },
       });
       images.push({
-        kind: creatives[i].kind,
-        label: creatives[i].label,
+        kind: creative.kind,
+        label: creative.label,
         path,
         imageUrl: `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(path)}?alt=media&token=${downloadToken}`,
       });
