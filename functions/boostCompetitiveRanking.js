@@ -13,6 +13,7 @@ const crypto = require("crypto");
 const db = admin.firestore();
 const googleOAuthConfig = defineSecret("GOOGLE_OAUTH_CONFIG");
 const { processVendor, generateGeminiText, generateGeminiImage } = require("./reviewAutoResponder");
+const { makeAiCreatives } = require("./geminiCreativeGenerator");
 
 const DEFAULT_RADIUS_METERS = 3000;
 const CLUSTER_RADIUS_METERS = DEFAULT_RADIUS_METERS / 2;
