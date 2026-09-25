@@ -621,26 +621,12 @@ function buildStallPromoSvg(listing) {
 </svg>`;
 }
 
-function buildImprovementCreatives(listing, copy) {
-  const photos = Array.isArray(listing.photos)
-    ? listing.photos.map((photo) => typeof photo === "string" ? photo : photo?.url || photo?.src || photo?.downloadURL || "").filter(Boolean)
-    : [];
-  const businessImages = photos.slice(0, 2).map((imageUrl, index) => ({
-    kind: "business",
-    label: index === 0 ? "Real store photo" : "Real service/store photo",
-    imageUrl,
-  }));
-
-  const fallbackSvgs = [
-    { kind: "business", label: "Category/service creative", svg: buildServiceCreativeSvg(listing, copy, 1) },
-    { kind: "business", label: "Category/service creative", svg: buildServiceCreativeSvg(listing, copy, 2) },
-  ];
-
-  return [
-    businessImages[0] || fallbackSvgs[0],
-    { kind: "stall", label: "STall promotion", svg: buildStallPromoSvg(listing) },
-    businessImages[1] || fallbackSvgs[1],
-  ];
+async function buildImprovementCreatives(listing, copy) {
+  const ctx = getCreativeContext(listing, copy);
+  const ai = await makeAiCreatives(listing, ctx);
+  const first = ai[0] || { kind: "business", label: "Category/service creative", svg: buildServiceCreativeSvg(listing, copy, 1) };
+  const second = ai[1] || { kind: "business", label: "Category/service creative", svg: buildServiceCreativeSvg(listing, copy, 2) };
+  return [first, { kind: "stall", label: "STall promotion", svg: buildStallPromoSvg(listing) }, second];
 }
 
 exports.prepareGbpImprovement = functions.runWith({ secrets: [googleOAuthConfig] }).https.onCall(async (data, context) => {
