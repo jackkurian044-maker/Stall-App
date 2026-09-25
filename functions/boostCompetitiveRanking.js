@@ -630,7 +630,7 @@ async function buildImprovementCreatives(listing, copy) {
   return [first, { kind: "stall", label: "STall promotion", svg: buildStallPromoSvg(listing) }, second];
 }
 
-exports.prepareGbpImprovement = functions.runWith({ secrets: [googleOAuthConfig], timeoutSeconds: 180, memory: "1GiB" }).https.onCall(async (data, context) => {
+exports.prepareGbpImprovement = functions.runWith({ secrets: [googleOAuthConfig], timeoutSeconds: 180, memory: "1GB" }).https.onCall(async (data, context) => {
   if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Login required");
   const vendorId = context.auth.uid;
   const listingId = String(data?.listingId || "").trim();
