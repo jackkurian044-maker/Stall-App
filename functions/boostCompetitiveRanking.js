@@ -527,18 +527,22 @@ function escapeXml(value) {
 // promotional graphic and can be reviewed before publishing.
 function getCreativeContext(listing, copy) {
   const category = String(listing.category || "").toLowerCase();
-  const services = String(listing.products || listing.description || "")
+  const servicesText = String(listing.products || "").trim();
+  const descriptionText = String(listing.description || "").trim();
+  const combined = [category, servicesText, descriptionText].join(" ").toLowerCase();
+  const services = servicesText
     .split(/[,|\n]+/)
     .map((item) => item.trim())
     .filter(Boolean)
-    .slice(0, 5);
+    .slice(0, 6);
   const normalizedServices = services.length ? services : [String(listing.category || "Local business").trim()];
-  if (/salon|beauty|spa|barber|hair/.test(category)) return { type: "salon", label: "Beauty & salon services", services: normalizedServices };
-  if (/restaurant|cafe|food|bakery|sweet|hotel|eat/.test(category)) return { type: "food", label: "Food & dining", services: normalizedServices };
-  if (/fitness|gym|yoga|wellness/.test(category)) return { type: "fitness", label: "Fitness & wellness", services: normalizedServices };
-  if (/clinic|doctor|dental|medical|health/.test(category)) return { type: "health", label: "Health & care", services: normalizedServices };
-  if (/auto|car|bike|repair|service center|garage/.test(category)) return { type: "auto", label: "Automotive services", services: normalizedServices };
-  if (/retail|shop|store|fashion|boutique|jewel|gift/.test(category)) return { type: "retail", label: "Retail & shopping", services: normalizedServices };
+
+  if (/salon|beauty|spa|barber|hair|unisex/.test(combined)) return { type: "salon", label: "Beauty & salon services", services: normalizedServices };
+  if (/restaurant|cafe|food|bakery|sweet|hotel|eat|dining/.test(combined)) return { type: "food", label: "Food & dining", services: normalizedServices };
+  if (/fitness|gym|yoga|wellness|workout/.test(combined)) return { type: "fitness", label: "Fitness & wellness", services: normalizedServices };
+  if (/clinic|doctor|dental|medical|health|care/.test(combined)) return { type: "health", label: "Health & care", services: normalizedServices };
+  if (/auto|car|bike|repair|service center|garage|detailing/.test(combined)) return { type: "auto", label: "Automotive services", services: normalizedServices };
+  if (/retail|shop|store|fashion|boutique|jewel|gift|clothing/.test(combined)) return { type: "retail", label: "Retail & shopping", services: normalizedServices };
   return { type: "business", label: String(listing.category || "Local business").trim(), services: normalizedServices };
 }
 
@@ -611,10 +615,24 @@ function buildStallPromoSvg(listing) {
 }
 
 function buildImprovementCreatives(listing, copy) {
+  const photos = Array.isArray(listing.photos)
+    ? listing.photos.map((photo) => typeof photo === "string" ? photo : photo?.url || photo?.src || photo?.downloadURL || "").filter(Boolean)
+    : [];
+  const businessImages = photos.slice(0, 2).map((imageUrl, index) => ({
+    kind: "business",
+    label: index === 0 ? "Real store photo" : "Real service/store photo",
+    imageUrl,
+  }));
+
+  const fallbackSvgs = [
+    { kind: "business", label: "Category/service creative", svg: buildServiceCreativeSvg(listing, copy, 1) },
+    { kind: "business", label: "Category/service creative", svg: buildServiceCreativeSvg(listing, copy, 2) },
+  ];
+
   return [
-    { kind: "business", label: "Service creative", svg: buildServiceCreativeSvg(listing, copy, 1) },
+    businessImages[0] || fallbackSvgs[0],
     { kind: "stall", label: "STall promotion", svg: buildStallPromoSvg(listing) },
-    { kind: "business", label: "Service creative", svg: buildServiceCreativeSvg(listing, copy, 2) },
+    businessImages[1] || fallbackSvgs[1],
   ];
 }
 
