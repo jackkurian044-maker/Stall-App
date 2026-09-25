@@ -89,8 +89,14 @@ export default function VendorSuccessPanel({ listings, onEdit, onOffer, onTab })
     try {
       const fn = httpsCallable(getFunctions(), "approveGbpImprovement");
       const res = await fn({ listingId: listing.id });
-      setApprovalMessage(res.data?.message || "Google sync completed.");
-      setImprovement((prev) => prev ? { ...prev, status: res.data?.status || "synced" } : prev);
+      const message = res.data?.message || "Google sync completed.";
+      setApprovalMessage(message);
+      setImprovement((prev) => prev ? {
+        ...prev,
+        status: res.data?.status || "synced",
+        syncMessage: message,
+        lastGoogleFailures: res.data?.lastGoogleFailures || [],
+      } : prev);
     } catch (err) {
       setImprovementError(err?.message || "Google could not complete the approved update.");
     } finally {
@@ -187,10 +193,13 @@ export default function VendorSuccessPanel({ listings, onEdit, onOffer, onTab })
               <div style={{ fontSize: 10.5, color: "#555", lineHeight: 1.45, marginTop: 4 }}>{improvement.description}</div>
               <div style={{ fontSize: 10.5, fontWeight: 800, color: COLORS.ink, marginTop: 10 }}>Google update</div>
               <div style={{ fontSize: 10.5, color: "#555", lineHeight: 1.45, marginTop: 4 }}>{improvement.post}</div>
-              {improvement.status === "draft" ? (
-                <button type="button" onClick={approveImprovement} disabled={approvalLoading} className="stall-btn" style={{ marginTop: 10, width: "100%", background: COLORS.ink, color: "#fff", border: "none", borderRadius: 7, padding: 9, fontSize: 11, fontWeight: 900 }}>{approvalLoading ? "Syncing to Google…" : "Approve & Push to Google"}</button>
+              {["draft", "partially_synced"].includes(improvement.status) ? (
+                <button type="button" onClick={approveImprovement} disabled={approvalLoading} className="stall-btn" style={{ marginTop: 10, width: "100%", background: COLORS.ink, color: "#fff", border: "none", borderRadius: 7, padding: 9, fontSize: 11, fontWeight: 900 }}>{approvalLoading ? "Retrying Google sync…" : improvement.status === "partially_synced" ? "Retry Google sync" : "Approve & Push to Google"}</button>
               ) : (
-                <div style={{ marginTop: 10, padding: 8, borderRadius: 7, background: COLORS.teal + "12", color: COLORS.ink, fontSize: 10.5, fontWeight: 800 }}>✓ {improvement.status === "synced" ? "Google sync completed and verified." : "Google accepted the update; verification is still catching up."}</div>
+                <div style={{ marginTop: 10, padding: 8, borderRadius: 7, background: COLORS.teal + "12", color: COLORS.ink, fontSize: 10.5, fontWeight: 800 }}>✓ {improvement.status === "synced" ? "Google sync completed and verified." : "Google update processed; verification is still catching up."}</div>
+              )}
+              {improvement.syncMessage && improvement.status === "partially_synced" && (
+                <div style={{ marginTop: 7, padding: 8, borderRadius: 7, background: "#FFF5F5", color: COLORS.brick, fontSize: 10.5, lineHeight: 1.45 }}>{improvement.syncMessage}</div>
               )}
             </div>
           </div>
