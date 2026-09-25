@@ -553,7 +553,14 @@ function escapeXml(value) {
 function creativeVisual(type, x, y) {
   const fill = "#f1e4bd";
   if (type === "salon") {
-    return `<circle cx="${x+110}" cy="${y+95}" r="80" fill="${fill}"/><path d="M${x+65} ${y+45} L${x+155} ${y+145} M${x+155} ${y+45} L${x+65} ${y+145}" stroke="#182620" stroke-width="16" stroke-linecap="round"/><path d="M${x+55} ${y+190} Q${x+110} ${y+130} ${x+165} ${y+190}" fill="none" stroke="#168b78" stroke-width="12" stroke-linecap="round"/>`;
+    return `
+      <rect x="${x+35}" y="${y+30}" width="150" height="185" rx="28" fill="${fill}" stroke="#182620" stroke-width="8"/>
+      <circle cx="${x+110}" cy="${y+92}" r="42" fill="#fffdf7" stroke="#168b78" stroke-width="8"/>
+      <path d="M${x+80} ${y+92} Q${x+110} ${y+55} ${x+140} ${y+92}" fill="none" stroke="#182620" stroke-width="10" stroke-linecap="round"/>
+      <path d="M${x+74} ${y+150} Q${x+110} ${y+120} ${x+146} ${y+150}" fill="none" stroke="#182620" stroke-width="11" stroke-linecap="round"/>
+      <path d="M${x+55} ${y+182} H${x+96} M${x+124} ${y+182} H${x+165}" stroke="#168b78" stroke-width="8" stroke-linecap="round"/>
+      <path d="M${x+68} ${y+30} L${x+95} ${y+65} M${x+152} ${y+30} L${x+125} ${y+65}" stroke="#182620" stroke-width="9" stroke-linecap="round"/>
+    `;
   }
   if (type === "food") {
     return `<circle cx="${x+110}" cy="${y+100}" r="92" fill="${fill}"/><circle cx="${x+110}" cy="${y+100}" r="58" fill="#fffdf7" stroke="#182620" stroke-width="10"/><circle cx="${x+80}" cy="${y+83}" r="10" fill="#168b78"/><circle cx="${x+127}" cy="${y+125}" r="13" fill="#d6a34a"/><circle cx="${x+148}" cy="${y+77}" r="8" fill="#168b78"/><path d="M${x+35} ${y+205} H${x+185}" stroke="#182620" stroke-width="10" stroke-linecap="round"/>`;
