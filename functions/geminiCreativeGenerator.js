@@ -53,6 +53,7 @@ async function makeAiCreatives(listing, context) {
       return {
         kind: 'business',
         label: 'AI service creative • ' + (index === 0 ? primaryService : secondaryService),
+        aiGenerated: true,
         buffer: img.buffer,
         mimeType: img.mimeType,
       };
@@ -65,6 +66,7 @@ async function makeAiCreatives(listing, context) {
   const fallback = refs.map((r, i) => ({
     kind: 'business',
     label: i === 0 ? 'Real store photo' : 'Real service/store photo',
+    aiGenerated: false,
     buffer: r.data,
     mimeType: r.mimeType,
   }));
