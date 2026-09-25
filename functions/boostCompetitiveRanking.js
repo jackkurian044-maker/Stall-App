@@ -621,7 +621,7 @@ function buildStallPromoSvg(listing) {
 </svg>`;
 }
 
-async async function buildImprovementCreatives(listing, copy) {
+async function buildImprovementCreatives(listing, copy) {
   const ctx = getCreativeContext(listing, copy);
   const ai = await makeAiCreatives(listing, ctx);
   const first = ai[0] || { kind: "business", label: "Category/service creative", svg: buildServiceCreativeSvg(listing, copy, 1) };
