@@ -763,7 +763,11 @@ exports.approveGbpImprovement = functions.runWith({ secrets: [googleOAuthConfig]
     let descriptionUpdated = false;
     let googleDescriptionVerified = false;
     const postImages = Array.isArray(improvement.images) ? improvement.images : (improvement.imageUrl ? [{ kind: "business", label: "Service creative", imageUrl: improvement.imageUrl, path: improvement.imagePath }] : []);
-    const profileImages = postImages.filter((image) => image.kind === "business");
+    // Google Business Profile expects business photos to represent the real business.
+    // AI-generated service scenes stay in STall's preview; only merchant-provided
+    // real photos are eligible for Google profile/post publishing.
+    const profileImages = postImages.filter((image) => image.kind === "business" && image.aiGenerated !== true);
+    const googlePostImages = profileImages;
     const mediaNames = Array.isArray(improvement.mediaNames) ? improvement.mediaNames.slice() : [];
     let mediaUploaded = mediaNames.length >= profileImages.length && profileImages.length > 0;
     let postPublished = Boolean(improvement.postName);
@@ -825,7 +829,9 @@ exports.approveGbpImprovement = functions.runWith({ secrets: [googleOAuthConfig]
           {
             languageCode: "en-IN",
             summary: improvement.post,
-            media: postImages.map((image) => ({ mediaFormat: "PHOTO", sourceUrl: image.imageUrl })),
+            ...(googlePostImages.length > 0
+              ? { media: googlePostImages.map((image) => ({ mediaFormat: "PHOTO", sourceUrl: image.imageUrl })) }
+              : {}),
             topicType: "STANDARD",
           },
           { headers: { Authorization: "Bearer " + accessToken, "Content-Type": "application/json" } }
