@@ -562,7 +562,20 @@ async function syncGbpServices(accessToken, resourceName, listing) {
     return { eligible: false, synced: true, added: 0, reason: "Google does not allow this listing to modify its service list." };
   }
 
-  const existing = Array.isArray(location.serviceItems) ? location.serviceItems.slice() : [];
+  // Google may return legacy service-item fields (isOffered/categoryId).
+  // Normalize them before sending the full replacement list through the current
+  // v1 Location.patch schema.
+  const existing = (Array.isArray(location.serviceItems) ? location.serviceItems : []).map((item) => {
+    const normalizedItem = { ...item };
+    delete normalizedItem.isOffered;
+    if (normalizedItem.freeFormServiceItem) {
+      const freeForm = { ...normalizedItem.freeFormServiceItem };
+      if (!freeForm.category && freeForm.categoryId) freeForm.category = freeForm.categoryId;
+      delete freeForm.categoryId;
+      normalizedItem.freeFormServiceItem = freeForm;
+    }
+    return normalizedItem;
+  });
   const existingStructured = new Set(
     existing
       .map((item) => item?.structuredServiceItem?.serviceTypeId)
@@ -621,21 +634,19 @@ async function syncGbpServices(accessToken, resourceName, listing) {
     const exact = supportedByText.get(normalized);
     if (exact && !existingStructured.has(exact.serviceTypeId)) {
       additions.push({
-        isOffered: true,
         structuredServiceItem: { serviceTypeId: exact.serviceTypeId },
       });
       existingStructured.add(exact.serviceTypeId);
       continue;
     }
 
-    // If Google's predefined catalog does not contain the merchant's
-    // declared service, use a truthful custom service under the primary
-    // category rather than inventing a search keyword.
+    // Current v1 Location.serviceItems request schema no longer accepts
+    // isOffered. For custom services it also expects the category stable ID
+    // in the field named "category" (not the legacy "categoryId").
     if (!existingCustom.has(normalized) && candidate.length <= 120) {
       additions.push({
-        isOffered: true,
         freeFormServiceItem: {
-          categoryId: primaryCategory,
+          category: primaryCategory,
           label: { displayName: candidate.slice(0, 120) },
         },
       });
