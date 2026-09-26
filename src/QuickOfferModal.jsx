@@ -56,19 +56,10 @@ export default function QuickOfferModal({ listing, onClose }) {
       });
       onClose();
     } catch (err) {
-      // If the new Google publishing function is unavailable during deployment,
-      // do not break the existing STall offer flow.
-      try {
-        const expiresAt = new Date(Date.now() + expiryHours * 60 * 60 * 1000);
-        await updateDoc(doc(db, "vendors", listing.id), {
-          offer: text.trim(),
-          offerExpiresAt: expiresAt,
-        });
-        onClose();
-      } catch {
-        setError(err?.message || "Couldn't save — try again.");
-        setSaving(false);
-      }
+      // The backend saves the STall offer before attempting Google publishing,
+      // so surface a real Google error instead of pretending the push succeeded.
+      setError(err?.message || "Google offer publishing failed — try again.");
+      setSaving(false);
     }
   };
 
