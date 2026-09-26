@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { X, Zap } from "lucide-react";
 import { doc, updateDoc } from "firebase/firestore";
+import { getFunctions, httpsCallable } from "firebase/functions";
 import { COLORS } from "./constants";
 import { db } from "./firebase";
 
@@ -35,14 +36,39 @@ export default function QuickOfferModal({ listing, onClose }) {
     setError("");
     try {
       const expiresAt = new Date(Date.now() + expiryHours * 60 * 60 * 1000);
+      const publish = httpsCallable(getFunctions(), "publishGbpOffer");
+      const result = await publish({
+        businessId: listing.id,
+        offerText: text.trim(),
+        expiresAtMs: expiresAt.getTime(),
+      });
+
+      const data = result?.data || {};
+      if (data.published) {
+        onClose();
+        return;
+      }
+
+      // Keep the existing local-offer behaviour when Google is not connected.
       await updateDoc(doc(db, "vendors", listing.id), {
         offer: text.trim(),
         offerExpiresAt: expiresAt,
       });
       onClose();
-    } catch {
-      setError("Couldn't save — try again.");
-      setSaving(false);
+    } catch (err) {
+      // If the new Google publishing function is unavailable during deployment,
+      // do not break the existing STall offer flow.
+      try {
+        const expiresAt = new Date(Date.now() + expiryHours * 60 * 60 * 1000);
+        await updateDoc(doc(db, "vendors", listing.id), {
+          offer: text.trim(),
+          offerExpiresAt: expiresAt,
+        });
+        onClose();
+      } catch {
+        setError(err?.message || "Couldn't save — try again.");
+        setSaving(false);
+      }
     }
   };
 
