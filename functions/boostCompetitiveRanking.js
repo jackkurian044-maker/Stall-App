@@ -74,16 +74,33 @@ function getGoogleOAuthConfig() {
 }
 
 async function refreshAccessToken(vendorId, connectionData) {
+  if (!connectionData?.refreshToken) {
+    throw new Error("Google Business Profile needs to be reconnected because the saved Google refresh token is missing.");
+  }
   const cfg = getGoogleOAuthConfig();
-  const res = await axios.post("https://oauth2.googleapis.com/token", {
-    refresh_token: connectionData.refreshToken,
-    client_id: cfg.client_id,
-    client_secret: cfg.client_secret,
-    grant_type: "refresh_token",
-  });
-  const { access_token, expires_in } = res.data;
-  await db.collection("gbp_connections").doc(vendorId).update({ accessToken: access_token, tokenExpiresAt: new Date(Date.now() + expires_in * 1000) });
-  return access_token;
+  try {
+    const res = await axios.post("https://oauth2.googleapis.com/token", {
+      refresh_token: connectionData.refreshToken,
+      client_id: cfg.client_id,
+      client_secret: cfg.client_secret,
+      grant_type: "refresh_token",
+    });
+    const { access_token, expires_in } = res.data;
+    if (!access_token) throw new Error("Google did not return a refreshed access token.");
+    await db.collection("gbp_connections").doc(vendorId).update({
+      accessToken: access_token,
+      tokenExpiresAt: new Date(Date.now() + Number(expires_in || 3600) * 1000),
+    });
+    return access_token;
+  } catch (err) {
+    const googleMessage =
+      err?.response?.data?.error_description ||
+      err?.response?.data?.error?.message ||
+      err?.response?.data?.error ||
+      err?.message ||
+      "Unknown Google token refresh error";
+    throw new Error("Google token refresh failed: " + String(googleMessage));
+  }
 }
 
 async function getValidToken(vendorId, connectionData) {
@@ -739,7 +756,19 @@ exports.approveGbpImprovement = functions.runWith({ secrets: [googleOAuthConfig]
     }
 
     const connectionData = connSnap.data();
-    const accessToken = await getValidToken(vendorId, connectionData);
+    let accessToken;
+    try {
+      accessToken = await getValidToken(vendorId, connectionData);
+    } catch (tokenErr) {
+      const tokenMessage = tokenErr?.message || "Google authentication could not be refreshed.";
+      await db.collection("gbp_improvements").doc(vendorId).set({
+        status: "partially_synced",
+        syncMessage: tokenMessage,
+        lastGoogleFailures: [tokenMessage],
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+      throw new functions.https.HttpsError("failed-precondition", tokenMessage);
+    }
     const accountName = String(connectionData.accountName || "").trim();
     const locationId = String(connectionData.locationId || "").trim();
     if (!accountName || !locationId) {
@@ -911,8 +940,10 @@ exports.approveGbpImprovement = functions.runWith({ secrets: [googleOAuthConfig]
     if (err instanceof functions.https.HttpsError) throw err;
     const status = err?.response?.status;
     const apiMessage =
+      err?.response?.data?.error_description ||
       err?.response?.data?.error?.message ||
       err?.response?.data?.message ||
+      (typeof err?.response?.data?.error === "string" ? err.response.data.error : "") ||
       err?.message ||
       "Unknown Google error";
     console.error("approveGbpImprovement failed:", status, err?.response?.data || err.message);
