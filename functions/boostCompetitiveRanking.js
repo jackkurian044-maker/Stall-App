@@ -537,6 +537,142 @@ Do not invent awards, prices, locations, services, opening hours, guarantees, or
   }
 }
 
+function normalizeServiceText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+// Push truthful, business-declared services into the Google Services section.
+// We never turn generic SEO phrases such as "near me" into fake services.
+async function syncGbpServices(accessToken, resourceName, listing) {
+  const locationRes = await axios.get(
+    `https://mybusinessbusinessinformation.googleapis.com/v1/${resourceName}`,
+    {
+      headers: { Authorization: "Bearer " + accessToken },
+      params: { readMask: "serviceItems,categories,metadata,address" },
+    }
+  );
+
+  const location = locationRes.data || {};
+  if (location.metadata?.canModifyServiceList === false) {
+    return { eligible: false, synced: true, added: 0, reason: "Google does not allow this listing to modify its service list." };
+  }
+
+  const existing = Array.isArray(location.serviceItems) ? location.serviceItems.slice() : [];
+  const existingStructured = new Set(
+    existing
+      .map((item) => item?.structuredServiceItem?.serviceTypeId)
+      .filter(Boolean)
+  );
+  const existingCustom = new Set(
+    existing
+      .map((item) => item?.freeFormServiceItem?.label?.displayName)
+      .filter(Boolean)
+      .map(normalizeServiceText)
+  );
+
+  const primaryCategory = String(location.categories?.primaryCategory?.name || "").trim();
+  const regionCode = String(location.address?.regionCode || "IN").trim().toUpperCase();
+  if (!primaryCategory) {
+    return { eligible: true, synced: true, added: 0, reason: "Google primary category is missing." };
+  }
+
+  let supportedServices = [];
+  try {
+    const categoryRes = await axios.get(
+      "https://mybusinessbusinessinformation.googleapis.com/v1/categories:batchGet",
+      {
+        headers: { Authorization: "Bearer " + accessToken },
+        params: {
+          regionCode,
+          languageCode: "en",
+          names: primaryCategory,
+          view: "FULL",
+        },
+      }
+    );
+    supportedServices = categoryRes.data?.categories?.[0]?.serviceTypes || [];
+  } catch (err) {
+    console.warn("GBP service catalog lookup failed:", err.response?.status, err.response?.data || err.message);
+  }
+
+  const supportedByText = new Map(
+    supportedServices.map((service) => [
+      normalizeServiceText(service.displayName),
+      service,
+    ])
+  );
+
+  const declaredServices = String(listing.products || "")
+    .split(/[,|\n]+/)
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .slice(0, 12);
+
+  const additions = [];
+  for (const candidate of declaredServices) {
+    const normalized = normalizeServiceText(candidate);
+    if (!normalized || normalized.length < 2) continue;
+
+    const exact = supportedByText.get(normalized);
+    if (exact && !existingStructured.has(exact.serviceTypeId)) {
+      additions.push({
+        isOffered: true,
+        structuredServiceItem: { serviceTypeId: exact.serviceTypeId },
+      });
+      existingStructured.add(exact.serviceTypeId);
+      continue;
+    }
+
+    // If Google's predefined catalog does not contain the merchant's
+    // declared service, use a truthful custom service under the primary
+    // category rather than inventing a search keyword.
+    if (!existingCustom.has(normalized) && candidate.length <= 120) {
+      additions.push({
+        isOffered: true,
+        freeFormServiceItem: {
+          categoryId: primaryCategory,
+          label: { displayName: candidate.slice(0, 120) },
+        },
+      });
+      existingCustom.add(normalized);
+    }
+  }
+
+  if (!additions.length) {
+    return { eligible: true, synced: true, added: 0, reason: "No new declared services needed." };
+  }
+
+  const nextServices = existing.concat(additions);
+  await axios.patch(
+    `https://mybusinessbusinessinformation.googleapis.com/v1/${resourceName}`,
+    { serviceItems: nextServices },
+    {
+      params: { updateMask: "serviceItems" },
+      headers: { Authorization: "Bearer " + accessToken, "Content-Type": "application/json" },
+    }
+  );
+
+  const verifyRes = await axios.get(
+    `https://mybusinessbusinessinformation.googleapis.com/v1/${resourceName}`,
+    {
+      headers: { Authorization: "Bearer " + accessToken },
+      params: { readMask: "serviceItems" },
+    }
+  );
+
+  return {
+    eligible: true,
+    synced: Array.isArray(verifyRes.data?.serviceItems),
+    added: additions.length,
+    serviceItems: verifyRes.data?.serviceItems || [],
+  };
+}
+
 function escapeXml(value) {
   return String(value || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
 }
@@ -647,6 +783,179 @@ async function buildImprovementCreatives(listing, copy) {
   const second = ai[1] || { kind: "business", label: "Category/service creative", svg: buildServiceCreativeSvg(listing, copy, 2) };
   return [first, { kind: "stall", label: "STall promotion", svg: buildStallPromoSvg(listing) }, second];
 }
+
+exports.publishGbpOffer = functions.runWith({ secrets: [googleOAuthConfig] }).https.onCall(async (data, context) => {
+  if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Login required");
+
+  const vendorId = context.auth.uid;
+  const businessId = String(data?.businessId || "").trim();
+  const offerText = String(data?.offerText || "").trim();
+  const expiresAtMs = Number(data?.expiresAtMs || 0);
+
+  if (!businessId || !offerText) {
+    throw new functions.https.HttpsError("invalid-argument", "Business and offer are required");
+  }
+  if (!Number.isFinite(expiresAtMs) || expiresAtMs <= Date.now()) {
+    throw new functions.https.HttpsError("invalid-argument", "Offer expiry must be in the future");
+  }
+
+  const listingRef = db.collection("vendors").doc(businessId);
+  const [listingSnap, connSnap] = await Promise.all([
+    listingRef.get(),
+    db.collection("gbp_connections").doc(vendorId).get(),
+  ]);
+  if (!listingSnap.exists || listingSnap.data().ownerId !== vendorId) {
+    throw new functions.https.HttpsError("permission-denied", "You do not own this listing");
+  }
+
+  const listing = listingSnap.data();
+  // Always keep the STall offer/timeline authoritative, even if Google is not connected.
+  const expiresAt = new Date(expiresAtMs);
+  await listingRef.update({
+    offer: offerText,
+    offerExpiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
+    offerUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  if (!connSnap.exists || !connSnap.data().connected || !connSnap.data().locationId) {
+    return {
+      success: true,
+      published: false,
+      message: "Offer saved in STall. Connect Google Business Profile to publish it to Google.",
+    };
+  }
+
+  try {
+    const connectionData = connSnap.data();
+    const accessToken = await getValidToken(vendorId, connectionData);
+    const accountName = String(connectionData.accountName || "").trim();
+    const locationId = String(connectionData.locationId || "").trim();
+    if (!accountName || !locationId) throw new Error("Connected Google Business Profile location details are incomplete");
+
+    const v4Parent = accountName + "/" + (locationId.startsWith("locations/") ? locationId : "locations/" + locationId);
+
+    // Remove the previous STall-managed offer post so customers see the current
+    // offer rather than an expired/old promotion.
+    if (listing.googleOfferPostName) {
+      try {
+        await axios.delete(
+          `https://mybusiness.googleapis.com/v4/${listing.googleOfferPostName}`,
+          { headers: { Authorization: "Bearer " + accessToken } }
+        );
+      } catch (deleteErr) {
+        console.warn("Previous Google offer could not be deleted:", deleteErr.response?.status, deleteErr.response?.data || deleteErr.message);
+      }
+    }
+
+    let title = "Limited-Time Special";
+    let summary = offerText;
+    try {
+      const raw = (await generateGeminiText(
+        `Create attractive but truthful Google Business Profile offer copy.
+BUSINESS: ${String(listing.name || "Local business")}
+OFFER PROVIDED BY OWNER: ${offerText}
+EXPIRY: ${expiresAt.toISOString()}
+
+Return ONLY valid JSON:
+{"title":"short offer title under 55 characters","summary":"clear, attractive offer description under 250 characters"}
+Do not invent discounts, prices, services, dates, guarantees, or conditions not present in the owner offer.`,
+        { maxOutputTokens: 300, temperature: 0.3 }
+      )).replace(/\`\`\`json|\`\`\`/g, "").trim();
+      const parsed = JSON.parse(raw);
+      if (parsed.title) title = String(parsed.title).trim().slice(0, 55);
+      if (parsed.summary) summary = String(parsed.summary).trim().slice(0, 250);
+    } catch (copyErr) {
+      console.warn("Offer copy generation failed; using owner text:", copyErr.message);
+    }
+
+    const start = new Date();
+    const dateParts = (date) => ({
+      year: date.getFullYear(),
+      month: date.getMonth() + 1,
+      day: date.getDate(),
+    });
+    const timeParts = (date) => ({
+      hours: date.getHours(),
+      minutes: date.getMinutes(),
+      seconds: 0,
+      nanos: 0,
+    });
+    const endLabel = expiresAt.toLocaleString("en-IN", {
+      timeZone: "Asia/Kolkata",
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+
+    const media = Array.isArray(listing.photos)
+      ? listing.photos.filter((url) => typeof url === "string" && url.trim()).slice(0, 1)
+          .map((sourceUrl) => ({ mediaFormat: "PHOTO", sourceUrl }))
+      : [];
+
+    const postBody = {
+      languageCode: "en-IN",
+      summary: summary + ` Valid until ${endLabel}.`,
+      event: {
+        title,
+        schedule: {
+          startDate: dateParts(start),
+          startTime: timeParts(start),
+          endDate: dateParts(expiresAt),
+          endTime: timeParts(expiresAt),
+        },
+      },
+      offer: {
+        termsConditions: `Valid until ${endLabel}. ${offerText}`,
+      },
+      ...(media.length ? { media } : {}),
+      topicType: "OFFER",
+    };
+
+    const postRes = await axios.post(
+      `https://mybusiness.googleapis.com/v4/${v4Parent}/localPosts`,
+      postBody,
+      { headers: { Authorization: "Bearer " + accessToken, "Content-Type": "application/json" } }
+    );
+
+    const postName = postRes.data?.name || null;
+    if (!postName) throw new Error("Google returned no offer post name");
+
+    await listingRef.update({
+      googleOfferPostName: postName,
+      googleOfferTitle: title,
+      googleOfferSummary: summary,
+      googleOfferPublishedAt: admin.firestore.FieldValue.serverTimestamp(),
+      googleOfferStatus: postRes.data?.state || "PROCESSING",
+      googleOfferExpiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
+    });
+
+    return {
+      success: true,
+      published: true,
+      postName,
+      title,
+      summary,
+      expiresAt: expiresAt.toISOString(),
+      state: postRes.data?.state || "PROCESSING",
+    };
+  } catch (err) {
+    console.error("Google offer publishing failed:", err.response?.status, err.response?.data || err.message);
+    const status = err?.response?.status;
+    const apiMessage =
+      err?.response?.data?.error?.message ||
+      err?.response?.data?.message ||
+      err?.message ||
+      "Unknown Google error";
+    throw new functions.https.HttpsError(
+      "unavailable",
+      status
+        ? `Google offer publishing failed (HTTP ${status}): ${apiMessage}`
+        : `Google offer publishing failed: ${apiMessage}`
+    );
+  }
+});
 
 exports.prepareGbpImprovement = functions.runWith({ secrets: [googleOAuthConfig], timeoutSeconds: 180, memory: "1GB" }).https.onCall(async (data, context) => {
   if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Login required");
@@ -846,6 +1155,22 @@ exports.approveGbpImprovement = functions.runWith({ secrets: [googleOAuthConfig]
       descriptionUpdated = true;
     }
 
+    // 2) Sync truthful business services into Google's Services section.
+    // These come from the merchant's declared products/services, not generic
+    // "SEO keyword" phrases, so STall never creates misleading offerings.
+    let servicesSynced = false;
+    let servicesAdded = 0;
+    try {
+      const serviceResult = await syncGbpServices(accessToken, resourceName, listingSnap.data());
+      servicesSynced = serviceResult.synced;
+      servicesAdded = Number(serviceResult.added || 0);
+      updateData.servicesSynced = servicesSynced;
+      updateData.servicesAdded = servicesAdded;
+      updateData.serviceSyncReason = serviceResult.reason || null;
+    } catch (err) {
+      failures.push(googleError("Google services update", err));
+    }
+
     // 2) Publish only the business/service creatives to the profile gallery.
     if (!mediaUploaded) {
       for (const image of profileImages) {
@@ -913,7 +1238,7 @@ exports.approveGbpImprovement = functions.runWith({ secrets: [googleOAuthConfig]
       failures.push(googleError("Google description verification", err));
     }
 
-    const fullySynced = descriptionUpdated && googleDescriptionVerified && mediaUploaded && postPublished && failures.length === 0;
+    const fullySynced = descriptionUpdated && googleDescriptionVerified && servicesSynced && mediaUploaded && postPublished && failures.length === 0;
     const status = fullySynced ? "synced" : "partially_synced";
     const message = fullySynced
       ? "Google Business Profile updated and verified."
@@ -934,6 +1259,8 @@ exports.approveGbpImprovement = functions.runWith({ secrets: [googleOAuthConfig]
       mediaUploaded,
       postPublished,
       googleDescriptionVerified,
+      servicesSynced,
+      servicesAdded,
       message,
     };
   } catch (err) {
