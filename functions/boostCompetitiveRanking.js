@@ -877,14 +877,15 @@ exports.approveGbpImprovement = functions.runWith({ secrets: [googleOAuthConfig]
     // 3) Publish the approved update with the service images and the STall promo interstitial.
     if (!postPublished) {
       try {
+        // Keep the first GBP post deliberately minimal and text-only.
+        // Google accepts STANDARD posts with summary + topicType; attaching media
+        // here has historically produced opaque INVALID_ARGUMENT responses for
+        // some profiles. Real photos are handled separately by media.create.
         const postRes = await axios.post(
           `https://mybusiness.googleapis.com/v4/${v4Parent}/localPosts`,
           {
-            languageCode: "en-IN",
-            summary: improvement.post,
-            ...(googlePostImages.length > 0
-              ? { media: googlePostImages.map((image) => ({ mediaFormat: "PHOTO", sourceUrl: image.imageUrl })) }
-              : {}),
+            languageCode: "en-US",
+            summary: String(improvement.post || "").trim().slice(0, 1500),
             topicType: "STANDARD",
           },
           { headers: { Authorization: "Bearer " + accessToken, "Content-Type": "application/json" } }
