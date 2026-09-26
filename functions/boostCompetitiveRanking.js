@@ -553,7 +553,7 @@ async function syncGbpServices(accessToken, resourceName, listing) {
     `https://mybusinessbusinessinformation.googleapis.com/v1/${resourceName}`,
     {
       headers: { Authorization: "Bearer " + accessToken },
-      params: { readMask: "serviceItems,categories,metadata,address" },
+      params: { readMask: "serviceItems,categories,metadata,storefrontAddress" },
     }
   );
 
@@ -576,7 +576,7 @@ async function syncGbpServices(accessToken, resourceName, listing) {
   );
 
   const primaryCategory = String(location.categories?.primaryCategory?.name || "").trim();
-  const regionCode = String(location.address?.regionCode || "IN").trim().toUpperCase();
+  const regionCode = String(location.storefrontAddress?.regionCode || "IN").trim().toUpperCase();
   if (!primaryCategory) {
     return { eligible: true, synced: true, added: 0, reason: "Google primary category is missing." };
   }
