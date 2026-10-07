@@ -149,7 +149,7 @@ exports.publicBusinessPage = functions.https.onRequest(async (req, res) => {
     const data = publicData(listing, canonicalUrl);
     let html = await getIndexHtml();
 
-    html = html.replace(/<title>[\\s\\S]*?<\\/title>/i, `<title>${escapeHtml(data.name)} | STall</title>`);
+    html = html.replace(/<title>[\\s\\S]*?<\/title>/i, `<title>${escapeHtml(data.name)} | STall</title>`);
     html = html.replace(/<meta name="description" content="[^"]*" \/>/i, `<meta name="description" content="${escapeHtml(data.description || (data.name + " on STall."))}" />`);
     html = html.replace(/<link rel="canonical" href="[^"]*" \/>/i, `<link rel="canonical" href="${escapeHtml(data.canonicalUrl)}" />`);
     html = html.replace(/<meta property="og:title" content="[^"]*" \/>/i, `<meta property="og:title" content="${escapeHtml(data.name + " | STall")}" />`);
