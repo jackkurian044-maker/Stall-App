@@ -43,6 +43,13 @@
     ],
     "rewrites": [
       {
+        "source": "/sitemap.xml",
+        "function": {
+          "functionId": "publicSitemap",
+          "region": "us-central1"
+        }
+      },
+      {
         "source": "/store/**",
         "function": {
           "functionId": "publicBusinessPage",
