@@ -53,13 +53,60 @@ export default function PublicBusinessPage({ listingId }) {
     if (!listing) return;
     document.title = `${listing.name} | STall`;
     const description = listing.description || `${listing.name} on STall.`;
+    const canonicalUrl = window.location.href.split("#")[0];
     let meta = document.querySelector('meta[name="description"]');
     if (!meta) { meta = document.createElement("meta"); meta.name = "description"; document.head.appendChild(meta); }
     meta.content = description;
+
+    const setMeta = (selector, attribute, value) => {
+      let el = document.querySelector(selector);
+      if (!el) {
+        el = document.createElement("meta");
+        el.setAttribute(attribute === "name" ? "name" : "property", selector.match(/["']([^"']+)["']/)?.[1] || "");
+        document.head.appendChild(el);
+      }
+      el.content = value;
+    };
+    setMeta('meta[property="og:type"]', "property", "website");
+    setMeta('meta[property="og:title"]', "property", `${listing.name} | STall`);
+    setMeta('meta[property="og:description"]', "property", description);
+    setMeta('meta[property="og:url"]', "property", canonicalUrl);
+    setMeta('meta[name="twitter:card"]', "name", "summary_large_image");
+    setMeta('meta[name="twitter:title"]', "name", `${listing.name} | STall`);
+    setMeta('meta[name="twitter:description"]', "name", description);
+
     const canonical = document.querySelector('link[rel="canonical"]') || document.createElement("link");
     canonical.rel = "canonical";
-    canonical.href = `${window.location.origin}/store/${slugify(listing.name)}`;
+    canonical.href = canonicalUrl;
     if (!canonical.parentNode) document.head.appendChild(canonical);
+
+    const schema = {
+      "@context": "https://schema.org",
+      "@type": "LocalBusiness",
+      "@id": canonicalUrl + "#business",
+      "name": listing.name,
+      "url": canonicalUrl,
+      "description": description,
+      "telephone": listing.phone || undefined,
+      "image": Array.isArray(listing.photos) ? listing.photos.filter(Boolean).slice(0, 5) : undefined,
+      "address": listing.address ? { "@type": "PostalAddress", "streetAddress": listing.address } : undefined,
+      "sameAs": [listing.website, listing.mapsUrl].filter(Boolean),
+      "identifier": listing.id,
+      "category": listing.category || undefined,
+      "aggregateRating": listing.rating != null && listing.ratingsCount ? {
+        "@type": "AggregateRating",
+        "ratingValue": Number(listing.rating),
+        "reviewCount": Number(listing.ratingsCount)
+      } : undefined
+    };
+    let schemaScript = document.getElementById("stall-business-schema");
+    if (!schemaScript) {
+      schemaScript = document.createElement("script");
+      schemaScript.id = "stall-business-schema";
+      schemaScript.type = "application/ld+json";
+      document.head.appendChild(schemaScript);
+    }
+    schemaScript.textContent = JSON.stringify(schema);
   }, [listing]);
 
   const back = () => { window.location.href = "/"; };
