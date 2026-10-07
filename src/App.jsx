@@ -32,15 +32,10 @@ export default function App() {
   const [directManageId, setDirectManageId] = useState("");
 
   useEffect(() => {
-    const host = window.location.hostname.toLowerCase();
-    const path = window.location.pathname;
-    // Keep the app subdomain unchanged. Only the apex-domain homepage
-    // redirects to the public STall business-growth landing page.
-    if ((host === "stallwale.in" || host === "www.stallwale.in") && path === "/") {
-      window.location.replace("https://stall.stallwale.in/business-growth.html");
-      return;
-    }
-
+    // The apex domain is now the primary STall public experience.
+    // Keep all existing route handling below unchanged so business pages,
+    // direct ordering, auth, admin, GBP and other application flows continue
+    // to use the same Firebase app and Firestore data paths.
     const params = new URLSearchParams(window.location.search);
     const pathMatch = window.location.pathname.match(/^\/business\/([^/]+)\/?$/i);
     const directMatch = window.location.pathname.match(/^\/direct\/([^/]+)\/?$/i);
