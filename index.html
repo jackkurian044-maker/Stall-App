@@ -39,7 +39,11 @@
           "@type": "Organization",
           "@id": "https://stallwale.in/#organization",
           "name": "STall",
-          "url": "https://stallwale.in/"
+          "url": "https://stallwale.in/",
+          "logo": "https://stall.stallwale.in/assets/stall-logo-exact.jpg",
+          "description": "STall is a neighbourhood-first local business discovery and digital presence platform.",
+          "knowsAbout": ["local business discovery", "business listings", "business claiming", "local offers", "digital presence", "digital store automation"],
+          "areaServed": {"@type": "Country", "name": "India"}
         },
         {
           "@type": "WebSite",
@@ -47,7 +51,8 @@
           "name": "STall",
           "url": "https://stallwale.in/",
           "publisher": { "@id": "https://stallwale.in/#organization" },
-          "description": "Discover local businesses, offers and services around you. Business owners can list, claim and grow their digital presence."
+          "description": "Discover local businesses, offers and services around you. Business owners can list, claim and grow their digital presence.",
+          "inLanguage": "en-IN"
         },
         {
           "@type": "WebPage",
@@ -56,7 +61,20 @@
           "name": "STall — Local Business Discovery & Digital Store Automation",
           "isPartOf": { "@id": "https://stallwale.in/#website" },
           "about": { "@id": "https://stallwale.in/#organization" },
-          "description": "STall connects customers with local businesses and provides business owners with listings, offers, reputation tools and digital store automation."
+          "description": "STall connects customers with local businesses and provides business owners with listings, offers, reputation tools and digital store automation.",
+          "mainEntity": {"@id": "https://stallwale.in/#faq"}
+        },
+        {
+          "@type": "FAQPage",
+          "@id": "https://stallwale.in/#faq",
+          "url": "https://stallwale.in/#faq",
+          "name": "STall frequently asked questions",
+          "mainEntity": [
+            {"@type":"Question","name":"What is STall?","acceptedAnswer":{"@type":"Answer","text":"STall is a neighbourhood-first platform for discovering local businesses, offers and services, while helping business owners build and maintain a digital presence."}},
+            {"@type":"Question","name":"Can a business list itself on STall?","acceptedAnswer":{"@type":"Answer","text":"Yes. Business owners can create a STall listing, claim an existing listing and manage their business presence."}},
+            {"@type":"Question","name":"What businesses can be discovered on STall?","acceptedAnswer":{"@type":"Answer","text":"STall is designed for local businesses such as restaurants, salons, shops, services and other neighbourhood businesses."}},
+            {"@type":"Question","name":"What is STall Digital Store Automation?","acceptedAnswer":{"@type":"Answer","text":"STall Digital Store Automation is a business tool for creating and managing business content, offers and digital presence."}}
+          ]
         },
         {
           "@type": "Service",
