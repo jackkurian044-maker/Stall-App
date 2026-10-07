@@ -29,7 +29,7 @@ export default function PublicLandingPage() {
     return () => {};
   }, []);
 
-  const markup = landingMarkup.replaceAll("\\n", "").replaceAll("__STALL_LOGO__", stallLogo);
+  const markup = landingMarkup.replace(/\\n/g, "").replace(/\n/g, "").replaceAll("__STALL_LOGO__", stallLogo);
   return (
     <div id="stall-public-landing">
       <style dangerouslySetInnerHTML={{ __html: landingStyles }} />
