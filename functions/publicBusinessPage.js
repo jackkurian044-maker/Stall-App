@@ -178,3 +178,30 @@ exports.publicBusinessPage = functions.https.onRequest(async (req, res) => {
     }
   }
 });
+
+
+exports.publicSitemap = functions.https.onRequest(async (req, res) => {
+  try {
+    const snap = await db.collection("vendors").get();
+    const urls = ["https://stallwale.in/"];
+    for (const doc of snap.docs) {
+      const listing = doc.data() || {};
+      if (!isActive(listing)) continue;
+      const slug = String(listing.publicSlug || doc.id).trim();
+      if (!slug) continue;
+      urls.push("https://stallwale.in/store/" + encodeURIComponent(slug));
+    }
+    const unique = [...new Set(urls)];
+    const body = '<?xml version="1.0" encoding="UTF-8"?>' +
+      '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' +
+      unique.map((url) => '<url><loc>' + escapeHtml(url) + '</loc></url>').join("") +
+      '</urlset>';
+    res.set("Content-Type", "application/xml; charset=utf-8");
+    res.set("Cache-Control", "public, max-age=1800, s-maxage=1800");
+    return res.status(200).send(body);
+  } catch (error) {
+    console.error("publicSitemap failed:", error?.message);
+    res.set("Content-Type", "application/xml; charset=utf-8");
+    return res.status(200).send('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://stallwale.in/</loc></url></urlset>');
+  }
+});
