@@ -24,6 +24,16 @@ export default function PublicBusinessPage({ listingId }) {
     const load = async () => {
       try {
         const key = String(listingId || "").trim().toLowerCase();
+
+        // Firebase Hosting prerenders public business pages for crawlers.
+        // Use that bootstrap immediately, then refresh from Firestore so the
+        // visible app remains current without changing any business data flow.
+        const boot = window.__STALL_PUBLIC_BUSINESS__;
+        if (boot && (String(boot.id || "").toLowerCase() === key || String(boot.publicSlug || "").toLowerCase() === key)) {
+          setListing(boot);
+          setLoading(false);
+        }
+
         let snap = null;
         if (key) {
           snap = await getDoc(doc(publicDb, "vendors", key));
