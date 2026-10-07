@@ -797,3 +797,5 @@ exports.revertTestGrowthSetupEntitlement = functions.https.onCall(async (data, c
     throw new functions.https.HttpsError("internal", err?.message || "Could not revert test entitlement");
   }
 });
+
+Object.assign(exports, require("./publicBusinessPage"));
