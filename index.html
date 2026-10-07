@@ -3,7 +3,10 @@
   <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="stall-auth-build" content="redirect-v5-20260915" />
+  <meta name="stall-auth-build" content="public-root-v1-20261007" />
+  <meta name="description" content="STall helps people discover local businesses, offers and services around them, while giving business owners a digital presence and tools to stay visible." />
+  <meta name="robots" content="index,follow,max-image-preview:large" />
+  <link rel="canonical" href="https://stallwale.in/" />
   <link rel="icon" type="image/svg+xml" href="/stall-icon.svg" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <meta name="theme-color" content="#102a43" />
@@ -15,10 +18,37 @@
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&display=swap" rel="stylesheet" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
-  <title>STALL — find what's around the corner</title>
+  <title>STALL — find what's around the corner</title>\n  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://stallwale.in/#organization",
+          "name": "STall",
+          "url": "https://stallwale.in/"
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://stallwale.in/#website",
+          "name": "STall",
+          "url": "https://stallwale.in/",
+          "publisher": { "@id": "https://stallwale.in/#organization" },
+          "description": "Discover local businesses, offers and services around you."
+        }
+      ]
+    }
+  </script>
 </head>
   <body>
     <div id="root"></div>
+    <noscript>
+      <main>
+        <h1>STall — discover local businesses, offers and services</h1>
+        <p>STall helps people discover businesses around them and helps business owners build a digital presence, publish offers and stay visible to customers.</p>
+        <p>Explore STall business pages to find restaurants, salons, shops, services and other local businesses.</p>
+      </main>
+    </noscript>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
