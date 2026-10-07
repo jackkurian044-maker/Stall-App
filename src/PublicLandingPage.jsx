@@ -15,6 +15,18 @@ export default function PublicLandingPage() {
 
     const root = document.getElementById("stall-public-landing");
     if (!root) return;
+
+    // Remove any stray literal "\\n" text nodes left by the embedded landing markup.
+    // This is intentionally DOM-level so the marker cannot render even if a cached/build
+    // transformation reintroduces the escaped characters into the HTML string.
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const textNodes = [];
+    let node;
+    while ((node = walker.nextNode())) textNodes.push(node);
+    textNodes.forEach((textNode) => {
+      if (/^\\n$/.test(textNode.nodeValue.trim())) textNode.remove();
+    });
+
     root.querySelectorAll(".pricing-market-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
         const market = btn.getAttribute("data-market");
