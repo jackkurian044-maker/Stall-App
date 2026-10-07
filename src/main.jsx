@@ -3,11 +3,12 @@ import ReactDOM from "react-dom/client";
 import "./global.css";
 
 const publicMatch = window.location.pathname.match(/^\/store\/([^/]+)\/?$/i);
+const publicRoot = (window.location.hostname === "stallwale.in" || window.location.hostname === "www.stallwale.in") && window.location.pathname === "/";
 const root = ReactDOM.createRoot(document.getElementById("root"));
 
 async function boot() {
   try {
-    const module = publicMatch ? await import("./PublicBusinessPage.jsx") : await import("./App.jsx");
+    const module = publicRoot ? await import("./PublicLandingPage.jsx") : publicMatch ? await import("./PublicBusinessPage.jsx") : await import("./App.jsx");
     const Page = module.default;
     root.render(<React.StrictMode><Page listingId={publicMatch ? publicMatch[1] : undefined}/></React.StrictMode>);
   } catch (error) {
