@@ -73,6 +73,13 @@ jobs:
       - name: Prepare secure Premium payment functions
         if: steps.changes.outputs.functions_changed == 'true'
         run: node functions/prepare-premium.js
+
+      - name: Deploy AI-readable public business pages
+        if: steps.changes.outputs.functions_changed == 'true'
+        run: npx --yes firebase-tools@latest deploy --only functions:publicBusinessPage,functions:publicSitemap --project stall-app-1aab7 --non-interactive
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
+
       - name: Deploy Firestore rules and indexes
         run: npx --yes firebase-tools@latest deploy --only firestore:rules,firestore:indexes --project stall-app-1aab7 --non-interactive
         env:
