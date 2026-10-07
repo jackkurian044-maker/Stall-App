@@ -8,7 +8,7 @@ const root = ReactDOM.createRoot(document.getElementById("root"));
 
 async function boot() {
   try {
-    const module = publicRoot ? await import("./PublicLandingPage.jsx") : publicMatch ? await import("./PublicBusinessPage.jsx") : await import("./App.jsx");
+    const module = publicRoot ? await import("./PublicLandingPageFixed.jsx") : publicMatch ? await import("./PublicBusinessPage.jsx") : await import("./App.jsx");
     const Page = module.default;
     root.render(<React.StrictMode><Page listingId={publicMatch ? publicMatch[1] : undefined}/></React.StrictMode>);
   } catch (error) {
