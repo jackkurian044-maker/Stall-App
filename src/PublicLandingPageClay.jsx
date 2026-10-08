@@ -4,6 +4,14 @@ const logo="https://stall.stallwale.in/assets/stall-logo-exact.jpg";
 const appUrl="https://stallapp.stallwale.in/";
 const studioUrl="https://stallwale.ai.studio/";
 
+function ProductIcon({type}){
+  const common={width:22,height:22,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:"2",strokeLinecap:"round",strokeLinejoin:"round",ariaHidden:true};
+  if(type==="discovery") return <svg {...common}><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/><path d="M8.5 11h5"/></svg>;
+  if(type==="score") return <svg {...common}><path d="M4 19V9"/><path d="M10 19V5"/><path d="M16 19v-7"/><path d="M22 19V3"/></svg>;
+  if(type==="intelligence") return <svg {...common}><circle cx="12" cy="12" r="8"/><path d="M12 8v8"/><path d="M8 12h8"/><path d="M5 5 3 3"/><path d="m19 5 2-2"/></svg>;
+  return <svg {...common}><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2 2-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V20h-3v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1-2-2 .1-.1A1.7 1.7 0 0 0 7.2 15a1.7 1.7 0 0 0-1.5-1H5v-3h.7a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1 2-2 .1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.5V4h3v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1 2 2-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.5 1h.7v3h-.7a1.7 1.7 0 0 0-1.5 1Z"/></svg>;
+}
+
 const images={
   restaurant:"https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=700&q=80",
   unisex:"https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=700&q=80",
@@ -59,6 +67,8 @@ footer,.footcol h3{color:#fff}.foot-logo p,.footlinks a{color:#d0c9bf}.footlinks
 .phone-screen,.phone-top,.phone-card,.phone-card strong,.metric{color:#171512}.phone-top{color:#fff}.metric span{color:#5d574f}.metric.good b{color:#08744e}
 .cta,.cta h2,.cta p{color:#171512}.cta p{color:#5d574f}
 @media(max-width:600px){.hero-box .hero-lead{color:#e8e1d7}.footlinks a{color:#d0c9bf}}
+
+.prod-icon{color:#111!important;font-size:0}.prod-icon svg{display:block;width:22px;height:22px;stroke:#111;stroke-width:2.2}
 `;
 
 export default function PublicLandingPageClay(){
@@ -126,10 +136,10 @@ export default function PublicLandingPageClay(){
       <section id="platform" className="section"><div className="wrap">
         <div className="section-head"><div><div className="kicker">Our AI Products</div><h2>Everything your business needs to get discovered, attract customers and grow.</h2><p>One clear path from local discovery to digital intelligence and automation.</p></div><a className="view" href="/products.html">View All Products →</a></div>
         <div className="products">
-          <a className="prod" href={appUrl}><div><div className="prod-icon">⌕</div><h3>Business<br/>Discovery</h3><p>Find and connect with local customers.</p></div><div className="prod-cta">Open STall App →</div></a>
-          <a className="prod" href={studioUrl}><div><div className="prod-icon">▮</div><h3>Digital Score</h3><p>Know your digital presence score.</p></div><div className="prod-cta">Check Score →</div></a>
-          <a className="prod" href={studioUrl}><div><div className="prod-icon">✦</div><h3>Business<br/>Intelligence</h3><p>AI insights to grow faster.</p></div><div className="prod-cta">Explore →</div></a>
-          <a className="prod" href={studioUrl}><div><div className="prod-icon">⚙</div><h3>Digital Store<br/>Automation</h3><p>Automate posts, offers and engagement.</p></div><div className="prod-cta">Get Started →</div></a>
+          <a className="prod" href={appUrl}><div><div className="prod-icon"><ProductIcon type="discovery"/></div><h3>Business<br/>Discovery</h3><p>Find and connect with local customers.</p></div><div className="prod-cta">Open STall App →</div></a>
+          <a className="prod" href={studioUrl}><div><div className="prod-icon"><ProductIcon type="score"/></div><h3>Digital Score</h3><p>Know your digital presence score.</p></div><div className="prod-cta">Check Score →</div></a>
+          <a className="prod" href={studioUrl}><div><div className="prod-icon"><ProductIcon type="intelligence"/></div><h3>Business<br/>Intelligence</h3><p>AI insights to grow faster.</p></div><div className="prod-cta">Explore →</div></a>
+          <a className="prod" href={studioUrl}><div><div className="prod-icon"><ProductIcon type="automation"/></div><h3>Digital Store<br/>Automation</h3><p>Automate posts, offers and engagement.</p></div><div className="prod-cta">Get Started →</div></a>
         </div>
       </div></section>
 
