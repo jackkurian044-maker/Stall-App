@@ -1,4 +1,23 @@
-# STALL — local vendor finder
+# STALL — local business discovery and digital presence
+
+**STall** (https://stallwale.in/) is a local-business discovery and digital presence platform for India. It helps customers discover local businesses and helps business owners list or claim a business, maintain a public business presence, manage offers and use digital growth tools.
+
+### Core products
+
+- **Local business discovery:** restaurants, salons, retail stores, healthcare, schools and other local businesses.
+- **Business listing and claiming:** owners can create a listing or claim an existing business presence.
+- **Public business pages:** structured business information, services, offers and contact details when available.
+- **STall Digital Store Automation:** https://stallwale.ai.studio/ — a web tool for creating, reviewing and managing business content, offers and digital presence with less repetitive work.
+- **Business intelligence:** category-aware digital presence and local competitive context.
+
+Useful public product pages:
+- https://stallwale.in/digital-store-automation.html
+- https://stallwale.in/local-business-digital-presence.html
+- https://stallwale.in/solutions/salons.html
+
+STall is designed for local businesses that want more than a static directory listing: discovery plus owner-side digital presence and automation tools.
+
+
 
 A live web app for listing local vendors and letting people search for what's
 nearby by distance. Vendors can create and edit their own listing (after
