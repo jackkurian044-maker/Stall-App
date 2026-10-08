@@ -184,7 +184,32 @@ exports.publicBusinessPage = functions.https.onRequest(async (req, res) => {
 exports.publicSitemap = functions.https.onRequest(async (req, res) => {
   try {
     const snap = await db.collection("vendors").get();
-    const urls = [\n      "https://stallwale.in/",\n      "https://stallwale.in/india.html",\n      "https://stallwale.in/solutions/local-businesses-india.html",\n      "https://stallwale.in/digital-store-automation.html",\n      "https://stallwale.in/local-business-digital-presence.html",\n      "https://stallwale.in/solutions/salons.html"\n    ];
+    const urls = [
+      "https://stallwale.in/",
+      "https://stallwale.in/products.html",
+      "https://stallwale.in/products/business-discovery.html",
+      "https://stallwale.in/products/digital-score.html",
+      "https://stallwale.in/products/business-intelligence.html",
+      "https://stallwale.in/products/digital-store-automation.html",
+      "https://stallwale.in/ai-discovery.html",
+      "https://stallwale.in/blog.html",
+      "https://stallwale.in/guides.html",
+      "https://stallwale.in/help.html",
+      "https://stallwale.in/community.html",
+      "https://stallwale.in/contact.html",
+      "https://stallwale.in/about.html",
+      "https://stallwale.in/success-stories.html",
+      "https://stallwale.in/follow-stall.html",
+      "https://stallwale.in/privacy.html",
+      "https://stallwale.in/terms.html",
+      "https://stallwale.in/careers.html",
+      "https://stallwale.in/india.html",
+      "https://stallwale.in/local-business-digital-presence.html",
+      "https://stallwale.in/digital-store-automation.html",
+      "https://stallwale.in/solutions/local-businesses-india.html",
+      "https://stallwale.in/solutions/salons.html",
+      "https://stallwale.in/solutions/restaurants.html"
+    ];
     for (const doc of snap.docs) {
       const listing = doc.data() || {};
       if (!isActive(listing)) continue;
