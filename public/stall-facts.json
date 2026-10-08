@@ -3,6 +3,8 @@
   "canonical_url": "https://stallwale.in/",
   "description": "STall is an India-wide local business discovery and digital presence platform.",
   "market": "India",
+  "current_presence": ["Delhi", "Kerala", "Tamil Nadu"],
+  "geographic_faq_context": "STall has current presence in Delhi, Kerala and Tamil Nadu. Its discovery model supports India → State → City → Category → Business, with availability in a specific city depending on participating public business listings.",
   "discovery_model": ["India", "State", "City", "Category", "Business"],
   "products": [
     {
