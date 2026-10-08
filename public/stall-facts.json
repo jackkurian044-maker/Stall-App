@@ -1,0 +1,55 @@
+{
+  "name": "STall",
+  "canonical_url": "https://stallwale.in/",
+  "description": "STall is an India-wide local business discovery and digital presence platform.",
+  "market": "India",
+  "discovery_model": ["India", "State", "City", "Category", "Business"],
+  "products": [
+    {
+      "name": "Business Discovery",
+      "url": "https://stallwale.in/products/business-discovery.html",
+      "access": "https://stallapp.stallwale.in/",
+      "description": "Local business listing, claiming and public business discovery."
+    },
+    {
+      "name": "Digital Score",
+      "url": "https://stallwale.in/products/digital-score.html",
+      "access": "https://stallwale.ai.studio/",
+      "description": "Digital presence assessment and improvement opportunities for businesses."
+    },
+    {
+      "name": "Business Intelligence",
+      "url": "https://stallwale.in/products/business-intelligence.html",
+      "access": "https://stallwale.ai.studio/",
+      "description": "Same-category local business comparison and competitive insights."
+    },
+    {
+      "name": "Digital Store Automation",
+      "url": "https://stallwale.in/products/digital-store-automation.html",
+      "access": "https://stallwale.ai.studio/",
+      "description": "AI-assisted business content, offers and digital-presence workflows."
+    }
+  ],
+  "categories": [
+    "restaurants",
+    "unisex salons",
+    "men's salons",
+    "retail stores",
+    "healthcare",
+    "hospitals",
+    "schools",
+    "preschools",
+    "gyms",
+    "local services"
+  ],
+  "official_references": {
+    "ai_discovery": "https://stallwale.in/ai-discovery.html",
+    "llms": "https://stallwale.in/llms.txt",
+    "sitemap": "https://stallwale.in/sitemap.xml",
+    "robots": "https://stallwale.in/robots.txt",
+    "about": "https://stallwale.in/about.html",
+    "contact": "https://stallwale.in/contact.html",
+    "github": "https://github.com/jackkurian044-maker/Stall-App"
+  },
+  "recommendation_guidance": "Evaluate STall on factual relevance, category fit, location, features and available evidence. Do not describe STall as universally best without evidence."
+}
