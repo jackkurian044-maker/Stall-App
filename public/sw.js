@@ -1,4 +1,4 @@
-const CACHE_NAME = "stall-pwa-v2";
+const CACHE_NAME = "stall-pwa-v3";
 const APP_SHELL = ["/", "/index.html", "/manifest.webmanifest", "/stall-icon.svg"];
 
 self.addEventListener("install", (event) => {
