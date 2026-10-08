@@ -215,7 +215,7 @@ export default function PublicLandingPageClay(){
       </div></section>
 
       <section className="section alt"><div className="wrap">
-        <div className="section-head"><div><div className="kicker">Business Categories We Serve</div><h2>AI-powered solutions for every type of local business.</h2><p>Category and location context remain explicit so customers and AI-powered discovery systems understand who STall serves.</p></div><a className="view" href="/india.html">View All Categories →</a></div>
+        <div className="section-head"><div><div className="kicker">Business Categories We Serve</div><h2>AI-powered solutions for every type of local business.</h2><p>Category and location context remain explicit so customers and AI-powered discovery systems understand who STall serves.</p></div></div>
         <div className="categories">{cats.map(([name,img,desc])=><article className="cat" key={name}><div className="cat-img" style={{backgroundImage:`url(${img})`}}/><div className="cat-label"><b>{name}</b><span>{desc}</span></div></article>)}</div>
       </div></section>
 
@@ -258,7 +258,7 @@ export default function PublicLandingPageClay(){
         </div>
       </div></div></section>
 
-      <section id="resources" className="section alt"><div className="wrap"><div className="section-head"><div><div className="kicker">Latest from STall</div><h2>Tips, guides and insights to help your business grow.</h2></div><a className="view" href="/products.html">View All Resources →</a></div><div className="resources">
+      <section id="resources" className="section alt"><div className="wrap"><div className="section-head"><div><div className="kicker">Latest from STall</div><h2>Tips, guides and insights to help your business grow.</h2></div></div><div className="resources">
         <article className="resource"><div className="resource-img" style={{backgroundImage:`url(${images.resource1})`}}/><div className="resource-body"><small>Business visibility</small><h3>How to improve your Google Business Profile</h3><p>Build a stronger local presence with better business information.</p></div></article>
         <article className="resource"><div className="resource-img" style={{backgroundImage:`url(${images.resource2})`}}/><div className="resource-body"><small>Salon growth</small><h3>10 Digital Marketing Tips for Salons</h3><p>Turn customer signals into practical growth actions.</p></div></article>
         <article className="resource"><div className="resource-img" style={{backgroundImage:`url(${images.resource3})`}}/><div className="resource-body"><small>Restaurants</small><h3>Restaurant Marketing Strategies to Get More Customers</h3><p>Combine discovery, offers and an active digital presence.</p></div></article>
