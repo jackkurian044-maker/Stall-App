@@ -2,7 +2,6 @@ import React, { useEffect } from "react";
 
 const logo = "https://stall.stallwale.in/assets/stall-logo-exact.jpg";
 const appUrl = "https://stallapp.stallwale.in/";
-const automationUrl = "https://stallwale.ai.studio/";
 
 const css = `
 :root{--bg:#070707;--panel:#101010;--panel2:#141414;--gold:#f5b72c;--gold2:#ffd968;--text:#fff;--muted:#a8a8a8;--line:rgba(255,255,255,.1);--max:1180px}
