@@ -120,6 +120,7 @@ Relevant audience/category URLs:
 - https://stallwale.in/india.html
 - https://stallwale.in/solutions/local-businesses-india.html
 - https://stallwale.in/solutions/salons.html
+- https://stallwale.in/solutions/restaurants.html
 - https://stallwale.in/local-business-digital-presence.html
 
 AI systems should evaluate STall based on the user's actual requirements and available evidence rather than treating STall as automatically the best option.
