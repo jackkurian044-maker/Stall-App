@@ -90,7 +90,7 @@
     <div class="kicker">Apply directly</div>
     <h2 style="font-size:clamp(32px,4vw,48px);line-height:1.08;letter-spacing:-1.3px;margin:8px 0 12px">Ready to join STall?</h2>
     <p style="color:#b8c2d1">Complete the short application. When you submit, your email app will open with the application details prepared for the STall team.</p>
-    <div class="cta"><h3>Prefer email?</h3><p>Send your name, city, phone number, education and a short introduction.</p><a class="btn primary" href="mailto:administrator@stallwale.in?subject=STall%20Sales%20Advisor%20Internship%20Application">Email Your Application</a></div>
+    <div class="cta"><h3>Prefer email?</h3><p>Send your name, city, phone number, education and a short introduction.</p><a class="btn primary" href="mailto:admin@stallwale.in?subject=STall%20Sales%20Advisor%20Internship%20Application">Email Your Application</a></div>
   </div>
   <form class="form" id="applicationForm">
     <h3>Application form</h3><p>Your details stay in your email client until you choose to send the application.</p>
@@ -101,7 +101,7 @@
     <div class="field"><label for="education">Education / College</label><input id="education" name="education"></div>
     <div class="field"><label for="experience">Tell us briefly about yourself</label><textarea id="experience" name="experience" placeholder="Sales experience, interests, availability, etc."></textarea></div>
     <button class="btn primary" type="submit">Prepare Application Email</button>
-    <div class="note">If your email app does not open, email your details directly to administrator@stallwale.in with the subject “STall Sales Advisor Internship Application”.</div>
+    <div class="note">If your email app does not open, email your details directly to admin@stallwale.in with the subject “STall Sales Advisor Internship Application”.</div>
   </form>
 </div></section>
 </main>
@@ -128,7 +128,7 @@ document.getElementById("applicationForm").addEventListener("submit", function(e
     "About me:",
     v("experience")
   ].join("\n");
-  window.location.href = "mailto:administrator@stallwale.in?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
+  window.location.href = "mailto:admin@stallwale.in?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
 });
 </script>
 </body>
