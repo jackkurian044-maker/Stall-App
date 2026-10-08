@@ -76,6 +76,63 @@ footer,.footcol h3{color:#fff}.foot-logo p,.footlinks a{color:#d0c9bf}.footlinks
 #plans .section-head h2{color:#fff!important;display:block!important;visibility:visible!important;opacity:1!important;-webkit-text-fill-color:#fff!important}
 #plans .section-head .kicker{color:#ffd968!important}
 #plans .section-head>div:last-child{color:#d0c8bd!important}
+/* One-shot visibility guard: every public section heading/text must remain readable. */
+.stall-premium .section:not(.hero) .section-head h2,
+.stall-premium .section:not(.hero) .section-head p,
+.stall-premium .section:not(.hero) .section-head .kicker,
+.stall-premium .section:not(.hero) .section-head .view,
+.stall-premium .section:not(.hero) .step h3,
+.stall-premium .section:not(.hero) .step p,
+.stall-premium .section:not(.hero) .step .n,
+.stall-premium .section:not(.hero) .prod h3,
+.stall-premium .section:not(.hero) .prod p,
+.stall-premium .section:not(.hero) .prod-cta,
+.stall-premium .section:not(.hero) .quote strong,
+.stall-premium .section:not(.hero) .quote p,
+.stall-premium .section:not(.hero) .quote small,
+.stall-premium .section:not(.hero) .resource-body h3,
+.stall-premium .section:not(.hero) .resource-body p,
+.stall-premium .section:not(.hero) .faq-item b,
+.stall-premium .section:not(.hero) .faq-item span{
+  opacity:1!important;
+  visibility:visible!important;
+  text-shadow:none!important;
+}
+.stall-premium .section:not(.hero) .section-head h2,
+.stall-premium .section:not(.hero) .step h3,
+.stall-premium .section:not(.hero) .prod h3,
+.stall-premium .section:not(.hero) .quote strong,
+.stall-premium .section:not(.hero) .resource-body h3,
+.stall-premium .section:not(.hero) .faq-item b{
+  color:#11100e!important;
+  -webkit-text-fill-color:#11100e!important;
+}
+.stall-premium .section:not(.hero) .section-head p,
+.stall-premium .section:not(.hero) .step p,
+.stall-premium .section:not(.hero) .prod p,
+.stall-premium .section:not(.hero) .quote p,
+.stall-premium .section:not(.hero) .quote small,
+.stall-premium .section:not(.hero) .resource-body p,
+.stall-premium .section:not(.hero) .faq-item span{
+  color:#514c45!important;
+  -webkit-text-fill-color:#514c45!important;
+}
+.stall-premium .section:not(.hero) .section-head .kicker,
+.stall-premium .section:not(.hero) .section-head .view,
+.stall-premium .section:not(.hero) .step .n,
+.stall-premium .section:not(.hero) .prod-cta{
+  color:#7a4f00!important;
+  -webkit-text-fill-color:#7a4f00!important;
+}
+/* Keep the dark AI / pricing panels intentionally light. */
+.stall-premium .ai-panel .section-head h2,
+.stall-premium .ai-panel .section-head p,
+.stall-premium #plans .section-head h2{
+  color:#fff!important;
+  -webkit-text-fill-color:#fff!important;
+}
+.stall-premium #plans .section-head .kicker{color:#ffd968!important;-webkit-text-fill-color:#ffd968!important}
+.stall-premium #plans .section-head>div:last-child{color:#d0c8bd!important;-webkit-text-fill-color:#d0c8bd!important}
 /* Explicit section typography contrast — do not inherit from dark hero/AI surfaces. */
 .section:not(.hero) .section-head h2{color:#11100e!important;text-shadow:none}.section:not(.hero) .section-head p{color:#514c45!important}.section:not(.hero) .section-head .kicker{color:#7a4f00!important}.section:not(.hero) .view{color:#7a4f00!important}
 .section:not(.hero) .step h3{color:#11100e!important}.section:not(.hero) .step p{color:#514c45!important}.section:not(.hero) .step .n{color:#7a4f00!important}
