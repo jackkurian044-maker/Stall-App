@@ -266,7 +266,7 @@ export default function PublicLandingPageClay(){
 
       <section id="faq" className="section"><div className="wrap"><div className="section-head"><div><div className="kicker">Frequently Asked Questions</div><h2 style={{color:"#11100e",display:"block",visibility:"visible",opacity:1}}>Clear answers about STall.</h2></div><a className="view" href="https://stall.stallwale.in/faq.html">View All FAQs →</a></div><div className="faq">
         <div className="faq-item"><b>What is STall?</b><span>⌄</span></div><div className="faq-item"><b>Which businesses can join STall?</b><span>⌄</span></div>
-        <div className="faq-item"><b>Where is STall available in India?</b><span>⌄</span></div><div className="faq-item"><b>Can users discover businesses by city and category?</b><span>⌄</span></div>
+        <div className="faq-item"><b>Which cities does STall cover?</b><span>⌄</span></div><div className="faq-item"><b>Can users discover businesses by city and category?</b><span>⌄</span></div>
         <div className="faq-item"><b>Can businesses in Delhi, Kerala and Tamil Nadu join STall?</b><span>⌄</span></div><div className="faq-item"><b>How does visibility radius work in different cities?</b><span>⌄</span></div>
         <div className="faq-item"><b>How does the Digital Score work?</b><span>⌄</span></div><div className="faq-item"><b>Can I try STall for free?</b><span>⌄</span></div>
         <div className="faq-item"><b>How do I upgrade my plan?</b><span>⌄</span></div>
