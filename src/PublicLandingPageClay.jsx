@@ -69,6 +69,11 @@ footer,.footcol h3{color:#fff}.foot-logo p,.footlinks a{color:#d0c9bf}.footlinks
 @media(max-width:600px){.hero-box .hero-lead{color:#e8e1d7}.footlinks a{color:#d0c9bf}}
 
 .prod-icon{color:#111!important;font-size:0}.prod-icon svg{display:block;width:22px;height:22px;stroke:#111;stroke-width:2.2}
+
+/* Explicit section typography contrast — do not inherit from dark hero/AI surfaces. */
+.section:not(.hero) .section-head h2{color:#11100e!important;text-shadow:none}.section:not(.hero) .section-head p{color:#514c45!important}.section:not(.hero) .section-head .kicker{color:#7a4f00!important}.section:not(.hero) .view{color:#7a4f00!important}
+.section:not(.hero) .step h3{color:#11100e!important}.section:not(.hero) .step p{color:#514c45!important}.section:not(.hero) .step .n{color:#7a4f00!important}
+.section:not(.hero) .prod h3{color:#11100e!important}.section:not(.hero) .prod p{color:#514c45!important}.section:not(.hero) .prod-cta{color:#7a4f00!important}
 `;
 
 export default function PublicLandingPageClay(){
