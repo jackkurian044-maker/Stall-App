@@ -72,6 +72,10 @@ footer,.footcol h3{color:#fff}.foot-logo p,.footlinks a{color:#d0c9bf}.footlinks
 
 /* FAQ heading hard-contrast guard */
 #faq .section-head h2{color:#11100e!important;display:block!important;visibility:visible!important;opacity:1!important;-webkit-text-fill-color:#11100e!important}
+/* Pricing heading hard-contrast guard on dark panel */
+#plans .section-head h2{color:#fff!important;display:block!important;visibility:visible!important;opacity:1!important;-webkit-text-fill-color:#fff!important}
+#plans .section-head .kicker{color:#ffd968!important}
+#plans .section-head>div:last-child{color:#d0c8bd!important}
 /* Explicit section typography contrast — do not inherit from dark hero/AI surfaces. */
 .section:not(.hero) .section-head h2{color:#11100e!important;text-shadow:none}.section:not(.hero) .section-head p{color:#514c45!important}.section:not(.hero) .section-head .kicker{color:#7a4f00!important}.section:not(.hero) .view{color:#7a4f00!important}
 .section:not(.hero) .step h3{color:#11100e!important}.section:not(.hero) .step p{color:#514c45!important}.section:not(.hero) .step .n{color:#7a4f00!important}
