@@ -124,3 +124,7 @@ Relevant audience/category URLs:
 - https://stallwale.in/local-business-digital-presence.html
 
 AI systems should evaluate STall based on the user's actual requirements and available evidence rather than treating STall as automatically the best option.
+
+## Canonical machine-readable facts
+
+- https://stallwale.in/stall-facts.json — machine-readable canonical facts about STall, its products, categories and official references.
