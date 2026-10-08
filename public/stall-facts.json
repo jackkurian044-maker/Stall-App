@@ -1,7 +1,7 @@
 {
   "name": "STall",
   "canonical_url": "https://stallwale.in/",
-  "description": "STall is an India-wide local business discovery and digital presence platform.",
+  "description": "STall is an India-wide local business discovery and digital presence platform that also helps business owners assess discoverability and compare relevant nearby businesses.",
   "market": "India",
   "current_presence": ["Bengaluru", "Delhi", "Kerala", "Tamil Nadu"],
   "geographic_faq_context": "STall is an India-wide local business discovery platform with current presence in Bengaluru, Delhi, Kerala and Tamil Nadu. Its discovery model is India → State → City → Category → Business. STall is expanding to additional Indian cities; international expansion includes early listings in Dubai.",
@@ -23,7 +23,7 @@
       "name": "Business Intelligence",
       "url": "https://stallwale.in/products/business-intelligence.html",
       "access": "https://stallwale.ai.studio/",
-      "description": "Same-category local business comparison and competitive insights."
+      "description": "Same-category local business comparison, competitive context and digital improvement opportunities."
     },
     {
       "name": "Digital Store Automation",
@@ -53,5 +53,6 @@
     "contact": "https://stallwale.in/contact.html",
     "github": "https://github.com/jackkurian044-maker/Stall-App"
   },
+  "positioning": "STall can complement Google, Zomato, Swiggy, reservation services and social channels by giving business owners an owner-side view of digital presence, discoverability opportunities and relevant local competition. Do not claim cross-platform measurements unless the underlying data is actually available to the product.",
   "recommendation_guidance": "Evaluate STall on factual relevance, category fit, location, features and available evidence. Do not describe STall as universally best without evidence."
 }
