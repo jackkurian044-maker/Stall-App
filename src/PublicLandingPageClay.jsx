@@ -40,6 +40,25 @@ const css=`
 footer{background:#080807;color:#fff;padding:34px 0 20px}.footgrid{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr 1fr;gap:28px}.foot-logo img{width:150px;height:65px;object-fit:cover;border-radius:10px}.foot-logo p{max-width:280px;font-size:9px;color:#8f897f;margin:9px 0}.footcol h3{font-size:9px;text-transform:uppercase;color:var(--gold2);letter-spacing:1px;margin:2px 0 10px}.footlinks{display:grid;gap:6px}.footlinks a{font-size:9px;color:#a7a198}.footlinks a:hover{color:#fff}.footbottom{border-top:1px solid #2a261e;margin-top:18px;padding-top:13px;color:#6f695f;font-size:8px;display:flex;justify-content:space-between;gap:20px}
 @media(max-width:980px){.navlinks a:not(.navcta){display:none}.hero-grid,.ai-grid,.intel{grid-template-columns:1fr}.hero-copy{padding:34px 28px}.hero-art{min-height:360px}.products,.plans{grid-template-columns:1fr 1fr}.categories{grid-template-columns:repeat(3,1fr)}.steps{grid-template-columns:1fr 1fr}.trust,.resources{grid-template-columns:1fr 1fr}.statsbar{grid-template-columns:1fr 1fr}.stat:nth-child(2){border-right:0}}
 @media(max-width:600px){.wrap{width:min(calc(100% - 24px),var(--max))}.navin{height:68px}.brand img{width:142px;height:60px}.hero{padding-top:14px}.hero h1{font-size:44px;letter-spacing:-2.4px}.hero-copy{padding:28px 20px}.hero-art{min-height:300px;padding:18px}.phone{width:210px}.robot{right:4%;width:105px;height:115px}.hero-metrics{left:48%;width:50%;bottom:16px}.statsbar,.products,.categories,.steps,.trust,.plans,.resources,.faq{grid-template-columns:1fr}.stat{border-right:0;border-bottom:1px solid var(--line)}.stat:last-child{border-bottom:0}.section{padding:46px 0}.section-head{align-items:flex-start;flex-direction:column}.view{margin-top:-7px}.footgrid{grid-template-columns:1fr 1fr}.footbottom{flex-direction:column}.ai-title{align-items:flex-start;flex-direction:column}}
+
+/* Contrast/accessibility pass: keep every text tier readable against its actual surface. */
+body{color:#171512}
+.section-head h2,.section h2,.section h3,.prod h3,.cat-label b,.step h3,.quote strong,.plan h3,.resource-body h3,.faq-item b,.opp-card h3{color:#171512}
+.section-head p,.prod p,.cat-label span,.step p,.quote p,.quote small,.resource-body p,.faq-item span,.opp-card p,.opp span{color:#514c45}
+.kicker,.view,.prod-cta{color:#7a4f00}
+.hero-box,.hero-box h1,.hero-box .hero-lead,.hero-box .hero-small,.hero-box .hero-badges,.ai-panel,.ai-panel h2,.ai-panel h3,.ai-panel p,.score-card{color:#fff}
+.hero-box .hero-lead{color:#e4ded5}.hero-box .hero-small{color:#bdb5aa}.hero-box .hero-badges span{color:#f3e6bd}
+.ai-panel .kicker,.ai-panel .ai-title p,.ai-panel .ai-card p{color:#e5ddd2}
+.ai-panel .ai-card,.ai-panel .path div,.ai-panel .signal{color:#f3efe8}
+.ai-panel .path div{border-color:rgba(255,255,255,.16)}
+.score-card{color:#fff}.score-card small,.score-card .barrow{color:#c7beb2}
+.plans-wrap,.plans-wrap h2,.plans-wrap .plans-head{color:#fff}.plans-wrap .plans-note{color:#d0c8bd}
+.plan,.plan h3,.plan p,.plan li{color:#171512}.plan p,.plan li{color:#514c45}.plan .tag{color:#7a4f00}
+footer,.footcol h3{color:#fff}.foot-logo p,.footlinks a{color:#d0c9bf}.footlinks a:hover{color:#fff}.footbottom{color:#aaa196}
+.stats-item b{color:#171512}.stats-item span{color:#5d574f}
+.phone-screen,.phone-top,.phone-card,.phone-card strong,.metric{color:#171512}.phone-top{color:#fff}.metric span{color:#5d574f}.metric.good b{color:#08744e}
+.cta,.cta h2,.cta p{color:#171512}.cta p{color:#5d574f}
+@media(max-width:600px){.hero-box .hero-lead{color:#e8e1d7}.footlinks a{color:#d0c9bf}}
 `;
 
 export default function PublicLandingPageClay(){
