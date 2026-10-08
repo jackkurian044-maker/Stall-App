@@ -208,7 +208,8 @@ exports.publicSitemap = functions.https.onRequest(async (req, res) => {
       "https://stallwale.in/digital-store-automation.html",
       "https://stallwale.in/solutions/local-businesses-india.html",
       "https://stallwale.in/solutions/salons.html",
-      "https://stallwale.in/solutions/restaurants.html"
+      "https://stallwale.in/solutions/restaurants.html",
+      "https://stallwale.in/stall-facts.json"
     ];
     for (const doc of snap.docs) {
       const listing = doc.data() || {};
