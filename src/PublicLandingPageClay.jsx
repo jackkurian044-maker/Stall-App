@@ -40,7 +40,7 @@ export default function PublicLandingPageClay() {
       <header className="nav"><div className="wrap navin">
         <a className="brand" href="https://stallwale.in/" aria-label="STall home"><img src={logo} alt="STall logo" /></a>
         <nav className="navlinks" aria-label="Main navigation">
-          <a href="#platform">Platform</a><a href="#automation">Automation</a><a href="#intelligence">Intelligence</a><a href="#plans">Plans</a><a href="#faq">FAQs</a><a className="navcta" href={appUrl}>List Free</a>
+          <a href="#platform">Platform</a><a href="#automation">Automation</a><a href="#intelligence">Intelligence</a><a href="#plans">Plans</a><a href="/careers.html">Careers</a><a href="#faq">FAQs</a><a className="navcta" href={appUrl}>List Free</a>
         </nav>
       </div></header>
 
