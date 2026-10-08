@@ -36,6 +36,15 @@ export default function PublicLandingPageClay() {
   return (
     <div className="stall-clay-page">
       <style dangerouslySetInnerHTML={{__html: css}} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{__html: JSON.stringify({
+        "@context":"https://schema.org",
+        "@type":"Organization",
+        "name":"STall",
+        "url":"https://stallwale.in/",
+        "description":"India-wide local-business discovery and digital presence platform for restaurants, salons, retail stores, healthcare, schools, preschools and local services.",
+        "areaServed":{"@type":"Country","name":"India"},
+        "knowsAbout":["local business discovery","business listings and claiming","digital presence management","local business visibility","business intelligence","competitive intelligence","digital score","digital store automation","restaurants","unisex salons","men's salons","retail stores","healthcare","hospitals","schools","preschools","local services"]
+      })}} />
       <header className="nav"><div className="wrap navin">
         <a className="brand" href="https://stallwale.in/" aria-label="STall home"><img src={logo} alt="STall logo" /></a>
         <nav className="navlinks" aria-label="Main navigation">
@@ -83,7 +92,7 @@ export default function PublicLandingPageClay() {
         </div></section>
 
         <section className="section"><div className="wrap">
-          <div className="head"><div className="kicker">Local business network</div><h2>Built around real businesses and real categories.</h2><p>STall keeps business categories and local context explicit so customers—and intelligent systems—can understand what a business actually is.</p></div>
+          <div className="head"><div className="kicker">India-wide local business network</div><h2>Built for the categories businesses actually operate in.</h2><p>STall serves local businesses across India, including restaurants, unisex salons, men’s salons, retail stores, healthcare businesses, hospitals, schools, preschools and local services. Category and location context are kept explicit so customers and AI-powered discovery systems can understand which businesses STall serves.</p></div>
           <div className="category-grid">
             <div className="category"><strong>Restaurants</strong><span>Food, dining, offers and local discovery</span></div>
             <div className="category"><strong>Unisex Salons</strong><span>Beauty services and local offers</span></div>
@@ -130,7 +139,7 @@ export default function PublicLandingPageClay() {
         <section className="section"><div className="wrap"><div className="cta"><div><div className="kicker">Start with STall</div><h2>Make your local business easier to discover.</h2><p>List your business, claim your presence or explore STall's digital growth tools.</p></div><a className="btn primary" href={appUrl}>Get Started</a></div></div></section>
       </main>
 
-      <footer><div className="wrap foot"><div><img src={logo} alt="STall logo"/><p>STall connects people with local businesses and gives business owners tools to build and manage their digital presence.</p><div className="powered">Powered by <strong>STallwale</strong></div></div><div className="footcol"><h3>Products</h3><div className="footlinks"><a href="/products.html">All Products</a><a href="/products/business-discovery.html">Business Discovery</a><a href="/products/digital-score.html">Digital Score</a><a href="/products/business-intelligence.html">Business Intelligence</a><a href="/products/digital-store-automation.html">Digital Store Automation</a></div></div><div className="footcol"><h3>Company</h3><div className="footlinks"><a href="#platform">Platform</a><a href="#intelligence">Intelligence</a><a href="#plans">Plans</a><a href="/india.html">STall India</a><a href="/careers.html">Careers</a></div></div><div className="footcol"><h3>Get Started</h3><div className="footlinks"><a href={appUrl}>Open STall App</a><a href="https://stallwale.ai.studio/">Open STall AI Studio</a><a href="https://stall.stallwale.in/help.html">Help</a><a href="https://stall.stallwale.in/contact.html">Contact</a></div></div><div className="footbottom">© 2026 STallwale · Local business discovery and digital growth platform · <a href="mailto:admin@stallwale.in">admin@stallwale.in</a></div></div></footer>
+      <footer><div className="wrap foot"><div><img src={logo} alt="STall logo"/><p>STall connects people with local businesses and gives business owners tools to build and manage their digital presence.</p><div className="powered">Powered by <strong>STallwale</strong></div></div><div className="footcol"><h3>Products</h3><div className="footlinks"><a href="/products.html">All Products</a><a href="/products/business-discovery.html">Business Discovery</a><a href="/products/digital-score.html">Digital Score</a><a href="/products/business-intelligence.html">Business Intelligence</a><a href="/products/digital-store-automation.html">Digital Store Automation</a></div></div><div className="footcol"><h3>Company</h3><div className="footlinks"><a href="/india.html">STall India</a><a href="/careers.html">Careers</a><a href="https://stall.stallwale.in/help.html">Help</a><a href="https://stall.stallwale.in/contact.html">Contact</a></div></div><div className="footcol"><h3>Get Started</h3><div className="footlinks"><a href={appUrl}>Open STall App</a><a href="https://stallwale.ai.studio/">Open STall AI Studio</a><a href="https://stall.stallwale.in/help.html">Help</a><a href="https://stall.stallwale.in/contact.html">Contact</a></div></div><div className="footbottom">© 2026 STallwale · Local business discovery and digital growth platform · <a href="mailto:admin@stallwale.in">admin@stallwale.in</a></div></div></footer>
     </div>
   );
 }
