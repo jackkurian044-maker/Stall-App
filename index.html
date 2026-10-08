@@ -18,6 +18,7 @@
   <meta name="twitter:image" content="https://stall.stallwale.in/assets/stall-logo-exact.jpg" />
   <meta name="robots" content="index,follow,max-image-preview:large" />
   <link rel="canonical" href="https://stallwale.in/" />
+  <link rel="alternate" type="text/plain" href="https://stallwale.in/llms.txt" title="STall AI-readable site guide" />
   <link rel="icon" type="image/svg+xml" href="/stall-icon.svg" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <meta name="theme-color" content="#102a43" />
@@ -42,7 +43,8 @@
           "logo": "https://stall.stallwale.in/assets/stall-logo-exact.jpg",
           "sameAs": ["https://github.com/jackkurian044-maker/Stall-App"],
           "description": "STall is a neighbourhood-first platform for local business discovery and digital presence.",
-          "knowsAbout": ["local business discovery", "business listings", "business claiming", "local offers", "digital presence", "digital store automation"],
+          "knowsAbout": ["local business discovery", "business listing", "business claiming", "local offers", "digital presence", "digital score", "business intelligence", "digital store automation"],
+          "contactPoint": { "@type": "ContactPoint", "contactType": "customer support", "email": "admin@stallwale.in", "areaServed": "IN", "availableLanguage": ["en"] },
           "areaServed": {"@type": "Country", "name": "India"}
         },
         {
@@ -75,6 +77,47 @@
             {"@type":"Question","name":"What businesses can be discovered on STall?","acceptedAnswer":{"@type":"Answer","text":"STall is designed for local businesses such as restaurants, salons, shops, services and other neighbourhood businesses."}},
             {"@type":"Question","name":"What is STall Digital Store Automation?","acceptedAnswer":{"@type":"Answer","text":"STall Digital Store Automation is a business tool for creating and managing business content, offers and digital presence."}}
           ]
+        },
+        {
+          "@type": "ItemList",
+          "@id": "https://stallwale.in/#products",
+          "name": "STall products",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "Business Discovery",
+              "url": "https://stallwale.in/products/business-discovery.html"
+            },
+            {
+              "@type": "ListItem",
+              "position": 2,
+              "name": "Digital Score",
+              "url": "https://stallwale.in/products/digital-score.html"
+            },
+            {
+              "@type": "ListItem",
+              "position": 3,
+              "name": "Business Intelligence",
+              "url": "https://stallwale.in/products/business-intelligence.html"
+            },
+            {
+              "@type": "ListItem",
+              "position": 4,
+              "name": "Digital Store Automation",
+              "url": "https://stallwale.in/products/digital-store-automation.html"
+            }
+          ]
+        },
+        {
+          "@type": "SoftwareApplication",
+          "@id": "https://stallwale.in/#digital-store-automation-app",
+          "name": "STall Digital Store Automation",
+          "applicationCategory": "BusinessApplication",
+          "operatingSystem": "Web",
+          "url": "https://stallwale.ai.studio/",
+          "description": "AI-assisted digital store automation for local businesses, including business content, offers and digital presence workflows.",
+          "provider": { "@id": "https://stallwale.in/#organization" }
         },
         {
           "@type": "Service",
