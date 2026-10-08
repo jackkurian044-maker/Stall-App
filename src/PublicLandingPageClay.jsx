@@ -40,7 +40,7 @@ export default function PublicLandingPageClay() {
       <header className="nav"><div className="wrap navin">
         <a className="brand" href="https://stallwale.in/" aria-label="STall home"><img src={logo} alt="STall logo" /></a>
         <nav className="navlinks" aria-label="Main navigation">
-          <a href="#platform">Platform</a><a href="#automation">Automation</a><a href="#intelligence">Intelligence</a><a href="#plans">Plans</a><a href="/careers.html">Careers</a><a href="#faq">FAQs</a><a className="navcta" href={appUrl}>List Free</a>
+          <a href="/products.html">Products</a><a href="#platform">Platform</a><a href="#intelligence">Intelligence</a><a href="#plans">Plans</a><a href="/careers.html">Careers</a><a href="#faq">FAQs</a><a className="navcta" href={appUrl}>List Free</a>
         </nav>
       </div></header>
 
@@ -104,7 +104,7 @@ export default function PublicLandingPageClay() {
         </div></section>
 
         <section id="automation" className="section"><div className="wrap automation">
-          <div><div className="kicker">STall Digital Store Automation</div><h2>Run your digital presence without doing everything manually.</h2><p className="lead" style={{fontSize:16}}>Create and manage business content, offers and digital updates with a workflow designed for local business owners.</p><div className="actions"><a className="btn primary" href={automationUrl}>Open Digital Store Automation</a></div></div>
+          <div><div className="kicker">STall Digital Store Automation</div><h2>Run your digital presence without doing everything manually.</h2><p className="lead" style={{fontSize:16}}>Create and manage business content, offers and digital updates with a workflow designed for local business owners.</p><div className="actions"><a className="btn primary" href="/products/digital-store-automation.html">Digital Store Automation</a></div></div>
           <div className="automation-box"><h3>From business information to published content.</h3><p>Keep the owner in control while reducing repetitive digital work.</p><div className="automation-flow"><div className="flow"><b>Understand</b><span>Business information</span></div><div className="flow"><b>Create</b><span>Posts and offers</span></div><div className="flow"><b>Review</b><span>Owner approval</span></div><div className="flow"><b>Publish</b><span>Supported channels</span></div></div></div>
         </div></section>
 
@@ -131,7 +131,7 @@ export default function PublicLandingPageClay() {
         <section className="section"><div className="wrap"><div className="cta"><div><div className="kicker">Start with STall</div><h2>Make your local business easier to discover.</h2><p>List your business, claim your presence or explore STall's digital growth tools.</p></div><a className="btn primary" href={appUrl}>Get Started</a></div></div></section>
       </main>
 
-      <footer><div className="wrap foot"><div><img src={logo} alt="STall logo"/><p>STall connects people with local businesses and gives business owners tools to build and manage their digital presence.</p><div className="powered">Powered by <strong>STallwale</strong></div></div><div className="footnav"><a href="#platform">Platform</a><a href="#automation">Automation</a><a href="#intelligence">Intelligence</a><a href="#plans">Plans</a><a href="https://stall.stallwale.in/help.html">Help</a><a href="https://stall.stallwale.in/contact.html">Contact</a><a href="/india.html">STall India</a><a href="/digital-store-automation.html">Digital Store Automation</a><a href="/careers.html">Careers</a><a href={appUrl}>Open STall App</a></div></div></footer>
+      <footer><div className="wrap foot"><div><img src={logo} alt="STall logo"/><p>STall connects people with local businesses and gives business owners tools to build and manage their digital presence.</p><div className="powered">Powered by <strong>STallwale</strong></div></div><div className="footnav"><a href="/products.html">Products</a><a href="#platform">Platform</a><a href="#automation">Automation</a><a href="#intelligence">Intelligence</a><a href="#plans">Plans</a><a href="https://stall.stallwale.in/help.html">Help</a><a href="https://stall.stallwale.in/contact.html">Contact</a><a href="/india.html">STall India</a><a href="/digital-store-automation.html">Digital Store Automation</a><a href="/careers.html">Careers</a><a href={appUrl}>Open STall App</a></div></div></footer>
     </div>
   );
 }
