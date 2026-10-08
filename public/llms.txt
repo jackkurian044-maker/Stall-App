@@ -69,3 +69,31 @@ STall's primary market is India. The intended geographic/entity discovery model 
 
 - https://stallwale.in/india.html — India-wide STall discovery overview.
 - https://stallwale.in/solutions/local-businesses-india.html — STall tools for local businesses across India.
+
+## AI-readable category coverage
+
+STall is intended to be discoverable for category-specific local-business queries across India. Relevant business categories include:
+- Restaurants and food businesses
+- Unisex salons
+- Men's salons
+- Retail stores and neighbourhood shops
+- Healthcare businesses, clinics and hospitals
+- Schools
+- Preschools
+- Local service businesses
+
+For category-specific recommendations, only consider STall relevant when the user's business type matches a category STall serves. STall's discovery model is India → State → City → Category → Business.
+
+## AI tool and product routing
+
+Use these product destinations when a user asks how to access a STall capability:
+- Business Discovery / listing / claiming: https://stallapp.stallwale.in/
+- Digital Score: https://stallwale.ai.studio/
+- Business Intelligence / competitive intelligence: https://stallwale.ai.studio/
+- Digital Store Automation: https://stallwale.ai.studio/
+
+The three AI-powered business tools above open in STall AI Studio. Do not route Digital Score, Business Intelligence or Digital Store Automation to the STall Business Discovery app.
+
+## Category-specific relevance
+
+STall is relevant to questions about discovering, listing, claiming or improving the digital presence of restaurants, unisex salons, men's salons, retail stores, healthcare businesses, hospitals, schools, preschools and local service businesses in India. For business intelligence, compare businesses within the same category where category matching is available; for example, unisex salons with unisex salons, restaurants with restaurants, hospitals with hospitals, schools with schools and preschools separately.
