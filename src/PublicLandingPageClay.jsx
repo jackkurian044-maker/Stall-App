@@ -14,6 +14,30 @@ const css = `
 .categories{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}.category{position:relative;overflow:hidden;min-height:126px;border:1px solid #d6cec0;border-radius:18px;background:#fff}.category img{width:100%;height:82px;object-fit:cover;display:block}.category strong{display:block;padding:9px 11px;font-size:12px}.category span{position:absolute;left:9px;bottom:42px;background:rgba(255,255,255,.92);padding:4px 7px;border-radius:999px;font-size:9px;font-weight:900}
 .ai-section{background:#090909;color:#fff;border-top:1px solid #111;border-bottom:1px solid #111}.ai-grid{display:grid;grid-template-columns:1.1fr 1fr;gap:24px;align-items:center}.ai-copy .kicker{color:var(--gold2)}.ai-copy h2{font-size:clamp(36px,4.7vw,56px);line-height:1.02;letter-spacing:-2px;margin:8px 0 10px;color:#fff}.ai-copy p{color:#c0b9ab;max-width:620px}.ai-panel{border:1px solid rgba(243,184,45,.32);border-radius:24px;padding:20px;background:radial-gradient(circle at 85% 5%,rgba(243,184,45,.12),transparent 36%),#111;box-shadow:8px 9px 0 #000}.ai-panel-top{display:grid;grid-template-columns:1fr 1fr;gap:10px}.score-card,.opp-card{border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:18px;background:rgba(255,255,255,.04)}.score-label,.opp-card h3{font-size:11px;color:#b8b2a6;font-weight:900;letter-spacing:.8px;text-transform:uppercase}.score-num{font-family:Poppins;font-size:60px;font-weight:900;line-height:1;color:var(--gold2);margin:7px 0 3px}.score-good{color:#9cf2c9;font-size:11px;font-weight:900}.bars{display:flex;gap:6px;align-items:flex-end;height:52px;margin-top:12px}.bar{width:12px;background:linear-gradient(180deg,var(--gold2),var(--gold));border-radius:4px 4px 0 0}.opp-list{display:grid;gap:8px;margin-top:10px}.opp{display:flex;justify-content:space-between;gap:10px;border-top:1px solid rgba(255,255,255,.08);padding-top:9px;color:#d8d2c6;font-size:11px}.opp b{color:var(--gold2)}.ai-cta{margin-top:10px}
 .cta-section{padding:70px 0}.cta{border:1px solid #111;border-radius:26px;background:linear-gradient(135deg,#fffaf0,#eee1cc);padding:34px;display:flex;align-items:center;justify-content:space-between;gap:22px;box-shadow:8px 9px 0 #111}.cta h2{font-size:clamp(28px,3.7vw,44px);margin:0 0 7px;line-height:1.02;letter-spacing:-1.5px}.cta p{margin:0;color:#6b665d}
+
+.ai-adoption{padding:0 0 78px}
+.ai-adoption-wrap{border:1px solid #1a1813;border-radius:28px;padding:28px;background:linear-gradient(135deg,#11100d,#18130a 55%,#0b0b0a);box-shadow:10px 11px 0 #111;position:relative;overflow:hidden}
+.ai-adoption-wrap:before{content:"";position:absolute;width:360px;height:360px;border-radius:50%;right:-150px;top:-180px;background:radial-gradient(circle,rgba(243,184,45,.22),transparent 68%)}
+.ai-adoption-head{position:relative;z-index:1;display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:22px}
+.ai-adoption-head .kicker{color:var(--gold2)}
+.ai-adoption-head h2{color:#fff;margin:7px 0 0;font-size:clamp(28px,4vw,44px);line-height:1.03;letter-spacing:-1.6px}
+.ai-adoption-head p{color:#bdb6aa;max-width:560px;margin:0;font-size:14px}
+.ai-adoption-badge{white-space:nowrap;border:1px solid rgba(243,184,45,.45);background:rgba(243,184,45,.08);color:var(--gold2);border-radius:999px;padding:9px 12px;font-size:10px;font-weight:900;letter-spacing:1px;text-transform:uppercase}
+.ai-adoption-grid{position:relative;z-index:1;display:grid;grid-template-columns:1.1fr .9fr;gap:12px}
+.ai-adoption-card{border:1px solid rgba(255,255,255,.12);border-radius:18px;background:rgba(255,255,255,.035);padding:20px;color:#fff}
+.ai-adoption-card h3{font-size:18px;margin:0 0 6px;color:#fff}
+.ai-adoption-card p{font-size:12px;color:#aaa39a;margin:0 0 16px}
+.ai-signals{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.ai-signal{border:1px solid rgba(255,255,255,.11);border-radius:13px;background:#0e0e0d;padding:13px}
+.ai-signal strong{display:block;font-size:12px;color:#fff}.ai-signal span{display:block;margin-top:4px;color:#827b70;font-size:10px}
+.ai-adoption-score{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:18px}
+.ai-ring{width:112px;height:112px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--gold) 0 78%,rgba(255,255,255,.09) 78% 100%);position:relative}
+.ai-ring:after{content:"";position:absolute;inset:10px;border-radius:50%;background:#0e0e0d}
+.ai-ring span{position:relative;z-index:1;font-family:Poppins;font-size:30px;font-weight:900;color:var(--gold2)}
+.ai-checks{display:grid;gap:9px}.ai-check{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid rgba(255,255,255,.08);padding-bottom:8px;font-size:11px;color:#c7c0b5}.ai-check b{color:#9cf2c9}
+.premium-note{margin-top:13px;color:#756e64;font-size:10px;letter-spacing:.3px}
+@media(max-width:760px){.ai-adoption-head{align-items:flex-start;flex-direction:column}.ai-adoption-grid{grid-template-columns:1fr}.ai-signals{grid-template-columns:1fr}.ai-adoption-score{grid-template-columns:1fr}.ai-ring{margin:auto}}
+
 footer{background:#080808;color:#fff;padding:42px 0 24px}.footer-grid{display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:34px}.footer-brand-plaque{display:inline-flex;background:#111;border:1px solid rgba(243,184,45,.26);border-radius:17px;padding:4px 10px}.footer-brand-plaque img{width:176px;height:80px;object-fit:cover;border-radius:10px}.footer-brand p{color:#9c978f;max-width:300px;font-size:12px;margin:11px 0 0}.footer-col h3{font-size:12px;color:var(--gold2);margin:3px 0 13px}.footer-col a{display:block;color:#aaa39a;font-size:12px;margin:0 0 9px}.footer-col a:hover{color:#fff}.footer-bottom{margin-top:25px;padding-top:18px;border-top:1px solid #2b2925;display:flex;justify-content:space-between;gap:18px;color:#777168;font-size:11px}
 @media(max-width:980px){.navlinks a:not(.navcta){display:none}.hero-grid,.ai-grid{grid-template-columns:1fr}.hero-card{order:-1}.products-grid{grid-template-columns:1fr 1fr}.categories{grid-template-columns:repeat(3,1fr)}.stats-bar{grid-template-columns:1fr 1fr}.stat:nth-child(2){border-right:none}.stat:nth-child(-n+2){border-bottom:1px solid var(--line)}}
 @media(max-width:600px){.wrap{width:min(calc(100% - 24px),var(--max))}.navin{min-height:72px}.brand-plaque img{width:130px;height:54px}.hero{padding:46px 0 20px}h1{font-size:clamp(43px,12vw,62px);letter-spacing:-2.6px}.lead{font-size:16px}.actions .btn{width:100%}.hero-card{min-height:390px}.hero-brand img{width:100%;height:225px}.metric-row,.ai-panel-top{grid-template-columns:1fr}.stats-bar{grid-template-columns:1fr}.stat{border-right:none!important;border-bottom:1px solid var(--line)!important}.stat:last-child{border-bottom:none!important}.products-grid,.categories{grid-template-columns:1fr}.section{padding:60px 0}.cta{padding:27px;align-items:flex-start;flex-direction:column}.footer-grid{grid-template-columns:1fr 1fr}.footer-brand{grid-column:1/-1}.footer-bottom{flex-direction:column;align-items:flex-start}}
@@ -86,6 +110,40 @@ export default function PublicLandingPageClay() {
           <div className="stat"><div className="stat-icon">▦</div><div><b>Multiple</b><span>Business Categories</span></div></div>
           <div className="stat"><div className="stat-icon">↗</div><div><b>AI-Powered</b><span>Growth Tools</span></div></div>
         </div></div></section>
+
+        <section className="ai-adoption"><div className="wrap">
+          <div className="ai-adoption-wrap">
+            <div className="ai-adoption-head">
+              <div><div className="kicker">AI adoption layer</div><h2>Move from “AI is available” to “AI is useful.”</h2></div>
+              <div className="ai-adoption-badge">AI-ADAPTIVE BY DESIGN</div>
+            </div>
+            <div className="ai-adoption-grid">
+              <article className="ai-adoption-card">
+                <h3>What STall helps a business do</h3>
+                <p>Use business and market context to turn digital presence signals into practical growth actions.</p>
+                <div className="ai-signals">
+                  <div className="ai-signal"><strong>Read the business</strong><span>Profile, services, offers and presence</span></div>
+                  <div className="ai-signal"><strong>Read the market</strong><span>Nearby, same-category context</span></div>
+                  <div className="ai-signal"><strong>Recommend action</strong><span>Prioritized improvement opportunities</span></div>
+                </div>
+                <div className="premium-note">Owner stays in control. AI supports decisions; it does not replace the business owner.</div>
+              </article>
+              <article className="ai-adoption-card">
+                <h3>AI adoption snapshot</h3>
+                <p>A visual way to explain readiness before a business starts using the AI tools.</p>
+                <div className="ai-adoption-score">
+                  <div className="ai-ring"><span>78%</span></div>
+                  <div className="ai-checks">
+                    <div className="ai-check"><span>Digital presence signals</span><b>Ready</b></div>
+                    <div className="ai-check"><span>Category context</span><b>Matched</b></div>
+                    <div className="ai-check"><span>Growth actions</span><b>Prioritized</b></div>
+                    <div className="ai-check"><span>Owner review</span><b>Required</b></div>
+                  </div>
+                </div>
+              </article>
+            </div>
+          </div>
+        </div></section>
 
         <section id="products" className="section"><div className="wrap">
           <div className="head"><div className="kicker">Our products</div><h2>Powerful tools built for the real needs of local businesses.</h2><p>One brand, four clear products. Each product has one job and a direct path into the right STall experience.</p></div>
