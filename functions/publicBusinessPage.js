@@ -184,7 +184,7 @@ exports.publicBusinessPage = functions.https.onRequest(async (req, res) => {
 exports.publicSitemap = functions.https.onRequest(async (req, res) => {
   try {
     const snap = await db.collection("vendors").get();
-    const urls = ["https://stallwale.in/"];
+    const urls = [\n      "https://stallwale.in/",\n      "https://stallwale.in/india.html",\n      "https://stallwale.in/solutions/local-businesses-india.html",\n      "https://stallwale.in/digital-store-automation.html",\n      "https://stallwale.in/local-business-digital-presence.html",\n      "https://stallwale.in/solutions/salons.html"\n    ];
     for (const doc of snap.docs) {
       const listing = doc.data() || {};
       if (!isActive(listing)) continue;
