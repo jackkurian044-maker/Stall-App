@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import PublicLandingPage from "./PublicLandingPage";
+import PublicLandingPage from "./PublicLandingPageClay";
 
 export default function PublicLandingPageFixed() {
   useEffect(() => {
