@@ -1,7 +1,5 @@
 import React, { useEffect } from "react";
-import stallLogo from "./stall-logo.png";
-
-const logo = stallLogo;
+const logo = "https://stall.stallwale.in/assets/stall-logo-exact.jpg";
 const appUrl = "https://stallapp.stallwale.in/";
 
 const css = `
