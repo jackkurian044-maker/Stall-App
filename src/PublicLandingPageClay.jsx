@@ -70,6 +70,8 @@ footer,.footcol h3{color:#fff}.foot-logo p,.footlinks a{color:#d0c9bf}.footlinks
 
 .prod-icon{color:#111!important;font-size:0}.prod-icon svg{display:block;width:22px;height:22px;stroke:#111;stroke-width:2.2}
 
+/* FAQ heading hard-contrast guard */
+#faq .section-head h2{color:#11100e!important;display:block!important;visibility:visible!important;opacity:1!important;-webkit-text-fill-color:#11100e!important}
 /* Explicit section typography contrast — do not inherit from dark hero/AI surfaces. */
 .section:not(.hero) .section-head h2{color:#11100e!important;text-shadow:none}.section:not(.hero) .section-head p{color:#514c45!important}.section:not(.hero) .section-head .kicker{color:#7a4f00!important}.section:not(.hero) .view{color:#7a4f00!important}
 .section:not(.hero) .step h3{color:#11100e!important}.section:not(.hero) .step p{color:#514c45!important}.section:not(.hero) .step .n{color:#7a4f00!important}
@@ -198,7 +200,7 @@ export default function PublicLandingPageClay(){
         <article className="resource"><div className="resource-img" style={{backgroundImage:`url(${images.resource3})`}}/><div className="resource-body"><small>Restaurants</small><h3>Restaurant Marketing Strategies to Get More Customers</h3><p>Combine discovery, offers and an active digital presence.</p></div></article>
       </div></div></section>
 
-      <section id="faq" className="section"><div className="wrap"><div className="section-head"><div><div className="kicker">Frequently Asked Questions</div><h2>Clear answers about STall.</h2></div><a className="view" href="https://stall.stallwale.in/faq.html">View All FAQs →</a></div><div className="faq">
+      <section id="faq" className="section"><div className="wrap"><div className="section-head"><div><div className="kicker">Frequently Asked Questions</div><h2 style={{color:"#11100e",display:"block",visibility:"visible",opacity:1}}>Clear answers about STall.</h2></div><a className="view" href="https://stall.stallwale.in/faq.html">View All FAQs →</a></div><div className="faq">
         <div className="faq-item"><b>What is STall?</b><span>⌄</span></div><div className="faq-item"><b>Which businesses can join STall?</b><span>⌄</span></div>
         <div className="faq-item"><b>How does the Digital Score work?</b><span>⌄</span></div><div className="faq-item"><b>How does visibility radius work?</b><span>⌄</span></div>
         <div className="faq-item"><b>Can I try STall for free?</b><span>⌄</span></div><div className="faq-item"><b>How do I upgrade my plan?</b><span>⌄</span></div>
