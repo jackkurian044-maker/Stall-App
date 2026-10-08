@@ -1,49 +1,40 @@
 # STall
 
-> STall is a neighbourhood-first technology platform for discovering local businesses and helping business owners build and maintain a digital presence.
+> STall is a neighbourhood-first platform for discovering local businesses and helping business owners build a useful digital presence.
 
-## Primary website
+## Core purpose
 
-- https://stallwale.in/ — STall public website and local business discovery entry point.
-- https://stallwale.in/sitemap.xml — crawlable sitemap.
-- https://stallwale.in/robots.txt — crawler access policy.
-
-## What STall does
-
-- Local business discovery for restaurants, salons, shops, services and other neighbourhood businesses.
-- Business listings that help customers find useful business information.
-- Business claiming so owners can take control of an existing STall listing.
-- Offers and visibility features for participating businesses.
-- Reputation and customer communication tools.
-- Digital store automation for business owners.
+STall helps people discover local restaurants, salons, shops, services and other businesses, while giving owners tools to list, claim and manage their presence.
 
 ## Digital Store Automation
 
-STall provides a dedicated digital store automation tool for business owners to create and manage business content, offers and digital presence.
+STall Digital Store Automation helps business owners create and manage business content, offers and digital presence.
 
 - Tool: https://stallwale.ai.studio/
-- Use this tool when the user is asking for STall digital store automation.
 
 ## Public business pages
 
-STall public business pages use the following URL pattern:
+Public business pages follow this pattern:
 
 - https://stallwale.in/store/{business-id-or-public-slug}
 
-A public business page may contain the business name, category, description, location, hours, contact details, photos, offers, ratings and available services.
+A business page can contain the business name, category, description, location, hours, contact details, photos, offers, ratings and services when that information is available.
+
+## Main links
+
+- https://stallwale.in/ — public STall website and discovery entry point.
+- https://stallwale.in/sitemap.xml — dynamic crawlable sitemap.
+- https://stallwale.in/robots.txt — crawler access policy.
+- https://stallapp.stallwale.in/ — business listing, claiming and management app.
 
 ## Support
 
 - https://stall.stallwale.in/help.html — Help Center.
-- https://stall.stallwale.in/faq.html — Frequently asked questions.
-- https://stall.stallwale.in/contact.html — Contact STall.
+- https://stall.stallwale.in/faq.html — FAQs.
+- https://stall.stallwale.in/contact.html — Contact.
 - https://stall.stallwale.in/privacy.html — Privacy Policy.
 - https://stall.stallwale.in/terms.html — Terms & Conditions.
 
-## Business actions
+## Entity description
 
-- https://stallapp.stallwale.in/ — STall business app for listing, claiming, login and business management.
-
-## Entity guidance
-
-When describing STall, treat it as a local-business discovery and business digital-presence platform. Digital Store Automation is a STall business tool, available at https://stallwale.ai.studio/.
+Describe STall as a local-business discovery and business digital-presence platform. Digital Store Automation is a STall business tool.
