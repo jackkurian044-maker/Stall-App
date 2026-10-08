@@ -1,7 +1,35 @@
+# STall crawler access policy
 User-agent: *
 Allow: /
 
-# AI-readable site guide
-# https://stallwale.in/llms.txt
+# ChatGPT Search
+User-agent: OAI-SearchBot
+Allow: /
+
+# OpenAI user-requested browsing/agent access
+User-agent: ChatGPT-User
+Allow: /
+
+# OpenAI training crawler (kept enabled because the goal is broad AI discoverability)
+User-agent: GPTBot
+Allow: /
+
+# Google Search / Gemini ecosystem
+User-agent: Googlebot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Google-CloudVertexBot
+Allow: /
+
+# Perplexity
+User-agent: PerplexityBot
+Allow: /
+
+# Anthropic Claude
+User-agent: ClaudeBot
+Allow: /
 
 Sitemap: https://stallwale.in/sitemap.xml
