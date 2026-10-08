@@ -176,7 +176,7 @@ export default function PublicLandingPageClay(){
     <header className="nav"><div className="wrap navin">
       <a className="brand" href="https://stallwale.in/"><img src={logo} alt="STall logo"/></a>
       <nav className="navlinks">
-        <a href="/products.html">Products⌄</a><a href="#platform">For Businesses⌄</a><a href="#plans">Pricing</a><a href="#resources">Resources⌄</a><a href="/careers.html">Careers</a><a href={appUrl}>Sign In</a><a className="navcta" href={appUrl}>Get Started Free →</a>
+        <a href="/products.html">Products⌄</a><a href="#platform">For Businesses⌄</a><a href="#plans">Pricing</a><a href="#resources">Resources⌄</a><a href="/careers.html">Careers</a><a className="navcta" href={appUrl}>Get Started Free →</a>
       </nav>
     </div></header>
 
