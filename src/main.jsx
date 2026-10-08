@@ -21,7 +21,7 @@ boot();
 // Register STall as a Progressive Web App without changing the app's routing or data flow.
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch((error) => {
+    navigator.serviceWorker.register("/sw.js?v=4", { scope: "/" }).catch((error) => {
       console.warn("STall PWA service worker registration failed", error);
     });
   });
