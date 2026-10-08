@@ -22,6 +22,68 @@ h1,h2,h3{font-family:Poppins,Inter,sans-serif}h1{font-size:clamp(42px,6vw,76px);
 footer{border-top:1px solid var(--line);padding:38px 0;color:#777;font-size:12px}.foot{display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:42px;align-items:start}.foot img{width:150px;height:55px;object-fit:contain}.foot p{max-width:360px;color:#888;margin:12px 0 0}.powered{margin-top:18px;color:#777;font-size:12px}.powered strong{color:#aaa}.footcol h3{font-size:13px;color:#fff;margin:4px 0 14px;font-family:Inter,system-ui,sans-serif}.footlinks{display:flex;flex-direction:column;gap:10px}.footlinks a{color:#888}.footlinks a:hover{color:#fff}.footbottom{grid-column:1/-1;border-top:1px solid var(--line);padding-top:20px;margin-top:6px;color:#666;font-size:11px}
 @media(max-width:950px){.navlinks a:not(.navcta){display:none}.hero-grid,.audience,.intel,.automation{grid-template-columns:1fr}.hero-card{order:-1}.grid3,.category-grid{grid-template-columns:1fr 1fr}.steps,.plans{grid-template-columns:1fr 1fr}}
 @media(max-width:560px){.wrap{width:min(calc(100% - 24px),var(--max))}.hero{padding:45px 0 55px}.hero-grid{gap:30px}h1{letter-spacing:-1.7px}.lead{font-size:16px}.actions .btn{width:100%}.section{padding:58px 0}.grid3,.category-grid,.steps,.plans,.faq{grid-template-columns:1fr}.card{padding:23px}.foot{grid-template-columns:1fr 1fr}.footbottom{grid-column:1/-1}.cta{padding:27px;align-items:flex-start;flex-direction:column}}
+/* STall AI-Adaptive Clay-inspired visual system */
+:root{
+  --bg:#f7f4ec;--panel:#ffffff;--panel2:#efeee8;--ink:#111111;--muted:#66645f;
+  --line:#dfddd5;--lime:#c9ef3b;--green:#0b6b4f;--blue:#287bd6;--pink:#df5d96;
+  --purple:#7560d8;--yellow:#e6ad32;--max:1240px;
+}
+body{
+  background:
+    radial-gradient(circle at 8% 8%,rgba(201,239,59,.18),transparent 24%),
+    radial-gradient(circle at 92% 18%,rgba(40,123,214,.10),transparent 25%),
+    var(--bg);
+  color:var(--ink);
+  font-family:Inter,system-ui,sans-serif;
+}
+.nav{background:rgba(247,244,236,.88);border-bottom:1px solid rgba(17,17,17,.08)}
+.navlinks{color:#595752}.navlinks a:hover{color:#111}.navcta{background:var(--lime);border:1px solid #111;color:#111;padding:10px 17px}
+.hero{padding:96px 0 82px}.hero-grid{gap:72px}
+.eyebrow,.kicker{color:var(--green)}
+.eyebrow{border:1px solid rgba(11,107,79,.22);background:rgba(11,107,79,.06)}
+.dot{background:var(--pink)}
+h1,h2,h3{font-family:Poppins,Inter,sans-serif;color:#111}
+h1{font-size:clamp(46px,7vw,88px);letter-spacing:-4px}
+h1 span{color:var(--green)}
+.lead{color:#4f4d48}
+.primary{background:var(--lime);color:#111;border:1px solid #111;box-shadow:4px 4px 0 #111}
+.primary:hover{transform:translate(-1px,-1px);box-shadow:6px 6px 0 #111}
+.secondary{border:1px solid #c9c6bc;background:#fff;color:#111}
+.hero-card{
+  position:relative;overflow:hidden;border:1px solid #111;background:#0b6b4f;
+  border-radius:34px;padding:28px;box-shadow:10px 12px 0 #111;min-height:430px;
+}
+.hero-card:before{content:"";position:absolute;width:190px;height:190px;border-radius:50%;background:var(--lime);right:-55px;top:-55px}
+.hero-card:after{content:"";position:absolute;width:120px;height:120px;border-radius:28px;background:var(--pink);left:-42px;bottom:-40px;transform:rotate(18deg)}
+.ai-visual{position:relative;z-index:2;height:100%;min-height:374px;display:flex;flex-direction:column;justify-content:space-between}
+.ai-top{display:flex;justify-content:space-between;gap:10px;font-size:10px;font-weight:900;letter-spacing:1.2px;color:#fff}
+.ai-top span:last-child{background:var(--lime);color:#111;padding:7px 10px;border-radius:999px}
+.ai-core{display:grid;place-items:center;margin:18px auto;width:185px;height:185px;border-radius:50%;background:radial-gradient(circle,#fff 0 13%,var(--lime) 14% 28%,rgba(201,239,59,.22) 29% 55%,transparent 56%);border:1px solid rgba(255,255,255,.55);box-shadow:0 0 0 18px rgba(255,255,255,.05),0 0 0 42px rgba(255,255,255,.035)}
+.ai-core strong{font-size:22px;color:#111;background:#fff;border:2px solid #111;padding:12px 16px;border-radius:18px;box-shadow:5px 5px 0 #111}
+.signal-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.signal{background:rgba(255,255,255,.94);border:1px solid #111;border-radius:14px;padding:13px;color:#111}
+.signal b{display:block;font-size:13px}.signal span{font-size:10px;color:#666}
+.signal:nth-child(2){background:#dfeeff}.signal:nth-child(3){background:#ffe1ef}
+.caption{display:none}
+.section{padding:92px 0}.alt{background:#efeee8;border-top:1px solid #dfddd5;border-bottom:1px solid #dfddd5}
+.head h2{font-size:clamp(34px,4.8vw,56px);letter-spacing:-2px}.head p{color:#66625c}
+.card,.step,.category,.plan,.metric,.flow{background:#fff;border:1px solid #d8d5cc;box-shadow:0 2px 0 rgba(17,17,17,.03)}
+.card{border-radius:22px}.card:hover,.category:hover,.plan:hover{transform:translateY(-3px);box-shadow:0 12px 30px rgba(17,17,17,.08)}
+.icon{background:var(--lime);border:1px solid #111;color:#111;border-radius:13px}
+.list li{color:#4e4c47;border-color:#e5e2da}.list li:before{color:var(--green)}
+.step{border-radius:18px}.num{color:var(--green)}
+.category{border-radius:17px}.category strong{color:#111}.category span{color:#777}
+.score{border:1px solid #111;background:var(--green);color:#fff;box-shadow:8px 9px 0 #111}
+.score .kicker,.score p{color:#e8fff6}.score-number{color:var(--lime)}
+.metric{border-color:rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#dff7ed}.metric b{color:#fff}
+.automation-box{border:1px solid #111;background:#fff;box-shadow:8px 9px 0 #111}.automation-box p{color:#6d6a64}
+.flow{border-radius:15px}.flow span{color:#777}
+.plan.featured{border-color:#111;background:#dff2b0;box-shadow:6px 7px 0 #111}.plan b,.plan a{color:var(--green)}.plan p{color:#666}
+.cta{border:1px solid #111;background:var(--green);box-shadow:9px 10px 0 #111}.cta .kicker,.cta p{color:#e8fff6}.cta h2{color:#fff}
+footer{border-top:1px solid #d8d5cc;color:#777;background:#111}.footcol h3{color:#fff}.footlinks a{color:#aaa}.footlinks a:hover{color:#fff}.foot p{color:#aaa}.powered{color:#888}.powered strong{color:var(--lime)}.footbottom{border-color:#333;color:#777}
+@media(max-width:560px){h1{letter-spacing:-2.3px}.hero-card{min-height:390px}.ai-core{width:150px;height:150px}.signal-grid{grid-template-columns:1fr}.section{padding:68px 0}}
+@media(prefers-reduced-motion:reduce){.primary:hover,.card:hover,.category:hover,.plan:hover{transform:none}}
+
 `;
 
 export default function PublicLandingPageClay() {
@@ -55,17 +117,27 @@ export default function PublicLandingPageClay() {
       <main>
         <section className="hero"><div className="wrap hero-grid">
           <div>
-            <div className="eyebrow"><span className="dot"/> Local business discovery + digital growth</div>
+            <div className="eyebrow"><span className="dot"/> AI-adaptive local discovery + digital growth</div>
             <h1>Make your local business <span>easier to discover.</span></h1>
-            <p className="lead">STall connects customers with local businesses and gives business owners the tools to build, manage and improve their digital presence.</p>
+            <p className="lead">STall connects customers with local businesses and gives business owners AI-adaptive tools to understand, manage and improve their digital presence.</p>
             <div className="actions"><a className="btn primary" href={appUrl}>List Your Business Free</a><a className="btn secondary" href="#platform">See How STall Works</a></div>
-            <div className="micro">Discover businesses • List or claim a business • Build your digital presence</div>
+            <div className="micro">AI-aware discovery • Category-aware intelligence • Digital growth automation</div>
           </div>
-          <div className="hero-card"><img src={logo} alt="STall — local business discovery and digital presence" /><div className="caption"><strong>One platform.</strong> Local discovery for customers and practical digital tools for businesses.</div></div>
+          <div className="hero-card">
+  <div className="ai-visual">
+    <div className="ai-top"><span>STALL AI-ADAPTIVE</span><span>LIVE SIGNAL</span></div>
+    <div className="ai-core"><strong>STall AI</strong></div>
+    <div className="signal-grid">
+      <div className="signal"><b>Discover</b><span>Category + location</span></div>
+      <div className="signal"><b>Understand</b><span>Business context</span></div>
+      <div className="signal"><b>Grow</b><span>Actionable signals</span></div>
+    </div>
+  </div>
+</div>
         </div></section>
 
         <section id="platform" className="section alt"><div className="wrap">
-          <div className="head"><div className="kicker">What STall does</div><h2>One platform for local discovery and business growth.</h2><p>Every part of STall has a distinct job: help people find businesses, help them connect, and give owners better tools to grow their presence.</p></div>
+          <div className="head"><div className="kicker">AI-adaptive local business platform</div><h2>One system that understands the business, the market and the next action.</h2><p>Every part of STall has a distinct job: help people find businesses, help them connect, and give owners better tools to grow their presence.</p></div>
           <div className="grid3">
             <article className="card"><div className="icon">01</div><h3>Discover</h3><p>Find restaurants, salons, shops, services and other local businesses around you.</p></article>
             <article className="card"><div className="icon">02</div><h3>Connect</h3><p>See business information, services, offers, contact details, directions and public business pages.</p></article>
@@ -104,7 +176,7 @@ export default function PublicLandingPageClay() {
         </div></section>
 
         <section id="intelligence" className="section alt"><div className="wrap">
-          <div className="head"><div className="kicker">Business intelligence</div><h2>Know how your business compares.</h2><p>STall can turn business information into a clearer picture of digital presence and local competitiveness.</p></div>
+          <div className="head"><div className="kicker">AI-adaptive business intelligence</div><h2>Know what your business needs next.</h2><p>STall can turn business information into a clearer picture of digital presence and local competitiveness.</p></div>
           <div className="intel">
             <div className="score"><div className="kicker">STall Digital Score</div><div className="score-number">72</div><p>Illustrative example — a business score can evaluate the quality and completeness of its digital presence.</p><div className="compare"><div className="metric">Business presence<b>Strong</b></div><div className="metric">Local visibility<b>Improve</b></div><div className="metric">Offers<b>Active</b></div><div className="metric">Content<b>Improve</b></div></div></div>
             <div className="card"><div className="icon">↗</div><h3>Compare with similar businesses</h3><p>STall's competitive intelligence direction is category-aware: a unisex salon should be compared with similar unisex salons, restaurants with restaurants, hospitals with hospitals, and so on.</p><ul className="list"><li>Same-category comparison</li><li>Nearby business context</li><li>Digital presence opportunities</li><li>Actionable improvement areas</li></ul></div>
