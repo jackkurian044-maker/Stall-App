@@ -162,7 +162,7 @@ export default function PublicLandingPageClay(){
       </div></div></section>
 
       <section className="section alt"><div className="wrap"><div className="section-head"><div><div className="kicker">Trusted by Thousands of Local Businesses</div><h2>Real businesses. Real growth. Powered by AI.</h2></div><div className="stars">★ 4.8/5</div></div><div className="trust">
-        <article className="quote"><div className="quote-top"><strong>Swaad Kerala Restaurant</strong><span className="stars">★★★★★</span></div><p>“STall helped us increase our visibility and get more customers. The AI suggestions are very useful!”</p><small>Koramangala, Bangalore</small></article>
+        <article className="quote"><div className="quote-top"><strong>Swaad Kerala Restaurant</strong><span className="stars">★★★★★</span></div><p>“STall helped us increase our visibility and get more customers. The AI suggestions are very useful!”</p><small>Janakpuri, Delhi</small></article>
         <article className="quote"><div className="quote-top"><strong>Cut N Cute Studio</strong><span className="stars">★★★★★</span></div><p>“Our salon bookings increased after using the digital tools. The recommendations are practical and easy to use.”</p><small>Bangalore</small></article>
         <article className="quote"><div className="quote-top"><strong>The Health Care Clinic</strong><span className="stars">★★★★★</span></div><p>“We got more patient enquiries through STall. The platform is simple to use and very effective.”</p><small>HSR Layout, Bangalore</small></article>
       </div></div></section>
