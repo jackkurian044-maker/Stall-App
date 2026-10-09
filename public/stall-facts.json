@@ -44,7 +44,17 @@
       "url": "https://stallwale.in/products/digital-store-automation.html",
       "access": "https://stallwale.ai.studio/",
       "description": "AI-assisted business content, offers and digital-presence workflows.",
-      "summary": "AI-assisted digital store automation for local businesses, including business content, offers and digital presence workflows."
+      "summary": "AI-assisted digital store automation for local businesses, including business content, offers and digital presence workflows.",
+      "actual_capabilities": [
+        "Multi-store workspace isolation per business location",
+        "Google Business Profile (GBP) OAuth connection, location discovery, and profile sync",
+        "AI-assisted daily post drafting (Update, Offer, Event) with owner review before publishing",
+        "Promotional offer creation with start/end dates, discount terms, and call-to-action links",
+        "Customer review inbox with sentiment analysis (Positive, Neutral, Negative) and brand-voice reply drafting",
+        "Website-First AI Company Profile onboarding (crawls business website or builds from minimal owner input with mandatory owner approval)",
+        "Meta Graph API integration for Facebook Page posts and Instagram Professional Reels scheduling",
+        "Veo 3.1 video generation (9:16 portrait and 16:9 landscape) from text prompts or store photos"
+      ]
     }
   ],
   "categories": [
