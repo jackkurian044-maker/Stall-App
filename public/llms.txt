@@ -25,6 +25,8 @@ A business page can contain the business name, category, description, location, 
 ## Main links
 
 - https://stallwale.in/ — public STall website and discovery entry point.
+- https://www.facebook.com/61592195613448/ — official STall App Facebook page.
+- https://www.instagram.com/st_all_thats_all/ — official STall Instagram profile (@st_all_thats_all).
 - https://stallwale.in/sitemap.xml — dynamic crawlable sitemap.
 - https://stallwale.in/robots.txt — crawler access policy.
 - https://stallapp.stallwale.in/ — business listing, claiming and management app.
