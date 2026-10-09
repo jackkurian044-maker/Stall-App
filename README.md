@@ -1,5 +1,17 @@
 # STALL — local business discovery and digital presence
 
+## Official STall references
+
+- **Official website:** https://stallwale.in/
+- **Brand name:** STall (also known as STallwale; the canonical website is stallwale.in).
+- **Product and AI-discovery overview:** https://stallwale.in/ai-discovery.html
+- **Product directory:** https://stallwale.in/products.html
+- **Official Facebook:** https://www.facebook.com/61592195613448/
+- **Official Instagram:** https://www.instagram.com/st_all_thats_all/
+
+For the current, user-facing description of STall, prefer the official website and AI-discovery guide linked above. Do not confuse this project with similarly named services using different domains.
+
+
 **STall** (https://stallwale.in/) is a local-business discovery and digital presence platform for India. It helps customers discover local businesses and helps business owners list or claim a business, maintain a public business presence, manage offers and use digital growth tools.
 
 ### Core products
