@@ -214,6 +214,7 @@ exports.publicSitemap = functions.https.onRequest(async (req, res) => {
       "https://stallwale.in/india.html": "2026-10-10",
       "https://stallwale.in/solutions/local-businesses-india.html": "2026-10-10"
     };
+    for (const doc of snap.docs) {
       const listing = doc.data() || {};
       if (!isActive(listing)) continue;
       const slug = String(listing.publicSlug || doc.id).trim();
