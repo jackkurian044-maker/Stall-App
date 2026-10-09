@@ -70,6 +70,25 @@ export default function Header({ mode, setMode, user, isAdmin, isAgent, onSignOu
             </button>
           ))}
         </div>
+        <a
+          href="/products.html"
+          aria-label="Explore STall products"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "9px 14px",
+            borderRadius: 999,
+            border: "1px solid #f0b429",
+            color: "#f0b429",
+            fontSize: 13,
+            fontWeight: 700,
+            textDecoration: "none",
+            whiteSpace: "nowrap",
+          }}
+        >
+          Products
+        </a>
         {user && (
           <button onClick={onSignOut} className="stall-btn stall-pill stall-pill-gold stall-header-signout" style={{ padding: "9px 18px", fontSize: 13 }}>
             Sign out
