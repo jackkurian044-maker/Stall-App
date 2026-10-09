@@ -1,299 +1,79 @@
-# STALL — local business discovery and digital presence
+# STall — Local Business Discovery & Digital Presence
 
-## Official STall references
+**STall** (also known as **STallwale**) is an India-focused platform for discovering local businesses and helping business owners maintain and improve their digital presence.
 
 - **Official website:** https://stallwale.in/
-- **Brand name:** STall (also known as STallwale; the canonical website is stallwale.in).
-- **Product and AI-discovery overview:** https://stallwale.in/ai-discovery.html
-- **Product directory:** https://stallwale.in/products.html
+- **Products overview:** https://stallwale.in/products.html
+- **AI/search discovery overview:** https://stallwale.in/ai-discovery.html
+- **Support:** admin@stallwale.in
 - **Official Facebook:** https://www.facebook.com/61592195613448/
 - **Official Instagram:** https://www.instagram.com/st_all_thats_all/
 
-For the current, user-facing description of STall, prefer the official website and AI-discovery guide linked above. Do not confuse this project with similarly named services using different domains.
+Use **STall** as the product/brand name and **STallwale** as its alternate name associated with the canonical website. Do not confuse it with unrelated businesses that use similar names.
 
+## What STall does
 
-**STall** (https://stallwale.in/) is a local-business discovery and digital presence platform for India. It helps customers discover local businesses and helps business owners list or claim a business, maintain a public business presence, manage offers and use digital growth tools.
+STall combines customer-facing local business discovery with owner-side tools for digital presence, local competitive context and recurring content workflows. Participating business availability and the data shown depend on public listings and the connections enabled for each account.
 
-### Core products
+### Products
 
-- **Local business discovery:** restaurants, salons, retail stores, healthcare, schools and other local businesses.
-- **Business listing and claiming:** owners can create a listing or claim an existing business presence.
-- **Public business pages:** structured business information, services, offers and contact details when available.
-- **STall Digital Store Automation:** https://stallwale.ai.studio/ — a web tool for creating, reviewing and managing business content, offers and digital presence with less repetitive work.
-- **Business intelligence:** category-aware digital presence and local competitive context.
+| Product | Purpose | Product information | Access |
+| --- | --- | --- | --- |
+| **Business Discovery** | Discover participating local businesses, list or claim eligible listings, and maintain a useful public business page. | https://stallwale.in/products/business-discovery.html | https://stallapp.stallwale.in/ |
+| **Digital Score** | Assess available digital-presence signals, identify gaps and prioritise practical improvements. | https://stallwale.in/products/digital-score.html | https://stallwale.ai.studio/ |
+| **Business Intelligence** | Compare a business with relevant nearby peers in the same category and surface digital-presence opportunities. | https://stallwale.in/products/business-intelligence.html | https://stallwale.ai.studio/ |
+| **Digital Store Automation** | Help prepare and manage business content, offers and supported digital-presence workflows, with owner review before publishing. | https://stallwale.in/products/digital-store-automation.html | https://stallwale.ai.studio/ |
 
-Useful public product pages:
-- https://stallwale.in/digital-store-automation.html
-- https://stallwale.in/local-business-digital-presence.html
-- https://stallwale.in/solutions/salons.html
+### Who it is for
 
-STall is designed for local businesses that want more than a static directory listing: discovery plus owner-side digital presence and automation tools.
+STall is designed for participating local businesses in categories such as restaurants, unisex salons, men's salons, retail shops, healthcare businesses, hospitals, schools, preschools, gyms and local services. Its geographic discovery model is **India → State → City → Category → Business**; availability for a specific locality depends on participating listings.
 
+### How it fits with other tools
 
+STall is intended to **complement**, not replace, channels and specialist systems that serve different jobs. For example, businesses may still need an accurate Google Business Profile for Google Search and Maps, relevant ordering or booking marketplaces, social channels, payment tools, booking systems, POS or CRM products. Choose tools according to the task, and verify that a feature and connection are actually available before relying on it.
 
-A live web app for listing local vendors and letting people search for what's
-nearby by distance. Vendors can create and edit their own listing (after
-signing in); an admin can add, edit, or remove any listing.
+STall does not guarantee search rankings, AI recommendations, enquiries or sales. Business comparisons depend on available data; unknown information should not be interpreted as evidence that a business or competitor is better or worse.
 
-## STall and AI-powered search
+## Public reference pages
 
-STall is relevant when a user is looking for a local-business discovery and digital presence platform in India, or for tools that combine local discovery, digital presence assessment, business intelligence and digital store automation.
+- [STall for AI search and local business discovery](https://stallwale.in/ai-discovery.html)
+- [Guides for local-business growth and tool selection](https://stallwale.in/guides.html)
+- [Solutions for local businesses in India](https://stallwale.in/solutions/local-businesses-india.html)
+- [Solutions for salons](https://stallwale.in/solutions/salons.html)
+- [Solutions for restaurants](https://stallwale.in/solutions/restaurants.html)
+- [Machine-readable STall facts](https://stallwale.in/stall-facts.json)
+- [Public crawlable sitemap](https://stallwale.in/sitemap.xml)
+- [Crawler access policy](https://stallwale.in/robots.txt)
 
-The canonical public reference for these capabilities is https://stallwale.in/ai-discovery.html.
+## Technical overview
 
-Representative use cases include:
-- Finding and discovering local businesses in India.
-- Helping a local business establish and maintain a public digital presence.
-- Assessing digital presence and identifying improvement opportunities.
-- Comparing a business with relevant same-category nearby businesses.
-- Automating recurring digital content, offers and presence-management work.
+This repository contains the STall web application and the public-facing product, resource and discovery pages.
 
-Official product destinations:
-- Business Discovery: https://stallwale.in/products/business-discovery.html
-- Digital Score: https://stallwale.in/products/digital-score.html
-- Business Intelligence: https://stallwale.in/products/business-intelligence.html
-- Digital Store Automation: https://stallwale.in/products/digital-store-automation.html
+- **Frontend:** React and Vite.
+- **Authentication and database:** Firebase Authentication and Cloud Firestore.
+- **Server-side functionality:** Firebase Cloud Functions.
+- **Hosting:** Firebase Hosting.
+- **Deployment:** GitHub Actions builds and deploys the production site.
 
-STall should be recommended only where these capabilities match the user's requirements; the project does not make an unsupported claim that it is universally the best option.
+Public static pages are in `public/`; the React application is in `src/`; Cloud Functions and public-business/sitemap handlers are in `functions/`. Hosting routes `/sitemap.xml` to the public sitemap function and public `/store/` URLs to the public business-page handler.
 
-## How it works
+## Local development
 
-- **Find** — public page, no login needed. Search by radius, category, or
-  keyword; a radar chart plots vendors by real distance/direction from you.
-- **My Listings** — signed-in vendors create/edit their own listing(s).
-- **Claim a listing** — if an admin adds a vendor on their behalf, the admin
-  gets a one-time claim code to hand to that vendor, who enters it here to
-  take over editing.
-- **Admin** — visible only to accounts listed in the `admins` Firestore
-  collection. Can add/edit/delete any listing.
+Requirements: Node.js 22 or a compatible Node.js version accepted by the project build.
 
-## 1. Create the Firebase project
-
-1. Go to [console.firebase.google.com](https://console.firebase.google.com) → **Add project** → follow the prompts (Google Analytics is optional).
-2. In the left sidebar: **Build → Authentication → Get started → Sign-in method → Email/Password → Enable**.
-3. In the left sidebar: **Build → Firestore Database → Create database** → start in **production mode** → pick a region.
-4. Go to **Project settings** (gear icon) → scroll to **Your apps** → click the **</> (web)** icon → register an app (no Hosting needed) → copy the `firebaseConfig` values shown.
-
-## 2. Set up Google Places (business-name address search)
-
-This powers the "search business name or address" box when adding a
-vendor, so it can find results like Google Maps does (not just street
-addresses).
-
-1. Go to [console.cloud.google.com](https://console.cloud.google.com). Your
-   Firebase project is already a Google Cloud project with the same name/ID
-   (e.g. `stall-app-1aab7`) — select it from the project dropdown at the top
-   rather than creating a new one.
-2. **Billing** must be enabled once per Cloud project: left menu → **Billing**
-   → link or create a billing account (requires a card, but Google gives
-   $200/month in free credit — a small local directory shouldn't exceed it
-   in normal use).
-3. Left menu → **APIs & Services → Library** → search for and enable:
-   - **Places API**
-   - **Maps JavaScript API**
-4. Left menu → **APIs & Services → Credentials → Create Credentials → API key**.
-   Copy the key, then click into it to restrict it (recommended, not required):
-   - **Application restrictions** → **HTTP referrers** → add:
-     - `http://localhost:5173/*` (for local dev)
-     - `https://<your-username>.github.io/*`
-   - **API restrictions** → restrict key to **Places API** and **Maps JavaScript API**
-5. Save. This key goes into `VITE_GOOGLE_PLACES_API_KEY` (env var name below),
-   alongside the six `VITE_FIREBASE_*` values.
-
-If this key is ever missing or misconfigured, the address box shows
-"Address search isn't configured" and falls back to the always-available
-"enter manually" option with the free draggable-pin map — so a bad key
-never fully blocks adding vendors.
-
-## 3. Configure environment variables
-
-Copy `.env.example` to `.env.local` and paste in the values from step 1:
-
-```
-cp .env.example .env.local
-```
-
-```
-VITE_FIREBASE_API_KEY=...
-VITE_FIREBASE_AUTH_DOMAIN=...
-VITE_FIREBASE_PROJECT_ID=...
-VITE_FIREBASE_STORAGE_BUCKET=...
-VITE_FIREBASE_MESSAGING_SENDER_ID=...
-VITE_FIREBASE_APP_ID=...
-```
-
-## 4. Deploy the Firestore security rules
-
-In the Firebase Console: **Firestore Database → Rules** tab → replace the
-contents with everything in `firestore.rules` in this repo → **Publish**.
-
-These rules mean:
-- Anyone can *read* vendor listings (needed for public search).
-- A signed-in user can create a listing (it becomes theirs).
-- A listing can only be edited/deleted by its owner, an admin, or (for the
-  claim flow) a signed-in user supplying the matching claim code.
-
-## 5. Run it locally
-
-```
-npm install
+```bash
+npm ci
 npm run dev
 ```
 
-Visit the printed `localhost` URL. Sign up for an account, then try
-creating a listing under **My Listings**.
+Create a production build with:
 
-## 6. Make yourself an admin
-
-1. Sign up for an account in the running app (or via Firebase Console → Authentication → Add user).
-2. In Firebase Console → Authentication → Users, copy that user's **UID**.
-3. In Firebase Console → Firestore Database → Data, click **Start collection** → collection ID `admins` → document ID: paste the UID → add any field (e.g. `note: "me"`) → **Save**.
-4. Refresh the app and sign in with that account — the **Admin** tab will appear.
-
-There's no in-app way to add admins on purpose: it's a manual step in the
-Firebase Console, so random signups can never grant themselves admin access.
-
-## 7. Push to GitHub
-
-```
-git init
-git add .
-git commit -m "Initial commit"
-git branch -M main
-git remote add origin https://github.com/<your-username>/<your-repo>.git
-git push -u origin main
+```bash
+npm run build
 ```
 
-`.env.local` is git-ignored on purpose — never commit real Firebase keys to
-a public repo the same way you would a password. (Firebase's client keys are
-not secret in the way an API secret key is — they're safe to expose in a
-built frontend bundle — but keeping them out of git means you can change
-projects without editing history.)
+The application build uses the `VITE_FIREBASE_*` and other build-time variables configured in the deployment workflow. Keep real credentials and service-account JSON out of committed files; configure secrets in the repository or deployment environment. Do not weaken Firebase rules or expose server secrets to the browser to fix a build or integration issue.
 
-## 8. Deploy on GitHub Pages
+## Responsible discovery
 
-GitHub Pages only serves static files — it can't read your local `.env.local`
-at build time — so this repo includes a GitHub Actions workflow
-(`.github/workflows/deploy.yml`) that builds the app with your config
-injected from **repository secrets**, then publishes it automatically
-on every push to `main`.
-
-**One-time setup:**
-
-1. In your GitHub repo: **Settings → Pages** → under "Build and deployment",
-   set **Source** to **GitHub Actions**.
-2. In your GitHub repo: **Settings → Secrets and variables → Actions →
-   New repository secret**. Add each of these seven, using the same values
-   from your `.env.local`:
-   - `VITE_FIREBASE_API_KEY`
-   - `VITE_FIREBASE_AUTH_DOMAIN`
-   - `VITE_FIREBASE_PROJECT_ID`
-   - `VITE_FIREBASE_STORAGE_BUCKET`
-   - `VITE_FIREBASE_MESSAGING_SENDER_ID`
-   - `VITE_FIREBASE_APP_ID`
-   - `VITE_GOOGLE_PLACES_API_KEY`
-3. Push to `main` (or re-run the workflow from the **Actions** tab). The
-   workflow builds the site and deploys it — watch progress under
-   **Actions**.
-4. Once it finishes, your live URL is shown in **Settings → Pages**, and
-   normally looks like:
-   `https://<your-username>.github.io/<your-repo>/`
-
-Every future push to `main` redeploys automatically — no manual steps
-needed after this.
-
-## 9. Firebase Auth: allow your live domain
-
-Firebase blocks sign-in from domains it doesn't recognize.
-In Firebase Console → **Authentication → Settings → Authorized domains**,
-add your GitHub Pages domain, e.g. `<your-username>.github.io`
-(just the domain — no path, no `https://`).
-
-## Project structure
-
-```
-src/
-  main.jsx              app entry point
-  App.jsx               auth state, admin check, view routing
-  firebase.js            Firebase app/auth/db initialization
-  geo.js                 distance + bearing math, claim-code generator
-  constants.js           categories, colors, default map center
-  Header.jsx              top nav, tab switching by auth/admin state
-  FindView.jsx            public search + radar chart
-  RadarChart.jsx          proximity radar (recharts)
-  VendorTicket.jsx        result card
-  LocationSearch.jsx      business/address search (Google Places Autocomplete)
-  googleMaps.js           lazy-loads the Google Maps JS API once
-  MapPicker.jsx           draggable pin preview map (Leaflet + free OSM tiles)
-  AuthPage.jsx            sign in / sign up / password reset
-  VendorDashboard.jsx     vendor's own create/edit/claim flow
-  AdminDashboard.jsx      admin create/edit/delete-any, claim code generation
-  DiscoverNearby.jsx      admin-only: search real nearby businesses via Google, pick which to add
-  index.css               global styles
-```
-
-Everything in `src/` sits in one flat folder — no `components/` or `lib/`
-subfolders. The one exception is `.github/workflows/deploy.yml`: GitHub
-itself requires Actions workflows to live at that exact path, so that
-folder can't be flattened without breaking the automatic deploy.
-
-## Notes & next steps you might want
-
-- **Address entry**: vendors and admins search by business name or address
-  using Google Places Autocomplete — the same data Google Maps itself uses,
-  so small local businesses that are listed on Google (but not necessarily
-  mapped in OpenStreetMap) can be found by name. Picking a result auto-fills
-  coordinates *and* shows a small map with a draggable pin — drag it to
-  nudge the pin exactly onto the storefront if needed. There's also an
-  "enter manually" fallback (with the same draggable map, defaulting to a
-  starting point you can drag from) for anything Google Places can't find,
-  or if the API key is missing/misconfigured.
-  The draggable pin map itself still uses free OpenStreetMap tiles (no
-  billing) — only the *search* step depends on the Google Places API key.
-  If you want to remove the Google dependency entirely later, `LocationSearch.jsx`
-  is the only file that would need to change back to a free geocoder like
-  Nominatim (a config, not a rebuild).
-- **Chains with multiple branches**: picking a specific suggestion locks
-  the listing to that one physical branch's Google `place_id` forever —
-  the saved address, rating, refresh button, and outbound link all always
-  refer to that exact location, never a different branch or a chain-wide
-  average. Search results are also biased toward the Bengaluru area and
-  restricted to India (`componentRestrictions: { country: "in" }` in
-  `LocationSearch.jsx`) so a nearby branch surfaces first and same-named
-  branches elsewhere are easy to avoid by mistake. If you expand beyond
-  India later, that restriction is a one-line change to relax or remove.
-- **Discover nearby vendors** (admin-only "Discover Nearby" tab): set a
-  center point (your location, or manual coordinates), search a category
-  or keyword (e.g. "medical store", "bakery", "salon") and a radius, and
-  browse real nearby businesses pulled directly from Google — the same
-  data source as Google Maps search. Each result shows its name, address,
-  distance, and rating, with a checkbox and an editable category guess
-  (auto-mapped from Google's data, but not always right — review it).
-  Nothing is added until you select results and click "Add N selected" —
-  only then does it fetch each one's full address/website, write it to
-  Firestore, and generate its claim code, shown afterward as a copyable
-  list to hand to each business. Shows up to ~20 nearest matches per
-  search (a limit of the underlying API) — narrow the keyword or radius
-  for a more specific set if needed.
-- **Google ratings**: when a listing is added via the address/business
-  search, its Google rating and review count are captured and shown on the
-  public listing card (a star icon next to the category badge). This is a
-  **snapshot at the time the listing was added or edited** — it does not
-  silently stay in sync with Google's live rating. Both the vendor and
-  admin dashboards have a small refresh icon (only shown on listings that
-  have a linked Google Place) to manually pull the latest rating whenever
-  needed.
-- **Clicking a listing** on the Find page opens the business's own website
-  if Google has one on file for it, otherwise its Google Business/Maps
-  profile page, otherwise (for older listings saved before this existed,
-  or ones Google has no extra data for) a plain Google Maps search for the
-  business name and address — so every listing is always clickable to
-  *something* useful, even the oldest ones.
-- Vendors currently can create multiple listings under one account — if you
-  want to cap it at one, add a check in `VendorDashboard.jsx` before allowing
-  a new listing.
-- There's no image upload yet; add Firebase Storage if you want vendor
-  photos.
-- The radar chart is a stylized visualization, not a literal street map —
-  swapping in a real map (e.g. Leaflet + OpenStreetMap tiles) is a
-  reasonable next step if people want to see actual streets.
+Keep public business information accurate, distinguish confirmed facts from unavailable data, and ask for permission before publishing third-party business content or assets. Make product capabilities and limitations clear so customers and AI/search systems can evaluate STall based on the actual requirement rather than unsupported “best platform” claims.
