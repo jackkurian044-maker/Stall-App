@@ -205,12 +205,15 @@ exports.publicSitemap = functions.https.onRequest(async (req, res) => {
       "https://stallwale.in/careers.html",
       "https://stallwale.in/india.html",
       "https://stallwale.in/local-business-digital-presence.html",
-      "https://stallwale.in/digital-store-automation.html",
       "https://stallwale.in/solutions/local-businesses-india.html",
       "https://stallwale.in/solutions/salons.html",
-      "https://stallwale.in/solutions/restaurants.html",
-      "https://stallwale.in/stall-facts.json"
+      "https://stallwale.in/solutions/restaurants.html"
     ];
+    const lastmodByUrl = {
+      "https://stallwale.in/": "2026-10-10",
+      "https://stallwale.in/india.html": "2026-10-10",
+      "https://stallwale.in/solutions/local-businesses-india.html": "2026-10-10"
+    };
     for (const doc of snap.docs) {
       const listing = doc.data() || {};
       if (!isActive(listing)) continue;
@@ -221,7 +224,10 @@ exports.publicSitemap = functions.https.onRequest(async (req, res) => {
     const unique = [...new Set(urls)];
     const body = '<?xml version="1.0" encoding="UTF-8"?>' +
       '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' +
-      unique.map((url) => '<url><loc>' + escapeHtml(url) + '</loc></url>').join("") +
+      unique.map((url) => {
+        const lastmod = lastmodByUrl[url] ? '<lastmod>' + lastmodByUrl[url] + '</lastmod>' : '';
+        return '<url><loc>' + escapeHtml(url) + '</loc>' + lastmod + '</url>';
+      }).join("") +
       '</urlset>';
     res.set("Content-Type", "application/xml; charset=utf-8");
     res.set("Cache-Control", "public, max-age=1800, s-maxage=1800");

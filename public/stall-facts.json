@@ -1,7 +1,7 @@
 {
   "name": "STall",
   "canonical_url": "https://stallwale.in/",
-  "description": "STall (also known as STallwale) is an India-wide local business discovery and digital presence platform that helps business owners assess discoverability and compare relevant nearby businesses.",
+  "description": "STall (STallwale.in) is an India and Middle East local business discovery, Digital Score, Business Intelligence, and Store Automation platform that helps local business owners manage their Google Business Profile presence, daily posts, promotional offers, customer review responses, and social Reels workflows from one owner-controlled workspace.",
   "market": "India",
   "current_presence": [
     "Bengaluru",
@@ -22,25 +22,29 @@
       "name": "Business Discovery",
       "url": "https://stallwale.in/products/business-discovery.html",
       "access": "https://stallapp.stallwale.in/",
-      "description": "Local business listing, claiming and public business discovery."
+      "description": "Local business listing, claiming and public business discovery.",
+      "summary": "Find participating local businesses; create or claim eligible listings; maintain a useful public business page."
     },
     {
       "name": "Digital Score",
       "url": "https://stallwale.in/products/digital-score.html",
       "access": "https://stallwale.ai.studio/",
-      "description": "Digital presence assessment and improvement opportunities for businesses."
+      "description": "Digital presence assessment and improvement opportunities for businesses.",
+      "summary": "Assess available digital-presence signals and identify practical improvement opportunities for businesses."
     },
     {
       "name": "Business Intelligence",
       "url": "https://stallwale.in/products/business-intelligence.html",
       "access": "https://stallwale.ai.studio/",
-      "description": "Same-category local business comparison, competitive context and digital improvement opportunities."
+      "description": "Same-category local business comparison, competitive context and digital improvement opportunities.",
+      "summary": "Compare a business with relevant nearby peers in the same category and identify digital-presence gaps worth checking."
     },
     {
       "name": "Digital Store Automation",
       "url": "https://stallwale.in/products/digital-store-automation.html",
       "access": "https://stallwale.ai.studio/",
-      "description": "AI-assisted business content, offers and digital-presence workflows."
+      "description": "AI-assisted business content, offers and digital-presence workflows.",
+      "summary": "AI-assisted digital store automation for local businesses, including business content, offers and digital presence workflows."
     }
   ],
   "categories": [
@@ -81,5 +85,28 @@
       "platform": "Instagram",
       "url": "https://www.instagram.com/st_all_thats_all/"
     }
-  ]
+  ],
+  "pricing_and_eligibility": {
+    "trial": {
+      "duration_days": 7,
+      "ai_credits": 50,
+      "description": "Eligible new users receive a 7-day trial with 50 STall AI credits."
+    },
+    "india": {
+      "price": 499,
+      "currency": "INR",
+      "billing_period_days": 30,
+      "checkout_url": "https://rzp.io/rzp/DU1C4ZXH",
+      "checkout_status": "live"
+    },
+    "uae": {
+      "price": 60,
+      "currency": "AED",
+      "billing_period_days": 30,
+      "plan_id": "plan_stallwale_aed_60_30d",
+      "checkout_url": "https://rzp.io/rzp/DU1C4ZXH",
+      "checkout_status": "unified_link_fallback",
+      "disclosure": "A dedicated AED payment link is pending separate gateway configuration. Checkout currently falls back to the unified Razorpay link; confirm the amount and currency displayed at checkout before payment."
+    }
+  }
 }

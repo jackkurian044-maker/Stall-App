@@ -47,3 +47,9 @@ STall is intended to complement customer-discovery channels and specialist busin
 - Official Facebook: https://www.facebook.com/61592195613448/
 - Official Instagram: https://www.instagram.com/st_all_thats_all/
 - Support email: admin@stallwale.in
+
+## Subscription and eligibility
+
+- Eligible new users receive a 7-day trial with 50 STall AI credits.
+- India subscription: ₹499 INR per 30 days; the current Razorpay checkout is https://rzp.io/rzp/DU1C4ZXH.
+- UAE plan: AED 60 per 30 days. A dedicated AED payment link is pending separate gateway configuration, and checkout currently falls back to a unified Razorpay link. Confirm the amount and currency displayed at checkout before payment.

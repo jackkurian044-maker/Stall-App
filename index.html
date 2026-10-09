@@ -45,9 +45,11 @@
       "sameAs": [
         "https://github.com/jackkurian044-maker/Stall-App",
         "https://www.facebook.com/61592195613448/",
-        "https://www.instagram.com/st_all_thats_all/"
+        "https://www.instagram.com/st_all_thats_all/",
+        "https://stallapp.stallwale.in/",
+        "https://stallwale.ai.studio/"
       ],
-      "description": "STall is an India-wide local business discovery and digital presence platform.",
+      "description": "STall (STallwale.in) is an India and Middle East local business discovery, Digital Score, Business Intelligence, and Store Automation platform that helps local business owners manage their Google Business Profile presence, daily posts, promotional offers, customer review responses, and social Reels workflows from one owner-controlled workspace.",
       "knowsAbout": [
         "local business discovery",
         "business listing",
@@ -62,7 +64,10 @@
         "@type": "ContactPoint",
         "contactType": "customer support",
         "email": "admin@stallwale.in",
-        "areaServed": "IN",
+        "areaServed": [
+          "IN",
+          "AE"
+        ],
         "availableLanguage": [
           "en"
         ]
@@ -180,6 +185,49 @@
       ]
     },
     {
+      "@type": "SoftwareApplication",
+      "@id": "https://stallwale.in/#digital-store-automation-app",
+      "name": "STall Digital Store Automation",
+      "alternateName": "STallwale.in — STore Automation",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web",
+      "url": "https://stallwale.ai.studio/",
+      "description": "AI-assisted digital store automation for local businesses, including business content, offers and digital presence workflows.",
+      "sameAs": [
+        "https://stallwale.in/products/digital-store-automation.html",
+        "https://stallwale.ai.studio/products/store-automation"
+      ],
+      "provider": {
+        "@id": "https://stallwale.in/#organization"
+      },
+      "offers": [
+        {
+          "@type": "Offer",
+          "name": "7-day free trial",
+          "price": "0",
+          "priceCurrency": "INR",
+          "description": "Eligible new users receive a 7-day trial with 50 STall AI credits.",
+          "url": "https://stallwale.in/products/digital-store-automation.html"
+        },
+        {
+          "@type": "Offer",
+          "name": "STall Digital Store Automation — India",
+          "price": "499",
+          "priceCurrency": "INR",
+          "description": "₹499 INR for 30 days. The India Razorpay checkout is live.",
+          "url": "https://rzp.io/rzp/DU1C4ZXH"
+        },
+        {
+          "@type": "Offer",
+          "name": "STall Digital Store Automation — UAE",
+          "price": "60",
+          "priceCurrency": "AED",
+          "description": "AED 60 for 30 days. A dedicated AED payment link is pending separate gateway configuration. Checkout currently falls back to the unified Razorpay link; confirm the amount and currency displayed at checkout before payment.",
+          "url": "https://rzp.io/rzp/DU1C4ZXH"
+        }
+      ]
+    },
+    {
       "@type": "ItemList",
       "@id": "https://stallwale.in/#products",
       "name": "STall products",
@@ -187,51 +235,76 @@
         {
           "@type": "ListItem",
           "position": 1,
-          "name": "Business Discovery",
-          "url": "https://stallwale.in/products/business-discovery.html"
+          "item": {
+            "@type": "Service",
+            "@id": "https://stallwale.in/products/business-discovery.html#service",
+            "name": "STall Business Discovery",
+            "serviceType": "Local business listing, claiming and public business discovery",
+            "url": "https://stallwale.in/products/business-discovery.html",
+            "description": "Find participating local businesses; create or claim eligible listings; maintain a useful public business page.",
+            "provider": {
+              "@id": "https://stallwale.in/#organization"
+            },
+            "sameAs": [
+              "https://stallapp.stallwale.in/"
+            ]
+          }
         },
         {
           "@type": "ListItem",
           "position": 2,
-          "name": "Digital Score",
-          "url": "https://stallwale.in/products/digital-score.html"
+          "item": {
+            "@type": "Service",
+            "@id": "https://stallwale.in/products/digital-score.html#service",
+            "name": "STall Digital Score",
+            "serviceType": "Digital presence assessment and improvement opportunities",
+            "url": "https://stallwale.in/products/digital-score.html",
+            "description": "Assess available digital-presence signals and identify practical improvement opportunities for businesses.",
+            "provider": {
+              "@id": "https://stallwale.in/#organization"
+            },
+            "sameAs": [
+              "https://stallwale.ai.studio/products/digital-score"
+            ]
+          }
         },
         {
           "@type": "ListItem",
           "position": 3,
-          "name": "Business Intelligence",
-          "url": "https://stallwale.in/products/business-intelligence.html"
+          "item": {
+            "@type": "Service",
+            "@id": "https://stallwale.in/products/business-intelligence.html#service",
+            "name": "STall Business Intelligence",
+            "serviceType": "Same-category local business comparison and competitive context",
+            "url": "https://stallwale.in/products/business-intelligence.html",
+            "description": "Compare a business with relevant nearby peers in the same category and identify digital-presence gaps worth checking.",
+            "provider": {
+              "@id": "https://stallwale.in/#organization"
+            },
+            "sameAs": [
+              "https://stallwale.ai.studio/products/business-intelligence"
+            ]
+          }
         },
         {
           "@type": "ListItem",
           "position": 4,
-          "name": "Digital Store Automation",
-          "url": "https://stallwale.in/products/digital-store-automation.html"
+          "item": {
+            "@type": "Service",
+            "@id": "https://stallwale.in/products/digital-store-automation.html#service",
+            "name": "STall Digital Store Automation",
+            "serviceType": "Digital store automation for local businesses",
+            "url": "https://stallwale.in/products/digital-store-automation.html",
+            "description": "AI-assisted digital store automation for local businesses, including business content, offers and digital presence workflows.",
+            "provider": {
+              "@id": "https://stallwale.in/#organization"
+            },
+            "sameAs": [
+              "https://stallwale.ai.studio/products/store-automation"
+            ]
+          }
         }
       ]
-    },
-    {
-      "@type": "SoftwareApplication",
-      "@id": "https://stallwale.in/#digital-store-automation-app",
-      "name": "STall Digital Store Automation",
-      "applicationCategory": "BusinessApplication",
-      "operatingSystem": "Web",
-      "url": "https://stallwale.ai.studio/",
-      "description": "AI-assisted digital store automation for local businesses, including business content, offers and digital presence workflows.",
-      "provider": {
-        "@id": "https://stallwale.in/#organization"
-      }
-    },
-    {
-      "@type": "Service",
-      "@id": "https://stallwale.in/#digital-store-automation",
-      "name": "STall Digital Store Automation",
-      "serviceType": "Digital store automation",
-      "provider": {
-        "@id": "https://stallwale.in/#organization"
-      },
-      "url": "https://stallwale.ai.studio/",
-      "description": "A digital store automation tool for business owners to create and manage business content, offers and digital presence."
     }
   ]
 }</script>
