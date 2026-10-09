@@ -1,0 +1,1 @@
+window.STALL_GA_MEASUREMENT_ID = "";

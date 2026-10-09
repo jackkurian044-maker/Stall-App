@@ -25,6 +25,22 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Configure optional Google Analytics measurement
+        shell: bash
+        env:
+          STALL_GA_MEASUREMENT_ID: ${{ secrets.STALL_GA_MEASUREMENT_ID }}
+        run: |
+          measurement_id="${STALL_GA_MEASUREMENT_ID:-}"
+          if [[ -n "$measurement_id" && ! "$measurement_id" =~ ^G-[A-Z0-9]+$ ]]; then
+            echo "STALL_GA_MEASUREMENT_ID must be a GA4 Measurement ID (G-...) or empty."
+            exit 1
+          fi
+          printf 'window.STALL_GA_MEASUREMENT_ID = "%s";\n' "$measurement_id" > public/stall-analytics-config.js
+          if [[ -n "$measurement_id" ]]; then
+            echo "Optional analytics configured; measurement ID not printed."
+          else
+            echo "Optional analytics remains disabled until STALL_GA_MEASUREMENT_ID is configured."
+          fi
       - run: npm run build
         env:
           VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
