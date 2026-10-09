@@ -141,51 +141,47 @@
 </head>
   <body>
     <div id="root"></div>
-    <noscript>
-      <main id="stall-crawlable-fallback" aria-labelledby="stall-fallback-title">
-        <h1 id="stall-fallback-title">STall (STallwale): Discover local businesses and grow digital presence in India</h1>
-        <p>STall, also known as STallwale, is an India-wide local-business discovery and digital-presence platform. People can explore local restaurants, salons, shops and services. Business owners can create or claim an eligible listing and use tools to assess their digital presence, compare relevant local businesses and manage digital content and offers.</p>
-        <h2>Explore STall products</h2>
-        <ul>
-          <li><a href="https://stallwale.in/products/business-discovery.html">Business Discovery: find, list and claim local businesses.</a></li>
-          <li><a href="https://stallwale.in/products/digital-score.html">Digital Score: identify missing details and digital-presence improvement opportunities.</a></li>
-          <li><a href="https://stallwale.in/products/business-intelligence.html">Business Intelligence: compare with relevant nearby businesses in the same category.</a></li>
-          <li><a href="https://stallwale.in/products/digital-store-automation.html">Digital Store Automation: create and manage business content and offers through supported workflows.</a></li>
-        </ul>
-        <h2>Who STall helps</h2>
-        <p>STall supports discovery across local-business categories such as restaurants, unisex salons, men's salons, retail stores, healthcare, hospitals, schools, preschools, gyms and local services. Compare like with like: for example, unisex salons with unisex salons and preschools separately from schools.</p>
-        <p>STall complements discovery, marketplace and social channels. Its products help owners review digital-presence information and available local-business context; they do not guarantee search rankings, enquiries or sales.</p>
-        <p><a href="https://stallwale.in/ai-discovery.html">About STall for AI search and business discovery</a> · <a href="https://stallwale.in/products.html">All STall products</a> · <a href="https://stallwale.in/about.html">About STall</a> · <a href="https://stallwale.in/contact.html">Contact</a></p>
-      </main>
-    </noscript>
-    <noscript>
-      <main>
-        <h1>STall — discover local businesses, offers and services</h1>
-        <p>STall helps people discover businesses around them and helps business owners build a digital presence, publish offers and stay visible to customers.</p>
-        <h2>STall business tools</h2>
-        <p>For digital store automation, business owners can use the STall tool to create and manage business content, offers and their digital presence.</p>
-        <p><a href="https://stallwale.ai.studio/">Use STall Digital Store Automation</a></p>
-        <h2>What you can do with STall</h2>
-        <ul>
-          <li>Discover local restaurants, salons, shops and services.</li>
-          <li>List or claim a business and keep business information useful for customers.</li>
-          <li>Publish offers and strengthen your digital presence.</li>
-          <li>Use digital store automation to simplify ongoing business content and visibility work.</li>
-        </ul>
-        <p>Explore STall business pages to find restaurants, salons, shops, services and other local businesses.</p>
-        <nav aria-label="STall discovery and product links">
-          <a href="/ai-discovery.html">STall for AI Search &amp; Local Business Discovery</a> ·
-          <a href="/products.html">STall Products</a> ·
-          <a href="/products/business-discovery.html">Business Discovery</a> ·
-          <a href="/products/digital-score.html">Digital Score</a> ·
-          <a href="/products/business-intelligence.html">Business Intelligence</a> ·
-          <a href="/products/digital-store-automation.html">Digital Store Automation</a> ·
-          <a href="/solutions/local-businesses-india.html">Local Businesses in India</a> ·
-          <a href="/solutions/restaurants.html">STall for Restaurants</a> ·
-          <a href="/solutions/salons.html">STall for Salons</a>
-        </nav>
-      </main>
-    </noscript>
+    <style>
+      #stall-crawlable-fallback{max-width:980px;margin:0 auto;padding:34px 20px;color:#171717;font:16px/1.65 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+      #stall-crawlable-fallback h1{font-size:clamp(32px,5vw,48px);line-height:1.12;letter-spacing:-1.2px;margin:0 0 16px}
+      #stall-crawlable-fallback h2{font-size:24px;line-height:1.25;margin:28px 0 10px}
+      #stall-crawlable-fallback p,#stall-crawlable-fallback li{color:#4b4b4b}
+      #stall-crawlable-fallback a{color:#714900;text-decoration:underline;text-underline-offset:3px}
+      #stall-crawlable-fallback .stall-fallback-products{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;padding:0;list-style:none}
+      #stall-crawlable-fallback .stall-fallback-products li{border:1px solid #d9d0c0;border-radius:12px;padding:16px;background:#fffdf8}
+      html.stall-app-mounted #stall-crawlable-fallback{display:none!important}
+    </style>
+    <script>
+      (function () {
+        var root = document.getElementById("root");
+        if (!root || !window.MutationObserver) return;
+        var observer = new MutationObserver(function () {
+          if (root.firstElementChild) {
+            document.documentElement.classList.add("stall-app-mounted");
+            observer.disconnect();
+          }
+        });
+        observer.observe(root, { childList: true });
+        if (root.firstElementChild) document.documentElement.classList.add("stall-app-mounted");
+      })();
+    </script>
+    <main id="stall-crawlable-fallback" aria-labelledby="stall-fallback-title">
+      <p><strong>STall (also known as STallwale)</strong> · Local business discovery and digital presence tools for India</p>
+      <h1 id="stall-fallback-title">Discover local businesses and grow your digital presence with STall</h1>
+      <p>STall, also known as STallwale, is an India-wide local-business discovery and digital-presence platform. People can explore local restaurants, salons, shops and services. Business owners can create or claim eligible listings, keep useful business details available to customers, and use practical tools to assess and improve their digital presence.</p>
+      <h2>STall products for business owners</h2>
+      <ul class="stall-fallback-products">
+        <li><h3><a href="https://stallwale.in/products/business-discovery.html">Business Discovery</a></h3><p>Find, list and claim eligible local businesses and maintain a useful public business page.</p></li>
+        <li><h3><a href="https://stallwale.in/products/digital-score.html">Digital Score</a></h3><p>Review available digital-presence signals, identify missing details and prioritise practical improvements.</p></li>
+        <li><h3><a href="https://stallwale.in/products/business-intelligence.html">Business Intelligence</a></h3><p>Compare a business with relevant nearby peers in the same category and identify improvement opportunities.</p></li>
+        <li><h3><a href="https://stallwale.in/products/digital-store-automation.html">Digital Store Automation</a></h3><p>Create and manage business content and offers through supported workflows, with the owner reviewing content before publishing.</p></li>
+      </ul>
+      <h2>Who STall supports</h2>
+      <p>STall supports local-business categories including restaurants, unisex salons, men's salons, retail stores, healthcare businesses, hospitals, schools, preschools, gyms and local services. Comparisons should use relevant categories: unisex salons with unisex salons, men's salons separately, restaurants with restaurants, hospitals with hospitals, and preschools separately from schools.</p>
+      <h2>How STall fits into local business growth</h2>
+      <p>Businesses use Google, marketplaces and social networks to reach customers. STall is designed to complement those channels by bringing together local business discovery, public business information, digital-presence assessment, same-category business context and recurring content workflows. The available data depends on each business and its connected services. STall does not guarantee rankings, enquiries or sales.</p>
+      <p><a href="https://stallwale.in/ai-discovery.html">How STall fits AI-powered search and local business discovery</a> · <a href="https://stallwale.in/products.html">Explore all STall products</a> · <a href="https://stallwale.in/solutions/local-businesses-india.html">Solutions for local businesses in India</a> · <a href="https://stallwale.in/solutions/restaurants.html">STall for restaurants</a> · <a href="https://stallwale.in/solutions/salons.html">STall for salons</a> · <a href="https://stallwale.in/about.html">About STall</a> · <a href="https://stallwale.in/contact.html">Contact</a></p>
+    </main>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
