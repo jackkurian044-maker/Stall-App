@@ -60,6 +60,13 @@
         "source": "**",
         "destination": "/index.html"
       }
+    ],
+    "redirects": [
+      {
+        "source": "/digital-store-automation.html",
+        "destination": "/products/digital-store-automation.html",
+        "type": 301
+      }
     ]
   }
 }
