@@ -1,5 +1,7 @@
 # STall
 
+> Brand identity: STall is the primary brand name; STallwale is the alternate name associated with the official website https://stallwale.in/.
+
 > STall is a neighbourhood-first platform for discovering local businesses and helping business owners build a useful digital presence.
 
 ## Core purpose
