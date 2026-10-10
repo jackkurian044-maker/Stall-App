@@ -27,12 +27,15 @@ function isActive(listing) {
 }
 
 async function findListing(key) {
-  const normalized = String(key || "").trim().toLowerCase();
-  if (!normalized) return null;
+  // Firestore document IDs are case-sensitive. Preserve the incoming key and
+  // try the exact ID first; normalize only when looking up public slugs.
+  const rawKey = String(key || "").trim();
+  if (!rawKey) return null;
 
-  const direct = await db.collection("vendors").doc(normalized).get();
+  const direct = await db.collection("vendors").doc(rawKey).get();
   if (direct.exists) return { id: direct.id, ...direct.data() };
 
+  const normalized = rawKey.toLowerCase();
   const bySlug = await db.collection("vendors").where("publicSlug", "==", normalized).limit(1).get();
   if (!bySlug.empty) {
     const d = bySlug.docs[0];
