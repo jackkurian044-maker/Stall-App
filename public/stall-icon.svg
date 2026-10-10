@@ -1,5 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="112" fill="#102a43"/>
-  <circle cx="256" cy="256" r="170" fill="#f4c542"/>
-  <path d="M155 170h202v52H210v48h118c42 0 69 25 69 65 0 43-29 72-74 72H155v-54h158c13 0 20-6 20-18 0-11-7-17-20-17H155z" fill="#102a43"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="STall official shield logo">
+  <rect width="512" height="512" rx="96" fill="#101820"/>
+  <path d="M256 28 438 116 421 318C412 386 349 440 256 484 163 440 100 386 91 318L74 116Z" fill="#080b0e" stroke="#d8a62a" stroke-width="12" stroke-linejoin="round"/>
+  <path d="M256 52 414 129 398 314C389 370 333 416 256 454 179 416 123 370 114 314L98 129Z" fill="#101315" stroke="#f0c45a" stroke-width="3" stroke-linejoin="round"/>
+  <text x="222" y="305" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="226" fill="#f7f4eb">S</text>
+  <text x="325" y="319" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="211" fill="#e6b438">T</text>
+  <path d="M256 365 267 389 291 400 267 411 256 435 245 411 221 400 245 389Z" fill="#e6b438"/>
 </svg>
