@@ -1,5 +1,5 @@
-const CACHE_NAME = "stall-pwa-v4";
-const APP_SHELL = ["/", "/index.html", "/manifest.webmanifest", "/stall-icon.svg"];
+const CACHE_NAME = "stall-pwa-v5";
+const APP_SHELL = ["/", "/index.html", "/manifest.webmanifest", "/stall-favicon.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -41,7 +41,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  if (url.pathname.startsWith("/assets/") || url.pathname.endsWith(".css") || url.pathname.endsWith(".js") || url.pathname.endsWith(".svg")) {
+  if (url.pathname.startsWith("/assets/") || url.pathname.endsWith(".css") || url.pathname.endsWith(".js") || url.pathname.endsWith(".svg") || url.pathname.endsWith(".png")) {
     event.respondWith(
       fetch(request, { cache: "no-store" })
         .then((response) => {
