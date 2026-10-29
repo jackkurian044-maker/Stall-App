@@ -28,7 +28,15 @@ Allow: /
 User-agent: PerplexityBot
 Allow: /
 
-# Anthropic Claude
+# Anthropic Claude search crawler (relevant to search-result discovery)
+User-agent: Claude-SearchBot
+Allow: /
+
+# Anthropic user-initiated retrieval crawler
+User-agent: Claude-User
+Allow: /
+
+# Anthropic model-training crawler (separate from search and user-initiated retrieval)
 User-agent: ClaudeBot
 Allow: /
 
