@@ -10,7 +10,7 @@ Allow: /
 User-agent: ChatGPT-User
 Allow: /
 
-# OpenAI training crawler (kept enabled because the goal is broad AI discoverability)
+# OpenAI model-training crawler (separate from ChatGPT Search discovery)
 User-agent: GPTBot
 Allow: /
 
