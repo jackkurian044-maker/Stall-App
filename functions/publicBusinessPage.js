@@ -189,6 +189,8 @@ exports.publicSitemap = functions.https.onRequest(async (req, res) => {
     const snap = await db.collection("vendors").get();
     const urls = [
       "https://stallwale.in/",
+      "https://stallwale.in/llms.txt",
+      "https://stallwale.in/stall-facts.json",
       "https://stallwale.in/products.html",
       "https://stallwale.in/products/business-discovery.html",
       "https://stallwale.in/products/digital-score.html",
