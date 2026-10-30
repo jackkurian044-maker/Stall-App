@@ -2,7 +2,7 @@
   "name": "stall-functions",
   "description": "Cloud Functions for Stall — subscriptions, review auto-responder, weekly digests",
   "engines": {
-    "node": "20"
+    "node": "22"
   },
   "main": "index.js",
   "scripts": {
