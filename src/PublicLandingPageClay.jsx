@@ -231,7 +231,7 @@ export default function PublicLandingPageClay(){
         <div className="section-head"><div><div className="kicker">Competitive Intelligence</div><h2>Know where your business stands — and what to improve next.</h2><p>Category-aware comparison: restaurants with restaurants, unisex salons with unisex salons, hospitals with hospitals, schools with schools and preschools separately.</p></div></div>
         <div className="intel">
           <div className="score-card"><div className="kicker" style={{color:"#ffd968"}}>Your Business Score</div><div className="score">82<span style={{fontSize:23,color:"#aaa39a"}}>/100</span></div><small>Illustrative UI • production scores are calculated dynamically.</small><div className="bars"><div className="barrow"><span>Profile</span><div className="barbg"><div className="barfill" style={{width:"86%"}}/></div><b>86</b></div><div className="barrow"><span>Visibility</span><div className="barbg"><div className="barfill" style={{width:"74%"}}/></div><b>74</b></div><div className="barrow"><span>Reviews</span><div className="barbg"><div className="barfill" style={{width:"91%"}}/></div><b>91</b></div><div className="barrow"><span>Content</span><div className="barbg"><div className="barfill" style={{width:"68%"}}/></div><b>68</b></div></div></div>
-          <div className="opp-card"><h3>Top Opportunities</h3><p>Examples of the kind of actions STall can prioritize.</p><div className="opp"><b>Improve Google Reviews</b><span>+40% trust potential</span></div><div className="opp"><b>Add Photos & Offers</b><span>+31% engagement</span></div><div className="opp"><b>Post Regular Updates</b><span>+24% more interactions</span></div><div className="opp"><b>Compare Nearby Peers</b><span>Find highest-value gap</span></div></div>
+          <div className="opp-card"><h3>Top Opportunities</h3><p>Examples of the kind of actions STall can prioritize.</p><div className="opp"><b>Improve Google Reviews</b><span>Review available feedback</span></div><div className="opp"><b>Add Photos & Offers</b><span>Keep photos and offers current</span></div><div className="opp"><b>Post Regular Updates</b><span>Prepare owner-reviewed updates</span></div><div className="opp"><b>Compare Nearby Peers</b><span>Find highest-value gap</span></div></div>
         </div>
       </div></section>
 
@@ -242,11 +242,15 @@ export default function PublicLandingPageClay(){
         <article className="step"><div className="n">04 / GROW</div><h3>Grow Your Business</h3><p>Launch offers, post updates and attract customers.</p></article>
       </div></div></section>
 
-      <section className="section alt"><div className="wrap"><div className="section-head"><div><div className="kicker">Trusted by Thousands of Local Businesses</div><h2>Real businesses. Real growth. Powered by AI.</h2></div><div className="stars">★ 4.8/5</div></div><div className="trust">
-        <article className="quote"><div className="quote-top"><strong>Swaad Kerala Restaurant</strong><span className="stars">★★★★★</span></div><p>“STall helped us increase our visibility and get more customers. The AI suggestions are very useful!”</p><small>Janakpuri, Delhi</small></article>
-        <article className="quote"><div className="quote-top"><strong>Cut N Cute Studio</strong><span className="stars">★★★★★</span></div><p>“Our salon bookings increased after using the digital tools. The recommendations are practical and easy to use.”</p><small>Bangalore</small></article>
-        <article className="quote"><div className="quote-top"><strong>The Health Care Clinic</strong><span className="stars">★★★★★</span></div><p>“We got more patient enquiries through STall. The platform is simple to use and very effective.”</p><small>HSR Layout, Bangalore</small></article>
-      </div></div></section>
+      <section className="section alt"><div className="wrap">
+        <div className="section-head"><div><div className="kicker">Practical business workflows</div><h2>Choose the STall workflow that matches the task.</h2><p>Use the product that fits the work. Keep existing customer channels and specialist systems where they serve a different purpose.</p></div></div>
+        <div className="trust">
+          <article className="quote"><div className="quote-top"><strong>Business Discovery</strong></div><p>Create or claim an eligible public listing and keep the business details useful for customers.</p><a className="prod-cta" href="/products/business-discovery.html">Explore Business Discovery →</a></article>
+          <article className="quote"><div className="quote-top"><strong>Digital Score</strong></div><p>Review available digital-presence signals, distinguish missing information from measured findings, and prioritise practical fixes.</p><a className="prod-cta" href="/products/digital-score.html">Explore Digital Score →</a></article>
+          <article className="quote"><div className="quote-top"><strong>Business Intelligence</strong></div><p>Compare relevant nearby businesses in the same category where matching information is available.</p><a className="prod-cta" href="/products/business-intelligence.html">Explore Business Intelligence →</a></article>
+          <article className="quote"><div className="quote-top"><strong>Digital Store Automation</strong></div><p>Prepare business content and offers with owner review; publishing destinations depend on the connections enabled for the account.</p><a className="prod-cta" href="/products/digital-store-automation.html">Explore Digital Store Automation →</a></article>
+        </div>
+      </div></section>
 
       <section id="plans" className="section"><div className="wrap"><div className="plans-wrap">
         <div className="section-head" style={{marginBottom:18}}><div><div className="kicker" style={{color:"#ffd968"}}>Simple & Transparent Plans</div><h2 style={{color:"#fff"}}>Choose the right plan for your business.</h2></div><div style={{fontSize:9,color:"#aaa39a"}}>Monthly</div></div>
