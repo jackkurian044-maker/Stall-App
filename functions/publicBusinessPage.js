@@ -215,7 +215,10 @@ exports.publicSitemap = functions.https.onRequest(async (req, res) => {
       "https://stallwale.in/solutions/restaurants.html"
     ];
     const lastmodByUrl = {
-      "https://stallwale.in/": "2026-10-10",
+      "https://stallwale.in/": "2026-10-31",
+      "https://stallwale.in/products.html": "2026-10-28",
+      "https://stallwale.in/products/digital-store-automation.html": "2026-11-01",
+      "https://stallwale.in/products/digital-score.html": "2026-11-02",
       "https://stallwale.in/india.html": "2026-10-10",
       "https://stallwale.in/solutions/local-businesses-india.html": "2026-10-10"
     };
