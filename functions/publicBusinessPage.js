@@ -143,9 +143,12 @@ exports.publicBusinessPage = functions.https.onRequest(async (req, res) => {
   try {
     const listing = await findListing(key);
     if (!listing || !isActive(listing)) {
+      // Preserve the React not-found / inactive-page experience, but return
+      // the correct HTTP status so crawlers do not index the homepage as a
+      // successful public business page (soft 404).
       const html = await getIndexHtml();
-      res.set("Cache-Control", "public, max-age=60, s-maxage=60");
-      return res.status(200).send(html);
+      res.set("Cache-Control", "no-store");
+      return res.status(404).send(html);
     }
 
     const canonicalUrl = "https://stallwale.in/store/" + encodeURIComponent(listing.publicSlug || listing.id);
@@ -174,11 +177,15 @@ exports.publicBusinessPage = functions.https.onRequest(async (req, res) => {
   } catch (error) {
     console.error("publicBusinessPage failed:", error?.response?.status, error?.message);
     try {
+      // A temporary Firestore or prerender failure is not a valid homepage.
+      // Keep the client fallback available while asking crawlers to retry.
       const html = await getIndexHtml();
-      res.set("Cache-Control", "public, max-age=60, s-maxage=60");
-      return res.status(200).send(html);
+      res.set("Cache-Control", "no-store");
+      res.set("Retry-After", "60");
+      return res.status(503).send(html);
     } catch {
-      return res.status(500).send("STall public page temporarily unavailable.");
+      res.set("Retry-After", "60");
+      return res.status(503).send("STall public page temporarily unavailable.");
     }
   }
 });
