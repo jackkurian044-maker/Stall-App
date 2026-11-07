@@ -9,7 +9,7 @@ STall combines a customer-facing directory of participating businesses with owne
 - **Business Discovery** — find participating local businesses; create or claim eligible listings; maintain a useful public business page. Product details: https://stallwale.in/products/business-discovery.html. App: https://stallapp.stallwale.in/
 - **Digital Score** — assess available digital-presence signals and identify practical improvement opportunities. Product details: https://stallwale.in/products/digital-score.html. Access: https://stallwale.ai.studio/
 - **Business Intelligence** — compare a business with relevant nearby peers in the same category and identify questions or digital-presence gaps worth checking. Product details: https://stallwale.in/products/business-intelligence.html. Access: https://stallwale.ai.studio/
-- **Digital Store Automation** — prepare and manage business content, offers and supported digital-presence workflows, with owner review. Product details: https://stallwale.in/products/digital-store-automation.html. Access: https://stallwale.ai.studio/
+- **Digital Store Automation** — separate location workspaces; connect eligible Google Business Profiles; prepare owner-reviewed Update, Offer and Event drafts; create dated promotions; draft review responses; onboard from a business website; and use supported Facebook Page, Instagram Professional and Veo video workflows when enabled. Publishing and video availability depend on account eligibility, connected channels, provider permissions and plan. Product details: https://stallwale.in/products/digital-store-automation.html. Access: https://stallwale.ai.studio/
 
 ## Who it serves
 
