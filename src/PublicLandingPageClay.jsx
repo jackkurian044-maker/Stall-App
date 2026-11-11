@@ -185,7 +185,7 @@ export default function PublicLandingPageClay(){
         <div className="hero-copy">
           <div className="eyebrow"><span className="dot"/> AI-powered for local businesses</div>
           <h1>Make Your <span>Local Business</span> Grow With AI</h1>
-          <p className="hero-lead">Discover. Analyze. Automate. Grow. All in one platform to help local businesses get more visibility, more customers and grow faster with the power of AI.</p>
+          <p className="hero-lead">Discover local businesses, assess digital presence, compare relevant nearby peers and prepare owner-reviewed content and offers with practical AI-powered tools.</p>
           <div className="hero-badges"><span>AI Readiness</span><span>AI Visibility</span><span>AI Actions</span></div>
           <div className="actions"><a className="btn primary" href={appUrl}>Get Started Free →</a><a className="btn secondary" href="#platform">◉ &nbsp; Watch How STall Works</a></div>
           <div className="hero-small">No credit card required • Start with a free business listing</div>
@@ -193,15 +193,15 @@ export default function PublicLandingPageClay(){
         <div className="hero-art">
           <div className="phone"><div className="phone-screen"><div className="phone-top">STall • Koramangala, Bengaluru</div><div className="phone-card"><div className="phone-photo"/><strong style={{fontSize:10}}>Swaad Kerala Restaurant</strong><div className="phone-lines"><i/><i/><i/></div></div><div className="phone-card"><strong style={{fontSize:10}}>Cut N Cute Studio</strong><div className="phone-lines"><i/><i/></div></div></div></div>
           <div className="robot"><div className="robot-head"/><div className="robot-note">Your<br/>AI Growth<br/>Partner</div></div>
-          <div className="hero-metrics"><div className="metric good"><b>82</b><span>Digital Score</span></div><div className="metric"><b>3.5×</b><span>Visibility</span></div><div className="metric"><b>2.8×</b><span>New Customers</span></div></div>
+          <div className="hero-metrics"><div className="metric good"><b>Find</b><span>Local Businesses</span></div><div className="metric"><b>Compare</b><span>Relevant Nearby Peers</span></div><div className="metric"><b>Act</b><span>Owner-reviewed Workflows</span></div></div>
         </div>
       </div></div></div></section>
 
       <section className="stats"><div className="wrap"><div className="statsbar">
-        <div className="stat"><div className="stat-icon">⌂</div><div><b>10,000+</b><span>Local Businesses</span></div></div>
-        <div className="stat"><div className="stat-icon">⌖</div><div><b>80+</b><span>Cities in India</span></div></div>
-        <div className="stat"><div className="stat-icon">▦</div><div><b>Multiple</b><span>Business Categories</span></div></div>
-        <div className="stat"><div className="stat-icon">✦</div><div><b>AI-Powered</b><span>Growth Tools</span></div></div>
+        <div className="stat"><div className="stat-icon">⌂</div><div><b>4</b><span>Core Products</span></div></div>
+        <div className="stat"><div className="stat-icon">⌖</div><div><b>10</b><span>Business Categories</span></div></div>
+        <div className="stat"><div className="stat-icon">▦</div><div><b>Same-category</b><span>Peer Comparisons</span></div></div>
+        <div className="stat"><div className="stat-icon">✦</div><div><b>Owner-reviewed</b><span>Content Workflows</span></div></div>
       </div></div></section>
 
       <section id="platform" className="section"><div className="wrap">
