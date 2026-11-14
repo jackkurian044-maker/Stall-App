@@ -230,7 +230,6 @@ exports.publicSitemap = functions.https.onRequest(async (req, res) => {
       "https://stallwale.in/products/business-discovery.html": "2026-10-09",
       "https://stallwale.in/products/digital-score.html": "2026-11-02",
       "https://stallwale.in/products/business-intelligence.html": "2026-11-13",
-      "https://stallwale.in/products/business-intelligence.html": "2026-10-09",
       "https://stallwale.in/products/digital-store-automation.html": "2026-11-05",
       "https://stallwale.in/ai-discovery.html": "2026-10-27",
       "https://stallwale.in/guides.html": "2026-10-09",
