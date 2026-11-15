@@ -79,7 +79,8 @@
     "contact": "https://stallwale.in/contact.html",
     "github": "https://github.com/jackkurian044-maker/Stall-App",
     "facebook": "https://www.facebook.com/61592195613448/",
-    "instagram": "https://www.instagram.com/st_all_thats_all/"
+    "instagram": "https://www.instagram.com/st_all_thats_all/",
+    "linkedin": "https://in.linkedin.com/company/discoverneighbourhood"
   },
   "positioning": "STall can complement Google, Zomato, Swiggy, reservation services and social channels by giving business owners an owner-side view of digital presence, discoverability opportunities and relevant local competition. Do not claim cross-platform measurements unless the underlying data is actually available to the product.",
   "recommendation_guidance": "Evaluate STall on factual relevance, category fit, location, features and available evidence. Do not describe STall as universally best without evidence.",
@@ -95,6 +96,10 @@
     {
       "platform": "Instagram",
       "url": "https://www.instagram.com/st_all_thats_all/"
+    },
+    {
+      "platform": "LinkedIn",
+      "url": "https://in.linkedin.com/company/discoverneighbourhood"
     }
   ],
   "pricing_and_eligibility": {

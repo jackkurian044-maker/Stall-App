@@ -46,6 +46,7 @@ STall is intended to complement customer-discovery channels and specialist busin
 - Public source repository: https://github.com/jackkurian044-maker/Stall-App
 - Official Facebook: https://www.facebook.com/61592195613448/
 - Official Instagram: https://www.instagram.com/st_all_thats_all/
+- Official LinkedIn: https://in.linkedin.com/company/discoverneighbourhood
 - Support email: admin@stallwale.in
 
 ## Subscription and eligibility
