@@ -234,11 +234,12 @@ exports.publicSitemap = functions.https.onRequest(async (req, res) => {
       "https://stallwale.in/ai-discovery.html": "2026-10-27",
       "https://stallwale.in/guides.html": "2026-10-09",
       "https://stallwale.in/about.html": "2026-10-09",
+      "https://stallwale.in/success-stories.html": "2026-11-16",
       "https://stallwale.in/contact.html": "2026-10-08",
       "https://stallwale.in/india.html": "2026-10-09",
       "https://stallwale.in/local-business-digital-presence.html": "2026-10-26",
-      "https://stallwale.in/solutions/local-businesses-india.html": "2026-10-24",
-      "https://stallwale.in/solutions/salons.html": "2026-10-09",
+      "https://stallwale.in/solutions/local-businesses-india.html": "2026-11-16",
+      "https://stallwale.in/solutions/salons.html": "2026-11-16",
       "https://stallwale.in/solutions/restaurants.html": "2026-10-09"
     };
     for (const doc of snap.docs) {
