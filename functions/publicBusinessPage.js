@@ -26,6 +26,27 @@ function isActive(listing) {
   return listing && (listing.isPremium === true || ["verified", "digital_growth", "growth_setup"].includes(listing.planKey));
 }
 
+function asDate(value) {
+  if (!value) return null;
+  if (typeof value.toDate === "function") {
+    try { return value.toDate(); } catch { return null; }
+  }
+  if (value instanceof Date) return value;
+  if (typeof value === "string" || typeof value === "number") {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+  return null;
+}
+
+function latestListingLastmod(listing) {
+  const dates = ["updatedAt", "offerUpdatedAt", "ratingUpdatedAt", "createdAt"]
+    .map((field) => asDate(listing[field]))
+    .filter((date) => date && Number.isFinite(date.getTime()))
+    .sort((a, b) => a.getTime() - b.getTime());
+  return dates.length ? dates[dates.length - 1].toISOString().slice(0, 10) : "";
+}
+
 async function findListing(key) {
   // Firestore document IDs are case-sensitive. Preserve the incoming key and
   // try the exact ID first; normalize only when looking up public slugs.
@@ -242,18 +263,23 @@ exports.publicSitemap = functions.https.onRequest(async (req, res) => {
       "https://stallwale.in/solutions/salons.html": "2026-11-16",
       "https://stallwale.in/solutions/restaurants.html": "2026-10-09"
     };
+    const dynamicLastmodByUrl = {};
     for (const doc of snap.docs) {
       const listing = doc.data() || {};
       if (!isActive(listing)) continue;
       const slug = String(listing.publicSlug || doc.id).trim();
       if (!slug) continue;
-      urls.push("https://stallwale.in/store/" + encodeURIComponent(slug));
+      const url = "https://stallwale.in/store/" + encodeURIComponent(slug);
+      urls.push(url);
+      const lastmod = latestListingLastmod(listing);
+      if (lastmod) dynamicLastmodByUrl[url] = lastmod;
     }
     const unique = [...new Set(urls)];
     const body = '<?xml version="1.0" encoding="UTF-8"?>' +
       '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' +
       unique.map((url) => {
-        const lastmod = lastmodByUrl[url] ? '<lastmod>' + lastmodByUrl[url] + '</lastmod>' : '';
+        const lastmodValue = lastmodByUrl[url] || dynamicLastmodByUrl[url] || "";
+        const lastmod = lastmodValue ? '<lastmod>' + lastmodValue + '</lastmod>' : '';
         return '<url><loc>' + escapeHtml(url) + '</loc>' + lastmod + '</url>';
       }).join("") +
       '</urlset>';
