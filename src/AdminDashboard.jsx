@@ -204,6 +204,7 @@ export default function AdminDashboard() {
         rating: form.rating ?? null, ratingsCount: form.ratingsCount ?? null,
         hours: form.hours.trim(), photos: form.photos || [], preferredLink: form.preferredLink || null,
         offer: form.offer.trim(), offerExpiresAt: form.offerExpiresAt ? new Date(`${form.offerExpiresAt}T23:59:59`) : null,
+        updatedAt: serverTimestamp(),
       };
       if (editingId) {
         await updateDoc(doc(db, "vendors", editingId), payload);
