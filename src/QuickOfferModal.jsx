@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { X, Zap } from "lucide-react";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { COLORS } from "./constants";
 import { db } from "./firebase";
@@ -53,6 +53,7 @@ export default function QuickOfferModal({ listing, onClose }) {
       await updateDoc(doc(db, "vendors", listing.id), {
         offer: text.trim(),
         offerExpiresAt: expiresAt,
+        updatedAt: serverTimestamp(),
       });
       onClose();
     } catch (err) {
@@ -66,7 +67,7 @@ export default function QuickOfferModal({ listing, onClose }) {
   const clearOffer = async () => {
     setSaving(true);
     try {
-      await updateDoc(doc(db, "vendors", listing.id), { offer: "", offerExpiresAt: null });
+      await updateDoc(doc(db, "vendors", listing.id), { offer: "", offerExpiresAt: null, updatedAt: serverTimestamp() });
       onClose();
     } catch {
       setError("Couldn't clear — try again.");
