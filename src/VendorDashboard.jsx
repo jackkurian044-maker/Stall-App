@@ -201,6 +201,7 @@ export default function VendorDashboard({ user, agent }) {
         rating: form.rating ?? null, ratingsCount: form.ratingsCount ?? null, hours: form.hours.trim(), photos: form.photos || [],
         preferredLink: form.preferredLink || null, todaySpecial: form.todaySpecial.trim(), everydaySpecial: form.everydaySpecial.trim(), todayOffer: form.todayOffer.trim(), weekendOffer: form.weekendOffer.trim(), offer: form.offer.trim(),
         offerExpiresAt: form.offerExpiresAt ? new Date(`${form.offerExpiresAt}T23:59:59`) : null,
+        updatedAt: serverTimestamp(),
       };
       let savedListingId = editingId;
       if (editingId) {
@@ -251,6 +252,7 @@ export default function VendorDashboard({ user, agent }) {
         phone: quickDraft.phone.trim(),
         hours: quickDraft.hours.trim(),
         description: quickDraft.description.trim(),
+        updatedAt: serverTimestamp(),
       });
     } catch {
       setError("Couldn't update the business profile — please try again.");
