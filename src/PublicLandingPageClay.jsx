@@ -186,7 +186,7 @@ export default function PublicLandingPageClay(){
           <div className="eyebrow"><span className="dot"/> AI-powered for local businesses</div>
           <h1>Make Your <span>Local Business</span> Grow With AI</h1>
           <p className="hero-lead">Discover local businesses, assess digital presence, compare relevant nearby peers and prepare owner-reviewed content and offers with practical AI-powered tools.</p>
-          <div className="hero-badges"><span>AI Readiness</span><span>AI Visibility</span><span>AI Actions</span></div>
+          <div className="hero-badges"><span>Local Discovery</span><span>Digital Presence</span><span>Owner-reviewed Actions</span></div>
           <div className="actions"><a className="btn primary" href={appUrl}>Get Started Free →</a><a className="btn secondary" href="#platform">◉ &nbsp; Watch How STall Works</a></div>
           <div className="hero-small">No credit card required • Start with a free business listing</div>
         </div>
