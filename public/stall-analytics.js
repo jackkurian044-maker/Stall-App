@@ -105,7 +105,7 @@
     title.textContent = "Help us improve STall";
     title.style.cssText = "display:block;font-size:14px;margin-bottom:5px;color:#ffd968";
     var copy = document.createElement("p");
-    copy.textContent = "Optional Google Analytics helps us understand page visits and clicks to STall tools. Analytics is not loaded unless you accept.";
+    copy.textContent = "Optional Google Analytics helps us understand page visits, clicks to STall tools and referring sites, including AI assistants. Analytics is not loaded unless you accept.";
     copy.style.cssText = "margin:0 0 12px;color:#e1e1e1";
     var actions = document.createElement("div");
     actions.style.cssText = "display:flex;flex-wrap:wrap;gap:8px;align-items:center";
