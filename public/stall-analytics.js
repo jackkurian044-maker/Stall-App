@@ -18,6 +18,44 @@
     if (!initialized || getConsent() !== "accepted" || typeof window.gtag !== "function") return;
     window.gtag("event", name, params || {});
   }
+  function getAiReferralSource() {
+    if (!document.referrer) return null;
+    var host;
+    try { host = new URL(document.referrer).hostname.toLowerCase(); } catch (_) { return null; }
+    var sources = [
+      { domain: "chatgpt.com", label: "ChatGPT" },
+      { domain: "chat.openai.com", label: "ChatGPT" },
+      { domain: "perplexity.ai", label: "Perplexity" },
+      { domain: "gemini.google.com", label: "Gemini" },
+      { domain: "bard.google.com", label: "Gemini" },
+      { domain: "claude.ai", label: "Claude" },
+      { domain: "copilot.microsoft.com", label: "Copilot" },
+      { domain: "poe.com", label: "Poe" },
+      { domain: "you.com", label: "You.com" },
+      { domain: "phind.com", label: "Phind" },
+      { domain: "chat.deepseek.com", label: "DeepSeek" },
+      { domain: "chat.mistral.ai", label: "Le Chat" },
+      { domain: "meta.ai", label: "Meta AI" },
+      { domain: "komo.ai", label: "Komo" }
+    ];
+    for (var i = 0; i < sources.length; i += 1) {
+      var domain = sources[i].domain;
+      if (host === domain || host.slice(-(domain.length + 1)) === "." + domain) {
+        return { assistant: sources[i].label, host: host };
+      }
+    }
+    return null;
+  }
+  function trackAiReferralLanding() {
+    var source = getAiReferralSource();
+    if (!source) return;
+    sendEvent("ai_referral_landing", {
+      ai_assistant: source.assistant,
+      referrer_host: source.host,
+      landing_path: window.location.pathname,
+      referral_type: "ai_assistant"
+    });
+  }
   function initAnalytics() {
     if (initialized || !validMeasurementId(measurementId) || getConsent() !== "accepted") return;
     initialized = true;
@@ -29,6 +67,7 @@
         domains: ["stallwale.in", "www.stallwale.in", "stallapp.stallwale.in", "stallwale.ai.studio"]
       }
     });
+    trackAiReferralLanding();
     var script = document.createElement("script");
     script.async = true;
     script.src = "https://www.googletagmanager.com/gtag/js?id=" + encodeURIComponent(measurementId);
