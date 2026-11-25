@@ -246,7 +246,7 @@ exports.publicSitemap = functions.https.onRequest(async (req, res) => {
     // commits for these public pages. Do not stamp every URL with deployment
     // time: unchanged pages must retain their actual modification date.
     const lastmodByUrl = {
-      "https://stallwale.in/": "2026-11-17",
+      "https://stallwale.in/": "2026-11-24",
       "https://stallwale.in/products.html": "2026-10-28",
       "https://stallwale.in/products/business-discovery.html": "2026-10-09",
       "https://stallwale.in/products/digital-score.html": "2026-11-02",
